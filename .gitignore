@@ -1,0 +1,6 @@
+#Ignorar metadata
+.vscode/
+
+*.out # Archivos ejecutables
+*.exe
+*.so
