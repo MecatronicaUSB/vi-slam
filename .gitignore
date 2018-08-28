@@ -4,3 +4,6 @@
 *.out # Archivos ejecutables
 *.exe
 *.so
+
+#Vscode workspace files
+*.code-workspace
