@@ -55,7 +55,6 @@ int main( int argc, char** argv )
     marker.header.frame_id = "/my_frame";
     marker.header.stamp = ros::Time::now();
 // %EndTag(MARKER_INIT)%
-
     // Set the namespace and id for this marker.  This serves to create a unique ID
     // Any marker sent with the same namespace and id will overwrite the old one
 // %Tag(NS_ID)%

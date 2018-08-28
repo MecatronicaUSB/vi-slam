@@ -52,11 +52,11 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include
 )
 
-add_library(vi_slam ${vi_slam_SOURCE_FILES})
+# add_library(vi_slam ${vi_slam_SOURCE_FILES}) # comentado hasta que se cree librerias
 
 add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slam.cpp)
 
 ## IMPORTANT - TO WORK WITH CUDA AND ROS (CUDA INSTALLED IN ANOTHER OPENCV)
 string(REPLACE "/opt/ros/kinetic/lib/libopencv_core3.so.3.3;" "" catkin_LIBRARIES "${catkin_LIBRARIES}")
 
-target_link_libraries(main_vi_slam vi ${OpenCV_LIBS} ${catkin_LIBRARIES})
+target_link_libraries(vi_slam ${OpenCV_LIBS} ${catkin_LIBRARIES})
