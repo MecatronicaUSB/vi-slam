@@ -1,143 +1,58 @@
-/*
- * Copyright (c) 2010, Willow Garage, Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Willow Garage, Inc. nor the names of its
- *       contributors may be used to endorse or promote products derived from
- *       this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+#include <iostream>
+#include "../include/GroundTruth.h"
+#include "Visualizer.h"
+#include "opencv2/core.hpp"
 
-// %Tag(FULLTEXT)%
-// %Tag(INCLUDES)%
-#include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
-// %EndTag(INCLUDES)%
+int main( int argc, char** argv ){
+    
+    const String keys =
+        "{help h usage ? |      | print this message   }"
+        "{filePath     |       | data input directory} ";
 
-// %Tag(INIT)%
-int main( int argc, char** argv )
-{
-  ros::init(argc, argv, "basic_shapes");
-  ros::NodeHandle n;
-  ros::Rate r(1);
-  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
-// %EndTag(INIT)%
+    cv::CommandLineParser parser(argc, argv, keys);
+        if (parser.has("help"))
+        {
+            cout<< "parse the file path"<<endl;
+            return 0;
+        }
+    string filePath = parser.get<string>("filePath");
+    char separator = ',';
+    GroundTruth groundTruth(filePath, separator);
 
-  // Set our initial shape type to be a cube
-// %Tag(SHAPE_INIT)%
-  uint32_t shape = visualization_msgs::Marker::CUBE;
-// %EndTag(SHAPE_INIT)%
+    cout<< groundTruth.getFileName()<<"\n"
+    << groundTruth.getCharSeparator()<<"\n"
+    <<"número de filas"<<groundTruth.getRows()
+    <<"número de columnas"<<groundTruth.getCols()<< endl;
 
-// %Tag(MARKER_INIT)%
-  while (ros::ok())
-  {
-    visualization_msgs::Marker marker;
-    // Set the frame ID and timestamp.  See the TF tutorials for information on these.
-    marker.header.frame_id = "/my_frame";
-    marker.header.stamp = ros::Time::now();
-// %EndTag(MARKER_INIT)%
-    // Set the namespace and id for this marker.  This serves to create a unique ID
-    // Any marker sent with the same namespace and id will overwrite the old one
-// %Tag(NS_ID)%
-    marker.ns = "basic_shapes";
-    marker.id = 0;
-// %EndTag(NS_ID)%
 
-    // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
-// %Tag(TYPE)%
-    marker.type = shape;
-// %EndTag(TYPE)%
+    double position[3];
+    double orientation[4];
+    orientation[3] = 1.0;
 
-    // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
-// %Tag(ACTION)%
-    marker.action = visualization_msgs::Marker::ADD;
-// %EndTag(ACTION)%
+    ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
-    // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
-// %Tag(POSE)%
-    marker.pose.position.x = 0;
-    marker.pose.position.y = 0;
-    marker.pose.position.z = 0;
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-// %EndTag(POSE)%
+    Visualizer visualizer("gt_poses", "/my_frame", 1000.0, 1);
+    
 
-    // Set the scale of the marker -- 1x1x1 here means 1m on a side
-// %Tag(SCALE)%
-    marker.scale.x = 1.0;
-    marker.scale.y = 1.0;
-    marker.scale.z = 1.0;
-// %EndTag(SCALE)%
-
-    // Set the color -- be sure to set alpha to something non-zero!
-// %Tag(COLOR)%
-    marker.color.r = 0.0f;
-    marker.color.g = 1.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 1.0;
-// %EndTag(COLOR)%
-
-// %Tag(LIFETIME)%
-    marker.lifetime = ros::Duration();
-// %EndTag(LIFETIME)%
-
-    // Publish the marker
-// %Tag(PUBLISH)%
-    while (marker_pub.getNumSubscribers() < 1)
-    {
-      if (!ros::ok())
-      {
-        return 0;
-      }
-      ROS_WARN_ONCE("Please create a subscriber to the marker");
-      sleep(1);
+    for (int j = 0;  j < groundTruth.getRows(); j++){  
+        position[0] = groundTruth.getGroundTruthData(j, 1);   //x
+        position[1] = groundTruth.getGroundTruthData(j, 2);   //y
+        position[2] = groundTruth.getGroundTruthData(j, 3);   // z
+        orientation[1] = groundTruth.getGroundTruthData(j, 4); // x
+        orientation[2] = groundTruth.getGroundTruthData(j, 5); // y
+        orientation[3] = groundTruth.getGroundTruthData(j, 6); // z
+        orientation[0] = groundTruth.getGroundTruthData(j, 7); // w
+        visualizer.UpdateMessages(position, orientation);
     }
-    marker_pub.publish(marker);
-// %EndTag(PUBLISH)%
+    
 
-    // Cycle between different shapes
-// %Tag(CYCLE_SHAPES)%
-    switch (shape)
-    {
-    case visualization_msgs::Marker::CUBE:
-      shape = visualization_msgs::Marker::SPHERE;
-      break;
-    case visualization_msgs::Marker::SPHERE:
-      shape = visualization_msgs::Marker::ARROW;
-      break;
-    case visualization_msgs::Marker::ARROW:
-      shape = visualization_msgs::Marker::CYLINDER;
-      break;
-    case visualization_msgs::Marker::CYLINDER:
-      shape = visualization_msgs::Marker::CUBE;
-      break;
-    }
-// %EndTag(CYCLE_SHAPES)%
+    return 0;
 
-// %Tag(SLEEP_END)%
-    r.sleep();
-  }
-// %EndTag(SLEEP_END)%
 }
-// %EndTag(FULLTEXT)%
+
+// COMPILE COMMAND
+//g++ -g main_vi_slam.cpp GroundTruth.cpp -o main_vi_slam.out `pkg-config opencv --cflags --libs`
+
+// RUN COMMAND
+//./main_vi_slam.out -filePath=../../../../Documents/EuroDataset/state_groundtruth_estimate0/data.csv
+// rosrun vi_slam vi_slam -filePath=../../../../Documents/EuroDataset/state_groundtruth_estimate0/data.csv 
