@@ -2,12 +2,16 @@
 #include "../include/GroundTruth.h"
 #include "Visualizer.h"
 #include "opencv2/core.hpp"
+#include "opencv2/highgui.hpp"
+
+using namespace cv;
 
 int main( int argc, char** argv ){
     
     const String keys =
         "{help h usage ? |      | print this message   }"
-        "{filePath     |       | data input directory} ";
+        "{filePath     |       | data input directory} "
+        "{imagePath   |       | data image directory} ";
 
     cv::CommandLineParser parser(argc, argv, keys);
         if (parser.has("help"))
@@ -16,7 +20,10 @@ int main( int argc, char** argv ){
             return 0;
         }
     string filePath = parser.get<string>("filePath");
+    string imagePath = parser.get<string>("imagePath");
     char separator = ',';
+
+    cout<<"File "<<filePath<<endl;
     GroundTruth groundTruth(filePath, separator);
 
     cout<< groundTruth.getFileName()<<"\n"
@@ -31,10 +38,14 @@ int main( int argc, char** argv ){
 
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
-    Visualizer visualizer("gt_poses", "/my_frame", 1000.0, 1);
+    VisualizerPoint visualizer("gt_poses", "/my_frame", 1000.0, 1, 0);
+    VisualizerFrame visualizerFrame("current_frame", 30.0);
     
-
+    Mat frame;
+    cout<<"FileImage "<<imagePath<<endl;
+    frame = imread(imagePath, 1);
     for (int j = 0;  j < groundTruth.getRows(); j++){  
+        /*
         position[0] = groundTruth.getGroundTruthData(j, 1);   //x
         position[1] = groundTruth.getGroundTruthData(j, 2);   //y
         position[2] = groundTruth.getGroundTruthData(j, 3);   // z
@@ -43,8 +54,15 @@ int main( int argc, char** argv ){
         orientation[3] = groundTruth.getGroundTruthData(j, 6); // z
         orientation[0] = groundTruth.getGroundTruthData(j, 7); // w
         visualizer.UpdateMessages(position, orientation);
+        */
+       visualizerFrame.UpdateMessages(frame);
+
     }
+
     
+    
+
+  
 
     return 0;
 

@@ -1,0 +1,20 @@
+<!-- DATASET -->
+<launch>
+    <!-- VI-SLAM main thread-->
+    <node pkg="vi_slam" type="vi_slam" name="main"  
+        args="-filePath=/home/lujano/Documents/EuroDataset/state_groundtruth_estimate0/data.csv 
+              -imagePath=/home/lujano/Documents/EuroDataset/Cam0/1403636579763555584.png "
+        clear_params="true" 
+        output="screen"/>
+        
+    <!-- Rviz visualizer-->
+    <node pkg="rviz" type="rviz" name="rviz"/>
+
+    <!-- rqt_plot visualizer
+    <node name="pos_vel_plot"
+        pkg="rqt_plot"
+        type="rqt_plot"
+        args="/joint_states/position[0] /joint_states/position[1]" />
+        -->
+</launch>
+
