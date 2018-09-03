@@ -1,5 +1,5 @@
 #include <fstream>
-#include "../include/GroundTruth.h"
+#include "../include/GroundTruth.hpp"
 
 using namespace std;
 

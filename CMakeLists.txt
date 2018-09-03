@@ -45,6 +45,8 @@ catkin_package(
 set(vi_slam_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/GroundTruth.cpp
     ${PROJECT_SOURCE_DIR}/src/Visualizer.cpp
+    ${PROJECT_SOURCE_DIR}/src/ImageReader.cpp
+    ${PROJECT_SOURCE_DIR}/src/Matcher.cpp
     
 )
 

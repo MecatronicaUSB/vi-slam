@@ -1,8 +1,11 @@
 #include <iostream>
-#include "../include/GroundTruth.h"
-#include "Visualizer.h"
+#include "GroundTruth.hpp"
+#include "Visualizer.hpp"
+#include "ImageReader.hpp"
+#include "Matcher.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
+#include "opencv2/calib3d.hpp"
 
 using namespace cv;
 
@@ -31,6 +34,7 @@ int main( int argc, char** argv ){
     <<"número de filas"<<groundTruth.getRows()
     <<"número de columnas"<<groundTruth.getCols()<< endl;
 
+    ImageReader imageReader(imagePath);
 
     double position[3];
     double orientation[4];
@@ -40,12 +44,71 @@ int main( int argc, char** argv ){
 
     VisualizerPoint visualizer("gt_poses", "/my_frame", 1000.0, 1, 0);
     VisualizerFrame visualizerFrame("current_frame", 30.0);
+    Mat frame1;
+    Mat frame2;
+
     
-    Mat frame;
-    cout<<"FileImage "<<imagePath<<endl;
-    frame = imread(imagePath, 1);
+
+    //-- Paso 4: Calcular la matriz Esencial
+    // Parametros intrisecos de la camara
+  double fx, fy, focal, cx, cy;
+  fx = 458.654;
+  fy = 457.296;
+  cx =  367.215;
+  cy = 248.375;
+  /*
+  fx = 7.188560000000e+02;
+
+  fy = 7.188560000000e+02;
+  cx =  6.071928000000e+02;
+  cy =  1.852157000000e+02;
+  */
+  focal = fx;
+  Mat E, R, t; // matriz esencial
+
+  std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+  vector<int> point_indexs;
+  Mat finalImage;
+  Mat odometry = Mat::zeros(1, 3, CV_64F); // Matriz vacia de vectores de longitud 3 (comienza con 000)
+  Mat R_p ; // matriz de rotacion temporal
+    Mat traslation; 
+    for (int j = 0;  j < imageReader.getSize()-1; j++){  // Cambiar por constante
+        vector<KeyPoint> matched1, matched2;
+        Matcher matcher(USE_AKAZE, USE_BRUTE_FORCE);
+        frame1 = imageReader.getImage(j);
+        frame2 = imageReader.getImage(j+1);
+        matcher.setFrames(frame1, frame2);
+        matcher.computeMatches();
+        matcher.getGoodMatches(matched1, matched2);
+        cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
+        cv::KeyPoint::convert(matched2, points2_OK,point_indexs);
+        
+        std::cout << "Puntos detectados = "<<matched1.size()<< endl;
+        E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
+        int p;
+        p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
+        drawKeypoints( frame2, matched1, finalImage, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
+        if (j == 0){
+            traslation = Mat::zeros(3, 1, CV_64F);
+            R_p = Mat::eye(Size(3, 3), CV_64F);
+        }
+        else{
+            traslation = traslation +R_p*t;
+            R_p = R*R_p;
+        }
+        
+        position[0] = traslation.at<double>(0,0);   //x
+        position[1] = 0.0;//traslation.at<double>(2,0);   //y
+        position[2] = traslation.at<double>(1,0);
+        orientation[0] = 1.0;
+        visualizerFrame.UpdateMessages(finalImage);
+        visualizer.UpdateMessages(position, orientation);
+    }
+    
+
+    /*
     for (int j = 0;  j < groundTruth.getRows(); j++){  
-        /*
+        
         position[0] = groundTruth.getGroundTruthData(j, 1);   //x
         position[1] = groundTruth.getGroundTruthData(j, 2);   //y
         position[2] = groundTruth.getGroundTruthData(j, 3);   // z
@@ -54,10 +117,9 @@ int main( int argc, char** argv ){
         orientation[3] = groundTruth.getGroundTruthData(j, 6); // z
         orientation[0] = groundTruth.getGroundTruthData(j, 7); // w
         visualizer.UpdateMessages(position, orientation);
-        */
-       visualizerFrame.UpdateMessages(frame);
-
+        
     }
+    */
 
     
     

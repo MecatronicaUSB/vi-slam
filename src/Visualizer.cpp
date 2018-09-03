@@ -1,4 +1,4 @@
-#include "../include/Visualizer.h"
+#include "../include/Visualizer.hpp"
 
 
 // Visualizer Point
