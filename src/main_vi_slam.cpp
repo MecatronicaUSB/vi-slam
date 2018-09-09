@@ -7,6 +7,13 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/calib3d.hpp"
 
+
+#include <ros/ros.h>
+#include <ros/console.h>
+
+#include <std_msgs/Int32.h>
+#include <geometry_msgs/Vector3.h>
+
 using namespace cv;
 
 int main( int argc, char** argv ){
@@ -36,54 +43,62 @@ int main( int argc, char** argv ){
 
     ImageReader imageReader(imagePath);
 
+    
+
+    ros::init(argc, argv, "vi_slam");  // Initialize ROS
+
+    VisualizerVector3 rqt_error("error", 10.0);
+    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 1000.0, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+    VisualizerMarker visualizer_est("est_poses", "/my_frame", 1000.0, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    VisualizerFrame visualizerFrame("current_frame", 30.0);
+    Mat frame1;
+    Mat frame2;
+    Point3f error;
     double position[3];
     double orientation[4];
     orientation[3] = 1.0;
 
-    ros::init(argc, argv, "vi_slam");  // Initialize ROS
-
-    VisualizerPoint visualizer("gt_poses", "/my_frame", 1000.0, 1, 0);
-    VisualizerFrame visualizerFrame("current_frame", 30.0);
-    Mat frame1;
-    Mat frame2;
-
     
+
 
     //-- Paso 4: Calcular la matriz Esencial
     // Parametros intrisecos de la camara
-  double fx, fy, focal, cx, cy;
-  fx = 458.654;
-  fy = 457.296;
-  cx =  367.215;
-  cy = 248.375;
-  /*
-  fx = 7.188560000000e+02;
+    double fx, fy, focal, cx, cy;
+    fx = 458.654;
+    fy = 457.296;
+    cx =  367.215;
+    cy = 248.375;
+    /*
+    fx = 7.188560000000e+02;
 
-  fy = 7.188560000000e+02;
-  cx =  6.071928000000e+02;
-  cy =  1.852157000000e+02;
-  */
-  focal = fx;
-  Mat E, R, t; // matriz esencial
+    fy = 7.188560000000e+02;
+    cx =  6.071928000000e+02;
+    cy =  1.852157000000e+02;
+    */
+    focal = fx;
+    Mat E, R, t; // matriz esencial
 
-  std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
-  vector<int> point_indexs;
-  Mat finalImage;
-  Mat odometry = Mat::zeros(1, 3, CV_64F); // Matriz vacia de vectores de longitud 3 (comienza con 000)
-  Mat R_p ; // matriz de rotacion temporal
+    std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+    vector<int> point_indexs;
+    Mat finalImage;
+    Mat odometry = Mat::zeros(1, 3, CV_64F); // Matriz vacia de vectores de longitud 3 (comienza con 000)
+    Mat R_p ; // matriz de rotacion temporal
     Mat traslation; 
-    for (int j = 0;  j < imageReader.getSize()-1; j++){  // Cambiar por constante
+
+    int i = 0;
+    for (int j = 0;  j < imageReader.getSize()-1; j++)
+    {  // Cambiar por constante
         vector<KeyPoint> matched1, matched2;
         Matcher matcher(USE_AKAZE, USE_BRUTE_FORCE);
         frame1 = imageReader.getImage(j);
         frame2 = imageReader.getImage(j+1);
         matcher.setFrames(frame1, frame2);
-        matcher.computeMatches();
+        matcher.computeSymMatches();
         matcher.getGoodMatches(matched1, matched2);
         cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
         cv::KeyPoint::convert(matched2, points2_OK,point_indexs);
         
-        std::cout << "Puntos detectados = "<<matched1.size()<< endl;
+        std::cout << "Puntos totales = "<<matched1.size()<< endl;
         E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
         int p;
         p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
@@ -102,27 +117,27 @@ int main( int argc, char** argv ){
         position[2] = traslation.at<double>(1,0);
         orientation[0] = 1.0;
         visualizerFrame.UpdateMessages(finalImage);
-        visualizer.UpdateMessages(position, orientation);
-    }
+        visualizer_est.UpdateMessages(position, orientation);
+        
+        for (int j = i;  j < i+10; j++)
+        {  
+            position[0] = groundTruth.getGroundTruthData(j, 1);   //x
+            position[1] = groundTruth.getGroundTruthData(j, 2);   //y
+            position[2] = groundTruth.getGroundTruthData(j, 3);   // z
+            orientation[1] = groundTruth.getGroundTruthData(j, 4); // x
+            orientation[2] = groundTruth.getGroundTruthData(j, 5); // y
+            orientation[3] = groundTruth.getGroundTruthData(j, 6); // z
+            orientation[0] = groundTruth.getGroundTruthData(j, 7); // w
+            visualizer_gt.UpdateMessages(position, orientation);
+            
+        }
+        i = i+10;
+        
+        
+     }
+    
     
 
-    /*
-    for (int j = 0;  j < groundTruth.getRows(); j++){  
-        
-        position[0] = groundTruth.getGroundTruthData(j, 1);   //x
-        position[1] = groundTruth.getGroundTruthData(j, 2);   //y
-        position[2] = groundTruth.getGroundTruthData(j, 3);   // z
-        orientation[1] = groundTruth.getGroundTruthData(j, 4); // x
-        orientation[2] = groundTruth.getGroundTruthData(j, 5); // y
-        orientation[3] = groundTruth.getGroundTruthData(j, 6); // z
-        orientation[0] = groundTruth.getGroundTruthData(j, 7); // w
-        visualizer.UpdateMessages(position, orientation);
-        
-    }
-    */
-
-    
-    
 
   
 

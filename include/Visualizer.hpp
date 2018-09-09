@@ -6,16 +6,22 @@
 #include <visualization_msgs/Marker.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
-
+#include <geometry_msgs/Vector3.h>
 // C++ libraries
 using namespace std;
 using namespace cv;
 
-class VisualizerPoint
+  enum { // Shapes
+    ARROW = 0u,
+    CUBE = 1u,
+    SPHERE = 2u,
+    CYLINDER = 3u};
+    
+class VisualizerMarker
 {
     public:
-        VisualizerPoint(string marker, string headerID, double rate, uint32_t shape, int32_t ID);
-        void createROSMarker(string markerN, string headerID, double rate, uint32_t shape, int32_t ID);
+        VisualizerMarker(string marker, string headerID, double rate, uint32_t shape, int32_t ID, Point3f _scale, Point3f _color);
+        void createROSMarker(string markerN, string headerID, double rate, uint32_t shape, int32_t ID, Point3f _scale, Point3f _color);
         void UpdateMessages(double position[3], double orientation[4]);
         string getMarkerName();
         string getHeaderFrameID();
@@ -33,6 +39,22 @@ class VisualizerPoint
 
 };
 
+class VisualizerVector3{
+    public:
+        VisualizerVector3(string marker, double rate);
+        void createROSMessage(string markerN, double rate);
+        void UpdateMessages(Point3f data);
+        string getMarkerName();
+        double getRateHZ();
+       
+
+    private:
+        string markerName;
+        double rateHZ;
+        ros::Publisher publisher; 
+        geometry_msgs::Vector3 vectorData;
+
+};
 
 class VisualizerFrame
 {
@@ -51,3 +73,6 @@ class VisualizerFrame
         sensor_msgs::ImagePtr marker;
 
 };
+
+
+

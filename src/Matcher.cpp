@@ -1,6 +1,7 @@
 #include "../include/Matcher.hpp"
 #include <iostream>
 
+
 Matcher::Matcher(int _detector, int _matcher)
 {
     setDetector(_detector);
@@ -78,24 +79,75 @@ void Matcher::detectFeatures()
 
 }
 
-void Matcher::computeMatches()
+void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de simetria
 {
     detectFeatures(); //Detectar caracteristicas
 
     // to store matches temporarily
 	// match using desired matcher
-	matcher->knnMatch(descriptors_1, descriptors_2, matches, 2);
+    vector< vector<DMatch> > aux_matches1; // Vector auxiliar
+    vector< vector<DMatch> > aux_matches2; // Vector auxiliar
+	matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
+    matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
 	// save in global class variable
-
+    std::cout<< "Numero de puntos detectados = "<<keypoints_1.size()<<endl;
+    
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
-    for(unsigned i = 0; i < matches.size(); i++) {
-        if(matches[i][0].distance < nn_match_ratio * matches[i][1].distance) {
-            matched1.push_back(keypoints_1[matches[i][0].queryIdx]);
-            matched2.push_back(keypoints_2[matches[i][0].trainIdx]);
+    int removed1;
+    int removed2;
+    removed1 = nn_filter(aux_matches1, nn_match_ratio);
+    removed2 = nn_filter(aux_matches2, nn_match_ratio);
+
+    std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
+    std::vector<std::vector<cv::DMatch> >::iterator matchIterator2; // iterator for matches
+    for (matchIterator1= aux_matches1.begin();matchIterator1!= aux_matches1.end(); ++matchIterator1) 
+    {
+        if (matchIterator1->size() >= 2) // dos  o mas vecinos
+        {
+            for (matchIterator2= aux_matches2.begin();matchIterator2!= aux_matches2.end(); ++matchIterator2) 
+            {
+                if (matchIterator1->size() >= 2) // dos  o mas vecinos
+                {
+                    if ((*matchIterator1)[0].queryIdx == (*matchIterator2)[0].trainIdx && 
+                        (*matchIterator2)[0].queryIdx == (*matchIterator1)[0].trainIdx) 
+                    {
+                        // add symmetrical match
+                        
+                        matches.push_back(DMatch((*matchIterator1)[0].queryIdx,
+                                    (*matchIterator1)[0].trainIdx,
+                                    (*matchIterator1)[0].distance));
+                        matched1.push_back(keypoints_1[(*matchIterator1)[0].queryIdx]);
+                        matched2.push_back(keypoints_2[(*matchIterator1)[0].trainIdx]);
+                                
+                        break; // next match in image 1 -> image 2
+                    }
+                }
+            }
         }
     }
 
+}
+
+int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
+{
+    std::vector<std::vector<cv::DMatch> >::iterator matchIterator; // iterator for matches
+    int removed;
+    for (matchIterator=matches.begin();matchIterator!= matches.end(); ++matchIterator) {
+        // if 2 NN has been identified
+        if (matchIterator->size() > 1) 
+        {   // check distance ratio
+            if ((*matchIterator)[0].distance > nn_ratio*((*matchIterator)[1].distance)) 
+            {    
+                matchIterator->clear(); // remove match
+                removed++;
+            }
+        } else { // does not have 2 neighbours
+            matchIterator->clear(); // remove match
+            removed++;
+        }
+    }
+    return removed;
 }
 
 void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)

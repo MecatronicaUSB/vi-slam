@@ -1,14 +1,15 @@
 #include "../include/Visualizer.hpp"
 
 
-// Visualizer Point
-VisualizerPoint::VisualizerPoint(string markerN, string headerID, double rate, uint32_t shapeForm, int32_t ID)
+// Visualizer Marker
+VisualizerMarker::VisualizerMarker(string markerN, string headerID, double rate, uint32_t shapeForm, int32_t ID, Point3f scale, Point3f color)
 {
-    createROSMarker(markerN, headerID, rate, shapeForm, ID);
+    createROSMarker(markerN, headerID, rate, shapeForm, ID, scale, color);
 
 }
 
-void VisualizerPoint::createROSMarker(string markerN, string headerID, double rate, uint32_t shapeForm, int32_t ID)
+void VisualizerMarker::createROSMarker(string markerN, string headerID, double rate, 
+uint32_t shapeForm, int32_t ID, Point3f scale, Point3f color)
 {
     markerName = markerN;
     headerFrameID = headerID;
@@ -28,13 +29,13 @@ void VisualizerPoint::createROSMarker(string markerN, string headerID, double ra
     marker.lifetime = ros::Duration();
 
      // Ajustes
-    marker.scale.x = 1.0;
-    marker.scale.y = 1.0;
-    marker.scale.z = 1.0;
+    marker.scale.x = scale.x;
+    marker.scale.y = scale.y;
+    marker.scale.z = scale.z;
 
-    marker.color.r = 0.0f;
-    marker.color.g = 1.0f;
-    marker.color.b = 0.0f;
+    marker.color.r = color.x;
+    marker.color.g = color.y;
+    marker.color.b = color.z;
     marker.color.a = 1.0;
 
     marker.pose.position.x = 0.0;
@@ -49,7 +50,7 @@ void VisualizerPoint::createROSMarker(string markerN, string headerID, double ra
 
 }
 
-void VisualizerPoint::UpdateMessages(double position[3], double orientation[4]){
+void VisualizerMarker::UpdateMessages(double position[3], double orientation[4]){
     
     ros::Rate r(rateHZ);
 
@@ -82,13 +83,13 @@ void VisualizerPoint::UpdateMessages(double position[3], double orientation[4]){
 }
 
 
-string VisualizerPoint::getMarkerName(){
+string VisualizerMarker::getMarkerName(){
     return markerName;
 }
-string VisualizerPoint::getHeaderFrameID(){
+string VisualizerMarker::getHeaderFrameID(){
     return headerFrameID;
 }
-double VisualizerPoint::getRateHZ(){
+double VisualizerMarker::getRateHZ(){
     return rateHZ;
 }
 
@@ -134,5 +135,50 @@ string VisualizerFrame::getMarkerName(){
 }
 
 double VisualizerFrame::getRateHZ(){
+    return rateHZ;
+}
+
+// Visualizer Vector
+VisualizerVector3::VisualizerVector3(string markerN, double rate)
+{
+    createROSMessage(markerN, rate);
+
+}
+
+void VisualizerVector3::createROSMessage(string markerN, double rate)
+{
+    markerName = markerN;
+    rateHZ = rate;
+    
+    ros::NodeHandle n;
+    publisher = n.advertise< geometry_msgs::Vector3 >(markerName.c_str(), 1000);
+}
+
+void VisualizerVector3::UpdateMessages(Point3f data){
+    ros::Rate r(rateHZ);
+
+    vectorData.x = data.x;
+    vectorData.y = data.y;
+    vectorData.z = data.z;
+    while (publisher.getNumSubscribers() < 1)
+    {
+      if (!ros::ok())
+      {
+        exit(1);
+      }
+      ROS_WARN_ONCE("Please create a subscriber to the marker Vector3");
+      sleep(1);
+    }
+    publisher.publish(vectorData);
+    r.sleep();
+
+    
+}
+
+string VisualizerVector3::getMarkerName(){
+    return markerName;
+}
+
+double VisualizerVector3::getRateHZ(){
     return rateHZ;
 }

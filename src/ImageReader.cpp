@@ -33,7 +33,7 @@ void ImageReader::searchImages(){
 }
 
 Mat ImageReader::getImage(int index){
-    return imread(file_names[index]);
+    return imread(file_names[index], CV_LOAD_IMAGE_GRAYSCALE);
 }
 
 size_t ImageReader::getSize(){
