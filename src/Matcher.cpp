@@ -90,7 +90,7 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
 	matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
     matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
 	// save in global class variable
-    std::cout<< "Numero de puntos detectados = "<<keypoints_1.size()<<endl;
+    std::cout<< "Numero de puntos detectados en 2 = "<<keypoints_2.size()<<endl;
     
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
@@ -139,6 +139,7 @@ int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
         {   // check distance ratio
             if ((*matchIterator)[0].distance > nn_ratio*((*matchIterator)[1].distance)) 
             {    
+                std::cout<<(*matchIterator)[0].distance<<"\t"; 
                 matchIterator->clear(); // remove match
                 removed++;
             }
@@ -147,6 +148,7 @@ int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
             removed++;
         }
     }
+    std::cout<<endl; 
     return removed;
 }
 

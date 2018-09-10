@@ -50,7 +50,8 @@ int main( int argc, char** argv ){
     VisualizerVector3 rqt_error("error", 10.0);
     VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 1000.0, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
     VisualizerMarker visualizer_est("est_poses", "/my_frame", 1000.0, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    VisualizerFrame visualizerFrame("current_frame", 30.0);
+    VisualizerFrame visualizerFrame("current_frame", 1);
+    VisualizerFrame visualizerFrame2("current_frame2", 0.2);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -80,7 +81,7 @@ int main( int argc, char** argv ){
 
     std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
     vector<int> point_indexs;
-    Mat finalImage;
+    Mat finalImage, finalImage2;
     Mat odometry = Mat::zeros(1, 3, CV_64F); // Matriz vacia de vectores de longitud 3 (comienza con 000)
     Mat R_p ; // matriz de rotacion temporal
     Mat traslation; 
@@ -89,7 +90,8 @@ int main( int argc, char** argv ){
     for (int j = 0;  j < imageReader.getSize()-1; j++)
     {  // Cambiar por constante
         vector<KeyPoint> matched1, matched2;
-        Matcher matcher(USE_AKAZE, USE_BRUTE_FORCE);
+        
+        Matcher matcher(USE_SURF, USE_FLANN);
         frame1 = imageReader.getImage(j);
         frame2 = imageReader.getImage(j+1);
         matcher.setFrames(frame1, frame2);
@@ -102,7 +104,21 @@ int main( int argc, char** argv ){
         E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
         int p;
         p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
-        drawKeypoints( frame2, matched1, finalImage, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
+        int k = 0;
+        for (int jj= 0; jj < matched1.size()-10; jj = jj+10)
+        { // Visualizar correspondencias
+         vector<KeyPoint> aux_matched1, aux_matched2;
+         for  (int ii= jj; ii < jj+10; ii++)
+         {
+          aux_matched1.push_back(matched1[ii]);
+          aux_matched2.push_back(matched2[ii]);
+         }
+          drawKeypoints( frame1, aux_matched1, finalImage, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
+          drawKeypoints( frame2, aux_matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+          visualizerFrame.UpdateMessages(finalImage);
+        visualizerFrame2.UpdateMessages(finalImage2);
+        }
+       
         if (j == 0){
             traslation = Mat::zeros(3, 1, CV_64F);
             R_p = Mat::eye(Size(3, 3), CV_64F);
@@ -112,13 +128,13 @@ int main( int argc, char** argv ){
             R_p = R*R_p;
         }
         
-        position[0] = traslation.at<double>(0,0);   //x
-        position[1] = 0.0;//traslation.at<double>(2,0);   //y
-        position[2] = traslation.at<double>(1,0);
+        position[0] = 0.0;//traslation.at<double>(0,0);   //x
+        position[1] = traslation.at<double>(2,0);   //y
+        position[2] = 0.0; //traslation.at<double>(1,0);
         orientation[0] = 1.0;
-        visualizerFrame.UpdateMessages(finalImage);
-        visualizer_est.UpdateMessages(position, orientation);
         
+        visualizer_est.UpdateMessages(position, orientation);
+        /*
         for (int j = i;  j < i+10; j++)
         {  
             position[0] = groundTruth.getGroundTruthData(j, 1);   //x
@@ -132,6 +148,7 @@ int main( int argc, char** argv ){
             
         }
         i = i+10;
+        */
         
         
      }
