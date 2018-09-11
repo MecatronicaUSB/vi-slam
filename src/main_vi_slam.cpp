@@ -50,8 +50,8 @@ int main( int argc, char** argv ){
     //VisualizerVector3 rqt_error("error", 10.0);
     VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 1000.0, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
     VisualizerMarker visualizer_est("est_poses", "/my_frame", 1000.0, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    VisualizerFrame visualizerFrame("current_frame", 1);
-    VisualizerFrame visualizerFrame2("current_frame2", 0.2);
+    VisualizerFrame visualizerFrame("current_frame", 100);
+    VisualizerFrame visualizerFrame2("current_frame2", 100);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -93,6 +93,7 @@ int main( int argc, char** argv ){
     for (int j = 0;  j < imageReader.getSize()-1; j++)
     {  // Cambiar por constante
         vector<KeyPoint> matched1, matched2;
+        vector<KeyPoint> aux_matched1, aux_matched2;
         
         Matcher matcher(USE_AKAZE, USE_BRUTE_FORCE);
         frame1 = imageReader.getImage(j);
@@ -102,18 +103,21 @@ int main( int argc, char** argv ){
         matcher.setFrames(frame1, frame2);
         matcher.computeSymMatches();
         matcher.getGoodMatches(matched1, matched2);
+        matcher.getMatches(aux_matched1, aux_matched2);
         cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
         cv::KeyPoint::convert(matched2, points2_OK, point_indexs);
         std::cout << "Puntos totales = "<<matched1.size()<< endl;
+        drawKeypoints( frame1, matched1, finalImage, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints( frame1, aux_matched1, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        visualizerFrame.UpdateMessages(finalImage);
+        visualizerFrame2.UpdateMessages(finalImage2);
+        /*
         E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
         int p;
         p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
         int k = 0;
         
-        drawKeypoints( frame1, matched1, finalImage, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints( frame2, matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        visualizerFrame.UpdateMessages(finalImage);
-        visualizerFrame2.UpdateMessages(finalImage2);
+        
 
         if (j == 0){
             traslation = Mat::zeros(3, 1, CV_64F);
@@ -123,6 +127,7 @@ int main( int argc, char** argv ){
             traslation = traslation +R_p*t;
             R_p = R*R_p;
         }
+
         
         position[0] = traslation.at<double>(0,0);   //x
         position[1] = traslation.at<double>(2,0);   //y
@@ -131,7 +136,8 @@ int main( int argc, char** argv ){
         
         visualizer_est.UpdateMessages(position, orientation);
         
-       /*
+       */
+      /*
         for (int j = i;  j < i+10; j++)
         {  
             position[0] = groundTruth.getGroundTruthData(j, 1);   //x

@@ -161,18 +161,23 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
     float winWSize;
     float winHSize;
 
-    int root_n;
+    
 
-    winWSize = w_size/sqrt(n_features);
-    winHSize = h_size/sqrt(n_features);
+    winWSize = w_size/floor(sqrt(n_features));
+    winHSize = h_size/floor(sqrt(n_features));
 
     cout <<"Win w size = "<<fixed<<winWSize<<endl;
     cout <<"Win h size = "<< fixed<<winHSize<<endl;
 
      // iterator for matches
     std::vector<cv::DMatch> ::iterator matchIterator; // iterator for matches
-    float h_final = winHSize;
-    float w_final = winWSize;
+    float h_final;
+    float w_final;
+
+    int root_n;
+
+    root_n = static_cast<int>(floor(sqrt(n_features)));
+    cout <<"root_n = "<< root_n<<endl;
     vector<DMatch> VectorMatches; // Cambio
     DMatch point;
     point.distance = 100;
@@ -182,12 +187,16 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
     
 
     matchIterator = matches.begin();
-    for (int j = 0; j<root_n; j++) {
+
+    h_final = winHSize;
+    for (int j = 0; j<1; j++) {
         // if 2 NN has been identified
             while (keypoints_1[(*matchIterator).queryIdx].pt.y < h_final )
             {
+                    w_final = winHSize;
                     for (int i = 0; i < root_n; i++)
                     {
+                        cout << "distancia"<<keypoints_1[(*matchIterator).queryIdx].pt.x <<endl;
                         if (keypoints_1[(*matchIterator).queryIdx].pt.x < w_final )
                         {
                             if((*matchIterator).distance < (VectorMatches[i]).distance){
@@ -203,6 +212,7 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
                             w_final = w_final+winHSize;
                         }
                     } 
+                    cout<<"w final "<<w_final<<endl;
                     pushBackVectorMatches(VectorMatches);
                     resetVectorMatches(VectorMatches);
                     ++matchIterator;
@@ -242,21 +252,21 @@ double Matcher::getMatchPercentage(){
     return 0.0;
 }
 
-void Matcher::resetVectorMatches(vector<DMatch> &matches)
+void Matcher::resetVectorMatches(vector<DMatch> &Vector)
 {
-    for (int i = 0 ; i< matches.size(); i++)
+    for (int i = 0 ; i< Vector.size(); i++)
     {
-        matches[i].distance = 100;
+        Vector[i].distance = 100;
     }
 }
 
-void Matcher::pushBackVectorMatches(vector<DMatch> &matches)
+void Matcher::pushBackVectorMatches(vector<DMatch> &Vector)
 {
-      for (int i = 0 ; i< matches.size(); i++)
+      for (int i = 0 ; i< Vector.size(); i++)
     {
-        if (matches[i].distance!=100)
+        if (Vector[i].distance!=100)
         {
-            goodMatches.push_back(matches[i]);
+            goodMatches.push_back(Vector[i]);
         }
     }
 }
