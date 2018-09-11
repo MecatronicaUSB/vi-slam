@@ -3,7 +3,7 @@
     <!-- VI-SLAM main thread-->
     <node pkg="vi_slam" type="vi_slam" name="main"  
         args="-filePath=/home/lujano/Documents/EuroDataset/state_groundtruth_estimate0/data.csv 
-              -imagePath=/home/lujano/Documents/EuroDataset/Cam0/"
+              -imagePath=/home/lujano/Documents/EuroDataset/cam0/data/"
         clear_params="true" 
         output="screen"/>
         

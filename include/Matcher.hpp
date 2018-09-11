@@ -36,6 +36,7 @@ class Matcher
         void setDetector(int _detector);
         void setMatcher(int _matcher);
         void computeSymMatches();
+        int bestPairsFilter ( int n_features);// Dsitrubiye los features uniformemente y selecciona  las mejores parejas
         int nn_filter(vector<vector<DMatch> > &matches, double nn_ratio); // filtro de vecinos mas cercanos
         void detectFeatures();
         void getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
@@ -46,11 +47,13 @@ class Matcher
 
     private:
         // ---------- Attributes
+        int h_size, w_size;
         vector<DMatch> matches; // Cambio
         Ptr<Feature2D> detector;                    //!< Pointer to OpenCV feature extractor
         Ptr<DescriptorMatcher> matcher;             //!< Pointer to OpenCV feature Matcher
         Mat frame1, frame2;
         vector<KeyPoint> matched1, matched2;
+        vector<KeyPoint> good_matches1, good_matches2;
         vector<KeyPoint> keypoints_1, keypoints_2; // Vector para almacenar los puntos detectados con FAST
         Mat descriptors_1, descriptors_2;
         double matchPercentage;

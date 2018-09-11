@@ -91,9 +91,11 @@ int main( int argc, char** argv ){
     {  // Cambiar por constante
         vector<KeyPoint> matched1, matched2;
         
-        Matcher matcher(USE_SURF, USE_FLANN);
+        Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
         frame1 = imageReader.getImage(j);
         frame2 = imageReader.getImage(j+1);
+        
+        
         matcher.setFrames(frame1, frame2);
         matcher.computeSymMatches();
         matcher.getGoodMatches(matched1, matched2);
@@ -105,6 +107,7 @@ int main( int argc, char** argv ){
         int p;
         p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
         int k = 0;
+        
         for (int jj= 0; jj < matched1.size()-10; jj = jj+10)
         { // Visualizar correspondencias
          vector<KeyPoint> aux_matched1, aux_matched2;
@@ -118,7 +121,9 @@ int main( int argc, char** argv ){
           visualizerFrame.UpdateMessages(finalImage);
         visualizerFrame2.UpdateMessages(finalImage2);
         }
-       
+        
+        visualizerFrame.UpdateMessages(frame1);
+        visualizerFrame2.UpdateMessages(frame2);
         if (j == 0){
             traslation = Mat::zeros(3, 1, CV_64F);
             R_p = Mat::eye(Size(3, 3), CV_64F);

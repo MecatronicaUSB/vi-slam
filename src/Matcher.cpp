@@ -12,6 +12,10 @@ void Matcher::setFrames(Mat _frame1, Mat _frame2)
 {
     frame1 = _frame1; // Copiar apuntadores
     frame2 = _frame2;
+    h_size  = frame1.rows;
+    w_size = frame1.cols;
+    cout << h_size<<endl;
+    cout << w_size<<endl;
 }
 void Matcher::setDetector(int _detector)
 {
@@ -139,7 +143,7 @@ int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
         {   // check distance ratio
             if ((*matchIterator)[0].distance > nn_ratio*((*matchIterator)[1].distance)) 
             {    
-                std::cout<<(*matchIterator)[0].distance<<"\t"; 
+                //std::cout<<(*matchIterator)[0].distance<<"\t"; 
                 matchIterator->clear(); // remove match
                 removed++;
             }
@@ -148,10 +152,13 @@ int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
             removed++;
         }
     }
-    std::cout<<endl; 
+    //std::cout<<endl; 
     return removed;
 }
 
+int Matcher::bestPairsFilter(int n_features){
+    
+}
 void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
 {
     for(unsigned i = 0; i < matched1.size(); i++) {
