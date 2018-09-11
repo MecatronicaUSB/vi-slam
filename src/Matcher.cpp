@@ -1,5 +1,6 @@
 #include "../include/Matcher.hpp"
 #include <iostream>
+#include <cmath>
 
 
 Matcher::Matcher(int _detector, int _matcher)
@@ -14,8 +15,6 @@ void Matcher::setFrames(Mat _frame1, Mat _frame2)
     frame2 = _frame2;
     h_size  = frame1.rows;
     w_size = frame1.cols;
-    cout << h_size<<endl;
-    cout << w_size<<endl;
 }
 void Matcher::setDetector(int _detector)
 {
@@ -121,8 +120,8 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
                         matches.push_back(DMatch((*matchIterator1)[0].queryIdx,
                                     (*matchIterator1)[0].trainIdx,
                                     (*matchIterator1)[0].distance));
-                        matched1.push_back(keypoints_1[(*matchIterator1)[0].queryIdx]);
-                        matched2.push_back(keypoints_2[(*matchIterator1)[0].trainIdx]);
+                        //matched1.push_back(keypoints_1[(*matchIterator1)[0].queryIdx]);
+                        //matched2.push_back(keypoints_2[(*matchIterator1)[0].trainIdx]);
                                 
                         break; // next match in image 1 -> image 2
                     }
@@ -130,6 +129,8 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
             }
         }
     }
+    cout << "Filtrado de correspondencias = " << matches.size()<<endl;
+    int a = bestMatchesFilter(64, matches);
 
 }
 
@@ -156,17 +157,106 @@ int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
     return removed;
 }
 
-int Matcher::bestPairsFilter(int n_features){
+int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
+    float winWSize;
+    float winHSize;
+
+    int root_n;
+
+    winWSize = w_size/sqrt(n_features);
+    winHSize = h_size/sqrt(n_features);
+
+    cout <<"Win w size = "<<fixed<<winWSize<<endl;
+    cout <<"Win h size = "<< fixed<<winHSize<<endl;
+
+     // iterator for matches
+    std::vector<cv::DMatch> ::iterator matchIterator; // iterator for matches
+    float h_final = winHSize;
+    float w_final = winWSize;
+    vector<DMatch> VectorMatches; // Cambio
+    DMatch point;
+    point.distance = 100;
+    for (int j = 0; j<root_n; j++) {
+        VectorMatches.push_back(point);
+    }
+    
+
+    matchIterator = matches.begin();
+    for (int j = 0; j<root_n; j++) {
+        // if 2 NN has been identified
+            while (keypoints_1[(*matchIterator).queryIdx].pt.y < h_final )
+            {
+                    for (int i = 0; i < root_n; i++)
+                    {
+                        if (keypoints_1[(*matchIterator).queryIdx].pt.x < w_final )
+                        {
+                            if((*matchIterator).distance < (VectorMatches[i]).distance){
+                                
+                                VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
+                                VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
+                                VectorMatches[i].trainIdx = (*matchIterator).trainIdx;
+                            }
+                            break;
+                        }
+                        else
+                        {
+                            w_final = w_final+winHSize;
+                        }
+                    } 
+                    pushBackVectorMatches(VectorMatches);
+                    resetVectorMatches(VectorMatches);
+                    ++matchIterator;
+                    if (matchIterator ==matches.end() ) break;
+
+            }
+            h_final = h_final+winHSize;
+                if (matchIterator ==matches.end() ) break;
+
+    }
+
+    cout<<"Tamaño final = "<<goodMatches.size()<<endl;
+
+    return goodMatches.size();
+
     
 }
+
+void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
+{
+    for(unsigned i = 0; i < matches.size(); i++) {
+        _matched1.push_back(keypoints_1[matches[i].queryIdx]);
+        _matched2.push_back(keypoints_2[matches[i].trainIdx]);
+    }
+}
+
+
 void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
 {
-    for(unsigned i = 0; i < matched1.size(); i++) {
-        _matched1.push_back(matched1[i]);
-        _matched2.push_back(matched2[i]);
+    for(unsigned i = 0; i < goodMatches.size(); i++) {
+        _matched1.push_back(keypoints_1[goodMatches[i].queryIdx]);
+        _matched2.push_back(keypoints_2[goodMatches[i].trainIdx]);
     }
 }
 
 double Matcher::getMatchPercentage(){
     return 0.0;
+}
+
+void Matcher::resetVectorMatches(vector<DMatch> &matches)
+{
+    for (int i = 0 ; i< matches.size(); i++)
+    {
+        matches[i].distance = 100;
+    }
+}
+
+void Matcher::pushBackVectorMatches(vector<DMatch> &matches)
+{
+      for (int i = 0 ; i< matches.size(); i++)
+    {
+        if (matches[i].distance!=100)
+        {
+            goodMatches.push_back(matches[i]);
+        }
+    }
 }
