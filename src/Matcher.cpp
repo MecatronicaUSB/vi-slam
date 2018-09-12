@@ -22,7 +22,7 @@ void Matcher::setDetector(int _detector)
     {
         case USE_KAZE:
         {
-            detector = KAZE::create();
+            detector = KAZE::create(); // Normaliza distancia
             break;
         }
         case USE_AKAZE:
@@ -37,7 +37,7 @@ void Matcher::setDetector(int _detector)
         }
         case USE_SURF:
         {
-            detector = SURF::create(400);
+            detector = SURF::create(400); // Normaliza distancia
             break;
         }
         case USE_ORB:
@@ -130,7 +130,7 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
         }
     }
     cout << "Filtrado de correspondencias = " << matches.size()<<endl;
-    int a = bestMatchesFilter(64, matches);
+    int a = bestMatchesFilter(144, matches);
 
 }
 
@@ -180,7 +180,7 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
     cout <<"root_n = "<< root_n<<endl;
     vector<DMatch> VectorMatches; // Cambio
     DMatch point;
-    point.distance = 100;
+    point.distance = 100000.0f;
     for (int j = 0; j<root_n; j++) {
         VectorMatches.push_back(point);
     }
@@ -189,18 +189,21 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
     matchIterator = matches.begin();
 
     h_final = winHSize;
-    for (int j = 0; j<1; j++) {
+    for (int j = 0; j<root_n; j++) {
         // if 2 NN has been identified
             while (keypoints_1[(*matchIterator).queryIdx].pt.y < h_final )
             {
-                    w_final = winHSize;
-                    for (int i = 0; i < root_n; i++)
+                    w_final = winWSize;
+                    for (int i = 0; i < root_n; i++) //Mejorar deslizando desde el medio
                     {
-                        cout << "distancia"<<keypoints_1[(*matchIterator).queryIdx].pt.x <<endl;
+                        
                         if (keypoints_1[(*matchIterator).queryIdx].pt.x < w_final )
                         {
-                            if((*matchIterator).distance < (VectorMatches[i]).distance){
-                                
+                            //cout << "Pos x = "<<keypoints_1[(*matchIterator).queryIdx].pt.x <<endl;
+                            //cout << "distancia ="<<fixed<<(*matchIterator).distance <<endl;
+                            if((*matchIterator).distance < (VectorMatches[i]).distance)
+                            {
+                                //cout << "       Aprueba"<<endl;
                                 VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
                                 VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
                                 VectorMatches[i].trainIdx = (*matchIterator).trainIdx;
@@ -209,22 +212,22 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
                         }
                         else
                         {
-                            w_final = w_final+winHSize;
+                            w_final = w_final+winWSize;
                         }
                     } 
-                    cout<<"w final "<<w_final<<endl;
-                    pushBackVectorMatches(VectorMatches);
-                    resetVectorMatches(VectorMatches);
+                    //cout<<"w final "<<w_final<<endl;
                     ++matchIterator;
                     if (matchIterator ==matches.end() ) break;
 
             }
+            pushBackVectorMatches(VectorMatches);
+            resetVectorMatches(VectorMatches);
             h_final = h_final+winHSize;
                 if (matchIterator ==matches.end() ) break;
 
     }
 
-    cout<<"Tamaño final = "<<goodMatches.size()<<endl;
+    //cout<<"Tamaño final = "<<goodMatches.size()<<endl;
 
     return goodMatches.size();
 
@@ -256,7 +259,7 @@ void Matcher::resetVectorMatches(vector<DMatch> &Vector)
 {
     for (int i = 0 ; i< Vector.size(); i++)
     {
-        Vector[i].distance = 100;
+        Vector[i].distance = 100000.0f;
     }
 }
 
@@ -264,7 +267,7 @@ void Matcher::pushBackVectorMatches(vector<DMatch> &Vector)
 {
       for (int i = 0 ; i< Vector.size(); i++)
     {
-        if (Vector[i].distance!=100)
+        if (Vector[i].distance!= 100000.0f)
         {
             goodMatches.push_back(Vector[i]);
         }

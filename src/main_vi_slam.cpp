@@ -80,6 +80,7 @@ int main( int argc, char** argv ){
     Mat E, R, t; // matriz esencial
 
     std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+    std::vector<Point2f> aux_points1_OK, aux_points2_OK;
     vector<int> point_indexs;
     Mat finalImage, finalImage2;
     Mat odometry = Mat::zeros(1, 3, CV_64F); // Matriz vacia de vectores de longitud 3 (comienza con 000)
@@ -92,10 +93,11 @@ int main( int argc, char** argv ){
     
     for (int j = 0;  j < imageReader.getSize()-1; j++)
     {  // Cambiar por constante
+     Mat finalImage, finalImage2;
         vector<KeyPoint> matched1, matched2;
         vector<KeyPoint> aux_matched1, aux_matched2;
         
-        Matcher matcher(USE_AKAZE, USE_BRUTE_FORCE);
+        Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
         frame1 = imageReader.getImage(j);
         frame2 = imageReader.getImage(j+1);
         
@@ -106,9 +108,13 @@ int main( int argc, char** argv ){
         matcher.getMatches(aux_matched1, aux_matched2);
         cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
         cv::KeyPoint::convert(matched2, points2_OK, point_indexs);
+        cv::KeyPoint::convert(aux_matched1, aux_points1_OK,point_indexs);
+        cv::KeyPoint::convert(aux_matched2, aux_points2_OK, point_indexs);
         std::cout << "Puntos totales = "<<matched1.size()<< endl;
         drawKeypoints( frame1, matched1, finalImage, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints( frame1, aux_matched1, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
+        imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
         visualizerFrame.UpdateMessages(finalImage);
         visualizerFrame2.UpdateMessages(finalImage2);
         /*
