@@ -79,7 +79,6 @@ void Matcher::detectFeatures()
 {                                        //ROI
     detector -> detectAndCompute( frame1, Mat(), keypoints_1, descriptors_1 );
     detector -> detectAndCompute( frame2, Mat(), keypoints_2, descriptors_2 );
-
 }
 
 void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de simetria
@@ -129,10 +128,12 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
             }
         }
     }
-    cout << "Filtrado de correspondencias = " << matches.size()<<endl;
-    int a = bestMatchesFilter(144, matches);
 
+    //sortMatches();
+    cout << "Filtrado de correspondencias = " << matches.size()<<endl;
 }
+
+
 
 int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
 {
@@ -157,7 +158,7 @@ int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
     return removed;
 }
 
-int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
+int Matcher::bestMatchesFilter(int n_features){
     float winWSize;
     float winHSize;
 
@@ -186,44 +187,41 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
     }
     
 
-    matchIterator = matches.begin();
+    matchIterator = sortedMatches.begin();
 
     h_final = winHSize;
+    int i;
     for (int j = 0; j<root_n; j++) {
         // if 2 NN has been identified
-            while (keypoints_1[(*matchIterator).queryIdx].pt.y < h_final )
+            while (keypoints_1[(*matchIterator).queryIdx].pt.y <= h_final )
             {
                     w_final = winWSize;
-                    for (int i = 0; i < root_n; i++) //Mejorar deslizando desde el medio
+                    i = 0;
+                    while(keypoints_1[(*matchIterator).queryIdx].pt.x>w_final)
                     {
+                         w_final = w_final+winWSize;
+                         i++;
+                         
+                    }
+                    if((*matchIterator).distance < (VectorMatches[i]).distance)
+                    {
+                        //cout << "Aprueba "<<i<<endl;
                         
-                        if (keypoints_1[(*matchIterator).queryIdx].pt.x < w_final )
-                        {
-                            //cout << "Pos x = "<<keypoints_1[(*matchIterator).queryIdx].pt.x <<endl;
-                            //cout << "distancia ="<<fixed<<(*matchIterator).distance <<endl;
-                            if((*matchIterator).distance < (VectorMatches[i]).distance)
-                            {
-                                //cout << "       Aprueba"<<endl;
-                                VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
-                                VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
-                                VectorMatches[i].trainIdx = (*matchIterator).trainIdx;
-                            }
-                            break;
-                        }
-                        else
-                        {
-                            w_final = w_final+winWSize;
-                        }
-                    } 
+                        VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
+                        VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
+                        VectorMatches[i].imgIdx = (*matchIterator).imgIdx;
+                        VectorMatches[i].trainIdx = (*matchIterator).trainIdx;
+                    }
+                            
                     //cout<<"w final "<<w_final<<endl;
                     ++matchIterator;
-                    if (matchIterator ==matches.end() ) break;
+                    if (matchIterator == sortedMatches.end() ) break;
 
             }
             pushBackVectorMatches(VectorMatches);
             resetVectorMatches(VectorMatches);
             h_final = h_final+winHSize;
-                if (matchIterator ==matches.end() ) break;
+            if (matchIterator ==sortedMatches.end() ) break;
 
     }
 
@@ -232,6 +230,45 @@ int Matcher::bestMatchesFilter(int n_features, vector<DMatch>  &matches){
     return goodMatches.size();
 
     
+}
+
+void Matcher::getGrid(int n_features, vector<KeyPoint> &grid_points)
+{
+    float h_final;
+    float w_final;
+    float winHSize;
+    float winWSize;
+
+    winWSize = w_size/floor(sqrt(n_features));
+    winHSize = h_size/floor(sqrt(n_features));
+
+    h_final = winHSize;
+    
+    int root_n;
+
+    KeyPoint point;
+    root_n = static_cast<int>(floor(sqrt(n_features)));
+    for (int j = 0; j<root_n; j++)
+    {
+        // if 2 NN has been identified
+        w_final = winWSize;
+        for (int i = 0; i < root_n; i++) //Mejorar deslizando desde el medio
+        {
+            point.pt.x = w_final;//-winWSize/2;
+            point.pt.y = h_final;//-winHSize/2;
+            grid_points.push_back(point);
+            w_final = w_final+winWSize;
+            
+        } 
+        //cout<<"w final "<<w_final<<endl;
+
+        h_final = h_final+winHSize;
+                
+    }
+    cout<< "Size= " <<grid_points.size()<<endl;
+    
+    
+
 }
 
 void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
@@ -272,4 +309,28 @@ void Matcher::pushBackVectorMatches(vector<DMatch> &Vector)
             goodMatches.push_back(Vector[i]);
         }
     }
+}
+void Matcher::sortMatches()
+{
+    
+    Mat yCoord = Mat::zeros(1, matches.size(), CV_32F) ; // vector para almacenar las coordenadas y de los puntos
+    Mat ySorted; // vector para almacenar los indices de yCoord con las valores ordenados;
+
+    // almacenar coordenadas en el vector
+    for (int i = 0; i<matches.size();i++) 
+    {
+        yCoord.at<float>(0, i) = keypoints_1[matches[i].queryIdx].pt.y;
+    }
+
+    // Ordenar arreglos de coordenadas de forma ascendente, y guardar los indices en ySorted;
+    
+    cv::sortIdx(yCoord, ySorted, CV_SORT_EVERY_ROW + CV_SORT_ASCENDING); 
+
+    int index; // indice del arreglo de matches
+    for (int i = 0; i<matches.size(); i++)
+    {
+        index = ySorted.at<int>(0, i); // indice
+        sortedMatches.push_back(matches[index]);
+    }
+    
 }
