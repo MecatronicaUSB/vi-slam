@@ -13,9 +13,14 @@ using namespace cv;
 
  class ImageReader{
      public:
+        ImageReader();
         ImageReader(string _directory);
+        void setPath(string _directory);
+        string getImageName(int index);
+        long int getImageTime(int index);
         void searchImages();
         Mat getImage(int index);
+        size_t splitStrings(const std::string &txt, std::vector<std::string> &strs, char separator);
         size_t getSize();
     private:
         string path;

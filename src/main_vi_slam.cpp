@@ -42,9 +42,9 @@ int main( int argc, char** argv ){
     <<"número de filas"<<groundTruth.getRows()
     <<"número de columnas"<<groundTruth.getCols()<< endl;
 
+    cout <<"Data ="<< groundTruth.getGroundTruthData(0, 1)<<endl;;
     ImageReader imageReader(imagePath);
-
-    
+    imageReader.searchImages();
 
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
@@ -59,9 +59,6 @@ int main( int argc, char** argv ){
     double position[3];
     double orientation[4];
     orientation[3] = 1.0;
-
-    
-    //
 
     //-- Paso 4: Calcular la matriz Esencial
     // Parametros intrisecos de la camara
@@ -99,6 +96,8 @@ int main( int argc, char** argv ){
         vector<KeyPoint> aux;
         
         Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
+        cout<<imageReader.getImageName(j)<<endl;
+        cout<<imageReader.getImageTime(j)<<endl;
         frame1 = imageReader.getImage(j);
         frame2 = imageReader.getImage(j+1);
         

@@ -47,6 +47,7 @@ set(vi_slam_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/Visualizer.cpp
     ${PROJECT_SOURCE_DIR}/src/ImageReader.cpp
     ${PROJECT_SOURCE_DIR}/src/Matcher.cpp
+    ${PROJECT_SOURCE_DIR}/src/Imu.cpp
     
 )
 

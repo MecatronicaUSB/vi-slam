@@ -5,6 +5,7 @@ using namespace cv;
 
 class GroundTruth{
 public:
+    GroundTruth();
     GroundTruth(string file, char separator);
     void setFileProperties(string file, char separator);
     void getDataFromFile(); //Lee el archivo y lo pasa a Mat data

@@ -3,11 +3,16 @@
 
 using namespace std;
 
+
+GroundTruth::GroundTruth()
+{
+    data = Mat::zeros(1, 1, CV_64F); // inicializar matriz de datos
+}
+
 GroundTruth::GroundTruth(string file, char separator)
 {   
     data = Mat::zeros(1, 1, CV_64F); // inicializar matriz de datos
     setFileProperties(file, separator);
-    getDataFromFile(); // se valida el archivo y obtiene la data;
 }
 
 void GroundTruth::setFileProperties(string file, char separator)
@@ -62,14 +67,13 @@ void GroundTruth::getDataFromFile()
     }
     
     commentFound = 1;  // Evitar comentarios al comienzo del archivo
-    counterLine = -1;  // Numero de linea leida
     while(commentFound){
         getline(inFile, line);
         if (line.find("#")!= -1) commentFound = 1;
         else commentFound = 0;
-        counterLine++;
+        //counterLine++;
     }
-
+    counterLine = 0;  // Numero de linea leida
     splitStrings(line, vectorString, ',' ); // size 12
     rows = getLines();
     cols = vectorString.size();
