@@ -3,6 +3,7 @@
     <!-- VI-SLAM main thread-->
     <node pkg="vi_slam" type="vi_slam" name="main"  
         args="-filePath=/home/lujano/Documents/mav0/state_groundtruth_estimate0/data.csv 
+              -imuPath=/home/lujano/Documents/mav0/imu0/data.csv 
               -imagePath=/home/lujano/Documents/mav0/cam0/data/"
         clear_params="true" 
         output="screen"/>

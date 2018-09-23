@@ -56,6 +56,8 @@ void Imu::computeAngularPosition() // rad/s
     angularPosition.x = angularVelocity.x*timeStep*n;
     angularPosition.y = angularVelocity.x*timeStep*n;
     angularPosition.z = angularVelocity.x*timeStep*n;
+    quaternion = toQuaternion(angularPosition.y, angularPosition.x, angularPosition.z);
+    
 
 }
 

@@ -3,11 +3,14 @@
 ImageReader::ImageReader()
 {
     setPath("");
+    TimeStep = 0.0;
 }
 
 ImageReader::ImageReader(string _directory)
 {
     setPath(_directory);
+    searchImages();
+    computeTimeStep();
 }
 
 
@@ -97,4 +100,11 @@ size_t ImageReader::splitStrings(const std::string &txt, std::vector<std::string
 
     return strs.size();
 
+}
+
+void ImageReader::computeTimeStep()
+{
+    double time0 = getImageTime(0);
+    double time1 = getImageTime(1);
+    TimeStep = time1-time0;
 }

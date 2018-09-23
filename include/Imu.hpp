@@ -1,4 +1,5 @@
 #include <vector>
+#include "Plus.hpp"
 #include "opencv2/core.hpp"
 using namespace std;
 using namespace cv;
@@ -13,11 +14,13 @@ using namespace cv;
         void computeAcceleration();
         void computeAngularVelocity();
         void computeAngularPosition();
+        Quaterniond quaternion;
         Point3d angularPosition;
         Point3d angularVelocity;
         Point3d position; // posicion en x, y, z
         Point3d velocity; // velocidad en x, y, z
         Point3d acceleration; // promedio de acceleracion en x, y, z
+        
 
     private:
         vector <Point3d> angularVelocityMeasure; // Imu measurements x, y, z

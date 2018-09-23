@@ -16,6 +16,8 @@ public:
     string getFileName();
     char getCharSeparator();
     double getGroundTruthData(int line, int colData); // linea del archivo y columna de datos
+    void computeTimeStep(); 
+    double TimeStep; // tiempo entre dos medidas consecutivas
     
 private:
     char charSeparator; // caracter que separa los datos en una linea del archivo

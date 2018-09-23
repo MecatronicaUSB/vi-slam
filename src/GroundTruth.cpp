@@ -7,12 +7,15 @@ using namespace std;
 GroundTruth::GroundTruth()
 {
     data = Mat::zeros(1, 1, CV_64F); // inicializar matriz de datos
+    TimeStep = 0;
 }
 
 GroundTruth::GroundTruth(string file, char separator)
 {   
     data = Mat::zeros(1, 1, CV_64F); // inicializar matriz de datos
     setFileProperties(file, separator);
+    getDataFromFile();
+    computeTimeStep(); // Calcular el timestep entre dos mediciones consecutivas
 }
 
 void GroundTruth::setFileProperties(string file, char separator)
@@ -136,4 +139,11 @@ char GroundTruth::getCharSeparator()
 double GroundTruth::getGroundTruthData(int line, int colData)
 {
     return data.at<double>(line, colData);
+}
+
+void GroundTruth::computeTimeStep()
+{
+    double time0 = data.at<double>(0, 0);
+    double time1 = data.at<double>(1, 0);
+    TimeStep = time1-time0; // ns
 }

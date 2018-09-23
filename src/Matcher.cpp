@@ -167,8 +167,8 @@ int Matcher::bestMatchesFilter(int n_features){
     winWSize = w_size/floor(sqrt(n_features));
     winHSize = h_size/floor(sqrt(n_features));
 
-    cout <<"Win w size = "<<fixed<<winWSize<<endl;
-    cout <<"Win h size = "<< fixed<<winHSize<<endl;
+    //cout <<"Win w size = "<<fixed<<winWSize<<endl;
+    //cout <<"Win h size = "<< fixed<<winHSize<<endl;
 
      // iterator for matches
     std::vector<cv::DMatch> ::iterator matchIterator; // iterator for matches

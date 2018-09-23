@@ -22,6 +22,8 @@ using namespace cv;
         Mat getImage(int index);
         size_t splitStrings(const std::string &txt, std::vector<std::string> &strs, char separator);
         size_t getSize();
+        void computeTimeStep();
+        double TimeStep;
     private:
         string path;
         vector<string> file_names;  
