@@ -158,9 +158,9 @@ void DataReader::UpdateDataReader(int index){
 
     while(timeGtReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index+1)))
     {
-        position.x = gtReader.getGroundTruthData(indexImuReader, 1);
-        position.y = gtReader.getGroundTruthData(indexImuReader, 2);
-        position.z = gtReader.getGroundTruthData(indexImuReader, 3);
+        position.x = gtReader.getGroundTruthData(indexGtReader, 1);
+        position.y = gtReader.getGroundTruthData(indexGtReader, 2);
+        position.z = gtReader.getGroundTruthData(indexGtReader, 3);
 
         quaternion.w = gtReader.getGroundTruthData(indexGtReader, 4);
         quaternion.x = gtReader.getGroundTruthData(indexGtReader, 5);

@@ -56,10 +56,10 @@ int main( int argc, char** argv ){
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
     //VisualizerVector3 rqt_error("error", 10.0);
-    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 30, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
-    VisualizerMarker visualizer_est("est_poses", "/my_frame", 30, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    VisualizerFrame visualizerFrame("current_frame", 30);
-    VisualizerFrame visualizerFrame2("current_frame2", 30);
+    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 90, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+    VisualizerMarker visualizer_est("est_poses", "/my_frame", 90, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    VisualizerFrame visualizerFrame("current_frame", 90);
+    VisualizerFrame visualizerFrame2("current_frame2", 90);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -103,26 +103,19 @@ int main( int argc, char** argv ){
     position2[0] = Data.gtPosition[Data.gtPosition.size()-1].x;   //x
     position2[1] = Data.gtPosition[Data.gtPosition.size()-1].y;   //x
     position2[2] = Data.gtPosition[Data.gtPosition.size()-1].z;
-    
-    for (int j = 0;  j <3000; j++)
+
+    for (int j = 1000;  j <3000; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j);
-        for (int ii = 0; ii<Data.imuAcceleration.size(); ii++)
-        {
-            cout << fixed<<Data.imuAcceleration[ii].x<<"\t"
-             <<Data.imuAcceleration[ii].y<<"\t"
-            << Data.imuAcceleration[ii].z;
-             cout<<endl;
-        }
        
         imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
         imuCore.estimate();
 
         vector<KeyPoint> matched1, matched2;
-        vector<KeyPoint> aux;
+        vector<KeyPoint> aux1, aux2, grid;
         
-        Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
+        Matcher matcher(USE_ORB, USE_BRUTE_FORCE);
         frame1 = Data.image1;
         frame2 = Data.image2;
         
@@ -134,9 +127,10 @@ int main( int argc, char** argv ){
         clock_t comp = clock(); 
         matcher.sortMatches();
         clock_t sort = clock(); 
-        int n_features = matcher.bestMatchesFilter(144);
+        int n_features = matcher.bestMatchesFilter(12*12);
         clock_t best = clock(); 
         matcher.getGoodMatches(matched1, matched2);
+        matcher.getMatches(aux1, aux2);
         clock_t get = clock(); 
 
         double elapsed_comp = double(comp- begin) / CLOCKS_PER_SEC;
@@ -147,16 +141,18 @@ int main( int argc, char** argv ){
         cout<<"comp, sort, best, get = \n"
         <<fixed<<elapsed_comp<<"\t"<<elapsed_sort<<"\t"<<elapsed_best<<"\t"<<elapsed_get<<endl;
 
-        matcher.getGrid(144 , aux);
+        matcher.getGrid(144 , grid);
         cout<<"Size"<<Data.imuAcceleration.size()<<endl;
 
         cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
         cv::KeyPoint::convert(matched2, points2_OK, point_indexs);
         std::cout << "Puntos totales = "<<matched1.size()<< endl;
-        */
+        std::cout << "Puntos detectados imagen 1= "<<matcher.keypoints_1.size()<< endl;
+        std::cout << "Puntos detectados imagen 2 = "<<matcher.keypoints_2.size()<< endl;
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints( frame1, matched1, finalImage, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
-        drawKeypoints( frame2, matched2, finalImage2, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+        */
+        drawKeypoints( frame1, matcher.keypoints_1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints( frame2, matcher.keypoints_2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
         imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
        
