@@ -12,7 +12,7 @@ class DataReader{
         DataReader(string image_path, string imu_path, string gt_path, char separator);
         void setProperties(string image_path, string imu_path, string gt_path, char separator);
         void UpdateDataReader(int index); // Funcion encarga de actualizar todos los datos actuales del sistema y sincronizarlos        
-
+        void setGtOffset(int gt_offset);
         // Datos de imu actuales entre la imagen actual y la posterior
         vector<Point3d> imuAngularVelocity;
         vector<Point3d> imuAcceleration;

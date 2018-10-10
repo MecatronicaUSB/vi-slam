@@ -50,12 +50,6 @@ class Matcher
         void getGrid(int n_features, vector<KeyPoint> &grid_point);
 
 
-
-
-    private:
-        // ---------- Attributes
-        int h_size, w_size;
-        
         vector<DMatch> matches; // correspondencias filtradas
         vector<DMatch> sortedMatches; // correspondencias ordenadas en funcion de la coordenada y del pixel
         vector<DMatch> goodMatches; // correspondencias finales
@@ -65,6 +59,12 @@ class Matcher
         vector<KeyPoint> matched1, matched2;
         vector<KeyPoint> keypoints_1, keypoints_2; // Vector para almacenar los puntos detectados con FAST
         Mat descriptors_1, descriptors_2;
+
+    private:
+        // ---------- Attributes
+        int h_size, w_size;
+        
+      
         double matchPercentage;
 
 

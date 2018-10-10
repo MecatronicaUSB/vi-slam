@@ -42,7 +42,7 @@ void Matcher::setDetector(int _detector)
         }
         case USE_ORB:
         {
-            detector = ORB::create();
+            detector = ORB::create(1500);
             break;
         }
         default:
@@ -92,7 +92,8 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
 	matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
     matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
 	// save in global class variable
-    std::cout<< "Numero de puntos detectados en 2 = "<<keypoints_2.size()<<endl;
+    std::cout<< "Numero de puntos emparejados en 1-2 = "<<aux_matches1.size()<<endl;
+    std::cout<< "Numero de puntos emparejados en 2-1 = "<<aux_matches2.size()<<endl;
     
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
@@ -254,8 +255,8 @@ void Matcher::getGrid(int n_features, vector<KeyPoint> &grid_points)
         w_final = winWSize;
         for (int i = 0; i < root_n; i++) //Mejorar deslizando desde el medio
         {
-            point.pt.x = w_final;//-winWSize/2;
-            point.pt.y = h_final;//-winHSize/2;
+            point.pt.x = w_final-winWSize/2;
+            point.pt.y = h_final-winHSize/2;
             grid_points.push_back(point);
             w_final = w_final+winWSize;
             
