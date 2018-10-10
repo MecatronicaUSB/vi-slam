@@ -1,4 +1,4 @@
-#include "../include/Matcher.hpp"
+#include "../include/MatcherGPU.hpp"
 #include <iostream>
 #include <cmath>
 
@@ -11,8 +11,8 @@ Matcher::Matcher(int _detector, int _matcher)
 
 void Matcher::setFrames(Mat _frame1, Mat _frame2)
 {
-    frame1 = _frame1; // Copiar apuntadores
-    frame2 = _frame2;
+    frame1.upload( _frame1); // Copiar apuntadores
+    frame2.upload(_frame2);
     h_size  = frame1.rows;
     w_size = frame1.cols;
 }
@@ -42,7 +42,7 @@ void Matcher::setDetector(int _detector)
         }
         case USE_ORB:
         {
-            detector = ORB::create();
+            detector = cuda::ORB::create();
             break;
         }
         default:
@@ -55,24 +55,10 @@ void Matcher::setDetector(int _detector)
 
 void Matcher::setMatcher(int _matcher)
 {
-    switch (_matcher)
-    {
-        case USE_BRUTE_FORCE:
-        {
-            matcher = cuda::DescriptorMatcher::createBFMatcher();
-            break;
-        }
-        case USE_FLANN:
-        {   
-            matcher = FlannBasedMatcher::create();
-            break;
-        }
-        default:
-        {
-            matcher = FlannBasedMatcher::create();
-            break;
-        }
-    }
+    // Solo se tiene BFmatcher
+    matcher = cuda::DescriptorMatcher::createBFMatcher(); 
+
+    
 }
 
 void Matcher::detectFeatures()

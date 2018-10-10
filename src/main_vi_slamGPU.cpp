@@ -1,7 +1,7 @@
 #include <iostream>
 #include "DataReader.hpp"
 #include "Visualizer.hpp"
-#include "Matcher.hpp"
+#include "MatcherGPU.hpp"
 #include "Imu.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
@@ -35,6 +35,20 @@ int main( int argc, char** argv ){
     string imagePath = parser.get<string>("imagePath");
     string imuPath = parser.get<string>("imuPath");
     char separator = ',';
+
+
+    // Detecting CUDA Device
+    int nCuda = cuda::getCudaEnabledDeviceCount();
+    cuda::DeviceInfo deviceInfo;
+    if (nCuda > 0){
+        std::cout << "CUDA enabled devices detected: " << deviceInfo.name() << endl;
+        cuda::setDevice(0);
+    }
+    else {
+        std::cout << "No CUDA device detected" << endl;
+        return -1;
+    }
+    std::cout << "***************************************" << endl;
 
     cout<<"File "<<filePath<<endl;
 

@@ -23,9 +23,25 @@ NO_MODULE
 PATHS /usr/local
 NO_DEFAULT_PATH)
 
+find_package(CUDA REQUIRED)
 
 set(CMAKE_BUILD_TYPE Debug)
 
+
+if(CUDA_FOUND)
+    INCLUDE(FindCUDA)
+  # If the package has been found, several variables will
+  # be set, you can find the full list with descriptions
+  # in the CUDAConfig.cmake file.
+  # Print some message showing some of them
+  message(STATUS "CUDA library status:")
+  message(STATUS "    toolkit root dir: ${CUDA_TOOLKIT_ROOT_DIR}")
+  message(STATUS "    version: ${CUDA_VERSION}")
+  message(STATUS "    libraries: ${CUDA_LIBRARIES}")
+  message(STATUS "    include path: ${CUDA_INCLUDE_DIRS}")
+  message(STATUS "    include path: ${OpenCV_PATH}")
+
+endif(CUDA_FOUND)
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
@@ -66,4 +82,4 @@ add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slam.cpp)
 ## IMPORTANT - TO WORK WITH CUDA AND ROS (CUDA INSTALLED IN ANOTHER OPENCV)
 string(REPLACE "/opt/ros/kinetic/lib/libopencv_core3.so.3.3;" "" catkin_LIBRARIES "${catkin_LIBRARIES}")
 
-target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES})
+target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES} ${CUDA_LIBRARIES})

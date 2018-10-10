@@ -2,12 +2,17 @@
 #include "opencv2/core.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/features2d.hpp"
+#include "AKAZE.h"
+
+// CUDA libraries
+#include <opencv2/cudafilters.hpp>
+#include "opencv2/cudafeatures2d.hpp"
+#include "opencv2/xfeatures2d/cuda.hpp"
 
 using namespace cv;
 using namespace cv::xfeatures2d;
 using namespace std;
-
-using namespace cv::cuda;
+using namespace libAKAZECU;
 
 // Tipos de detectores soportados
 enum detectorType
@@ -59,13 +64,14 @@ class Matcher
         vector<DMatch> matches; // correspondencias filtradas
         vector<DMatch> sortedMatches; // correspondencias ordenadas en funcion de la coordenada y del pixel
         vector<DMatch> goodMatches; // correspondencias finales
-        Ptr<Feature2D> detector;                    //!< Pointer to OpenCV feature extractor
-        Ptr<DescriptorMatcher> matcher;             //!< Pointer to OpenCV feature Matcher
-        Mat frame1, frame2;
+        Ptr<cuda::Feature2DAsync> detector;                    //!< Pointer to OpenCV feature extractor
+        Ptr<cuda::DescriptorMatcher> matcher;             //!< Pointer to OpenCV feature Matcher
+        cuda::GpuMat frame1, frame2;
         vector<KeyPoint> matched1, matched2;
         vector<KeyPoint> keypoints_1, keypoints_2; // Vector para almacenar los puntos detectados con FAST
         Mat descriptors_1, descriptors_2;
         double matchPercentage;
+        
 
 
 };
