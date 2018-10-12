@@ -1,3 +1,6 @@
+#ifndef MATCHER_H_
+#define MATCHER_H_
+
 // Opencv libraries
 #include "opencv2/core.hpp"
 #include "opencv2/xfeatures2d.hpp"
@@ -7,8 +10,6 @@ using namespace cv;
 using namespace cv::xfeatures2d;
 using namespace std;
 
-using namespace cv::cuda;
-
 // Tipos de detectores soportados
 enum detectorType
 {
@@ -16,8 +17,7 @@ enum detectorType
     USE_AKAZE,
     USE_ORB,
     USE_SIFT,
-    USE_SURF,
-    USE_FAST // Sin matcher
+    USE_SURF
 };
 
 
@@ -33,6 +33,7 @@ enum matcherType
 class Matcher
 {
     public:
+        Matcher();
         Matcher(int _detector, int _matcher); // Anexar ROI pendiente
         void setFrames(Mat _frame1, Mat _frame2);
         void setDetector(int _detector);
@@ -60,7 +61,6 @@ class Matcher
         vector<KeyPoint> keypoints_1, keypoints_2; // Vector para almacenar los puntos detectados con FAST
         Mat descriptors_1, descriptors_2;
 
-    private:
         // ---------- Attributes
         int h_size, w_size;
         
@@ -70,5 +70,4 @@ class Matcher
 
 };
 
-
-
+#endif

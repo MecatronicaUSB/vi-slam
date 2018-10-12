@@ -2,6 +2,11 @@
 #include <iostream>
 #include <cmath>
 
+Matcher::Matcher()
+{
+    setDetector(0);
+    setMatcher(0);
+}
 
 Matcher::Matcher(int _detector, int _matcher)
 {
@@ -59,7 +64,7 @@ void Matcher::setMatcher(int _matcher)
     {
         case USE_BRUTE_FORCE:
         {
-            matcher = cuda::DescriptorMatcher::createBFMatcher();
+            matcher = BFMatcher::create();
             break;
         }
         case USE_FLANN:

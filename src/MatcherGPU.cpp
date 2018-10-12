@@ -3,320 +3,129 @@
 #include <cmath>
 
 
-Matcher::Matcher(int _detector, int _matcher)
+MatcherGPU::MatcherGPU(int _detector, int _matcher)
 {
-    setDetector(_detector);
-    setMatcher(_matcher);
+    setGPUDetector(_detector);
+    setGPUMatcher(_matcher);
 }
 
-void Matcher::setFrames(Mat _frame1, Mat _frame2)
+void MatcherGPU::setGPUFrames(Mat _frame1, Mat _frame2)
 {
-    frame1.upload( _frame1); // Copiar apuntadores
-    frame2.upload(_frame2);
+    if (useGPU){
+        frame1GPU.upload( _frame1); // Copiar apuntadores
+        frame2GPU.upload(_frame2);
+        
+    }
+    else{
+        frame1 = _frame1; // Copiar apuntadores
+        frame2 = _frame2;    
+    }
+
     h_size  = frame1.rows;
     w_size = frame1.cols;
 }
-void Matcher::setDetector(int _detector)
+void MatcherGPU::setGPUDetector(int _detector)
 {
     switch (_detector)
     {
-        case USE_KAZE:
-        {
-            detector = KAZE::create(); // Normaliza distancia
-            break;
-        }
-        case USE_AKAZE:
-        {
-            detector = AKAZE::create();
-            break;
-        }
-        case USE_SIFT:
-        {
-            detector = SIFT::create();
-            break;
-        }
         case USE_SURF:
-        {
-            detector = SURF::create(400); // Normaliza distancia
+        {   
+            useGPU = true;
+            detectorType = _detector; 
             break;
         }
         case USE_ORB:
         {
-            detector = cuda::ORB::create();
+            useGPU= true;
+            detectorType = _detector;
             break;
         }
         default:
         {
-            detector = KAZE::create();
+            useGPU = false;
+            setDetector(_detector); // utilizar detector basado en CPU
             break;
         }
     }
 }
 
-void Matcher::setMatcher(int _matcher)
+void MatcherGPU::setGPUMatcher(int _matcher)
 {
-    // Solo se tiene BFmatcher
-    matcher = cuda::DescriptorMatcher::createBFMatcher(); 
 
-    
-}
-
-void Matcher::detectFeatures()
-{                                        //ROI
-    detector -> detectAndCompute( frame1, Mat(), keypoints_1, descriptors_1 );
-    detector -> detectAndCompute( frame2, Mat(), keypoints_2, descriptors_2 );
-}
-
-void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de simetria
-{
-    detectFeatures(); //Detectar caracteristicas
-
-    // to store matches temporarily
-	// match using desired matcher
-    vector< vector<DMatch> > aux_matches1; // Vector auxiliar
-    vector< vector<DMatch> > aux_matches2; // Vector auxiliar
-	matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
-    matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
-	// save in global class variable
-    std::cout<< "Numero de puntos detectados en 2 = "<<keypoints_2.size()<<endl;
-    
-    // Descartar con distancia euclidiana (revisar los filtros de distancia)
-    double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
-    int removed1;
-    int removed2;
-    removed1 = nn_filter(aux_matches1, nn_match_ratio);
-    removed2 = nn_filter(aux_matches2, nn_match_ratio);
-
-    std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
-    std::vector<std::vector<cv::DMatch> >::iterator matchIterator2; // iterator for matches
-    for (matchIterator1= aux_matches1.begin();matchIterator1!= aux_matches1.end(); ++matchIterator1) 
+    switch (_matcher)
     {
-        if (matchIterator1->size() >= 2) // dos  o mas vecinos
-        {
-            for (matchIterator2= aux_matches2.begin();matchIterator2!= aux_matches2.end(); ++matchIterator2) 
-            {
-                if (matchIterator1->size() >= 2) // dos  o mas vecinos
-                {
-                    if ((*matchIterator1)[0].queryIdx == (*matchIterator2)[0].trainIdx && 
-                        (*matchIterator2)[0].queryIdx == (*matchIterator1)[0].trainIdx) 
-                    {
-                        // add symmetrical match
-                        
-                        matches.push_back(DMatch((*matchIterator1)[0].queryIdx,
-                                    (*matchIterator1)[0].trainIdx,
-                                    (*matchIterator1)[0].distance));
-                        //matched1.push_back(keypoints_1[(*matchIterator1)[0].queryIdx]);
-                        //matched2.push_back(keypoints_2[(*matchIterator1)[0].trainIdx]);
-                                
-                        break; // next match in image 1 -> image 2
-                    }
-                }
+        case USE_BRUTE_FORCE:
+        {   
+            if(useGPU){
+                if (detectorType == USE_ORB) 
+                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
+                else
+                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
             }
+            else
+                matcher = BFMatcher::create();
+            break;
         }
-    }
-
-    //sortMatches();
-    cout << "Filtrado de correspondencias = " << matches.size()<<endl;
-}
-
-
-
-int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
-{
-    std::vector<std::vector<cv::DMatch> >::iterator matchIterator; // iterator for matches
-    int removed;
-    for (matchIterator=matches.begin();matchIterator!= matches.end(); ++matchIterator) {
-        // if 2 NN has been identified
-        if (matchIterator->size() > 1) 
-        {   // check distance ratio
-            if ((*matchIterator)[0].distance > nn_ratio*((*matchIterator)[1].distance)) 
-            {    
-                //std::cout<<(*matchIterator)[0].distance<<"\t"; 
-                matchIterator->clear(); // remove match
-                removed++;
-            }
-        } else { // does not have 2 neighbours
-            matchIterator->clear(); // remove match
-            removed++;
+        case USE_FLANN:
+        {   
+             if(useGPU)
+             {
+                std::cout<<"ERROR! FLANN no esta implementado para GPU"
+                 <<"\n Se seleccionara Fuerza Bruta"<<endl;
+                if (detectorType == USE_ORB) 
+                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
+                else matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
+             }
+             else matcher = FlannBasedMatcher::create();
+            break;
         }
-    }
-    //std::cout<<endl; 
-    return removed;
-}
-
-int Matcher::bestMatchesFilter(int n_features){
-    float winWSize;
-    float winHSize;
-
-    
-
-    winWSize = w_size/floor(sqrt(n_features));
-    winHSize = h_size/floor(sqrt(n_features));
-
-    //cout <<"Win w size = "<<fixed<<winWSize<<endl;
-    //cout <<"Win h size = "<< fixed<<winHSize<<endl;
-
-     // iterator for matches
-    std::vector<cv::DMatch> ::iterator matchIterator; // iterator for matches
-    float h_final;
-    float w_final;
-
-    int root_n;
-
-    root_n = static_cast<int>(floor(sqrt(n_features)));
-    cout <<"root_n = "<< root_n<<endl;
-    vector<DMatch> VectorMatches; // Cambio
-    DMatch point;
-    point.distance = 100000.0f;
-    for (int j = 0; j<root_n; j++) {
-        VectorMatches.push_back(point);
-    }
-    
-
-    matchIterator = sortedMatches.begin();
-
-    h_final = winHSize;
-    int i;
-    for (int j = 0; j<root_n; j++) {
-        // if 2 NN has been identified
-            while (keypoints_1[(*matchIterator).queryIdx].pt.y <= h_final )
-            {
-                    w_final = winWSize;
-                    i = 0;
-                    while(keypoints_1[(*matchIterator).queryIdx].pt.x>w_final)
-                    {
-                         w_final = w_final+winWSize;
-                         i++;
-                         
-                    }
-                    if((*matchIterator).distance < (VectorMatches[i]).distance)
-                    {
-                        //cout << "Aprueba "<<i<<endl;
-                        
-                        VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
-                        VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
-                        VectorMatches[i].imgIdx = (*matchIterator).imgIdx;
-                        VectorMatches[i].trainIdx = (*matchIterator).trainIdx;
-                    }
-                            
-                    //cout<<"w final "<<w_final<<endl;
-                    ++matchIterator;
-                    if (matchIterator == sortedMatches.end() ) break;
-
-            }
-            pushBackVectorMatches(VectorMatches);
-            resetVectorMatches(VectorMatches);
-            h_final = h_final+winHSize;
-            if (matchIterator ==sortedMatches.end() ) break;
-
-    }
-
-    //cout<<"Tamaño final = "<<goodMatches.size()<<endl;
-
-    return goodMatches.size();
-
-    
-}
-
-void Matcher::getGrid(int n_features, vector<KeyPoint> &grid_points)
-{
-    float h_final;
-    float w_final;
-    float winHSize;
-    float winWSize;
-
-    winWSize = w_size/floor(sqrt(n_features));
-    winHSize = h_size/floor(sqrt(n_features));
-
-    h_final = winHSize;
-    
-    int root_n;
-
-    KeyPoint point;
-    root_n = static_cast<int>(floor(sqrt(n_features)));
-    for (int j = 0; j<root_n; j++)
-    {
-        // if 2 NN has been identified
-        w_final = winWSize;
-        for (int i = 0; i < root_n; i++) //Mejorar deslizando desde el medio
+        default:
         {
-            point.pt.x = w_final;//-winWSize/2;
-            point.pt.y = h_final;//-winHSize/2;
-            grid_points.push_back(point);
-            w_final = w_final+winWSize;
-            
-        } 
-        //cout<<"w final "<<w_final<<endl;
-
-        h_final = h_final+winHSize;
-                
-    }
-    cout<< "Size= " <<grid_points.size()<<endl;
-    
-    
-
-}
-
-void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
-{
-    for(unsigned i = 0; i < matches.size(); i++) {
-        _matched1.push_back(keypoints_1[matches[i].queryIdx]);
-        _matched2.push_back(keypoints_2[matches[i].trainIdx]);
-    }
-}
-
-
-void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
-{
-    for(unsigned i = 0; i < goodMatches.size(); i++) {
-        _matched1.push_back(keypoints_1[goodMatches[i].queryIdx]);
-        _matched2.push_back(keypoints_2[goodMatches[i].trainIdx]);
-    }
-}
-
-double Matcher::getMatchPercentage(){
-    return 0.0;
-}
-
-void Matcher::resetVectorMatches(vector<DMatch> &Vector)
-{
-    for (int i = 0 ; i< Vector.size(); i++)
-    {
-        Vector[i].distance = 100000.0f;
-    }
-}
-
-void Matcher::pushBackVectorMatches(vector<DMatch> &Vector)
-{
-      for (int i = 0 ; i< Vector.size(); i++)
-    {
-        if (Vector[i].distance!= 100000.0f)
-        {
-            goodMatches.push_back(Vector[i]);
+            matcher = BFMatcher::create();
+            break;
         }
     }
 }
-void Matcher::sortMatches()
+
+    
+
+
+void MatcherGPU::detectGPUFeatures()
+{    
+    if (useGPU)
+    {
+        if (detectorType == USE_SURF)
+        {
+        cuda::SURF_CUDA surf;        
+        // Loading previous keypoints found
+
+        vector< vector<DMatch> > aux_matches1; // Vector auxiliar
+        vector< vector<DMatch> > aux_matches2; // Vector auxiliar
+        // Detecting keypoints and computing descriptors
+        surf(frame1GPU, cuda::GpuMat(), keypointsGPU[0], descriptorsGPU[0]);
+        surf(frame2GPU, cuda::GpuMat(), keypointsGPU[1], descriptorsGPU[1]);
+        
+        // Downloading results
+        surf.downloadKeypoints(keypointsGPU[0], keypoints_1);
+        surf.downloadKeypoints(keypointsGPU[1], keypoints_2);
+
+        }
+        else
+        {
+            Ptr<cuda::ORB> orb = cuda::ORB::create();
+            orb->detectAndCompute(frame1GPU, cuda::GpuMat(), keypoints_1, descriptorsGPU[0]);
+            orb->detectAndCompute(frame2GPU, cuda::GpuMat(), keypoints_2, descriptorsGPU[1]);
+
+        }
+    }                                    //ROI
+   else{
+
+   }
+}
+
+void MatcherGPU::computeGPUMatches()  // Calcula las parejas y realiza prueba de simetria
 {
-    
-    Mat yCoord = Mat::zeros(1, matches.size(), CV_32F) ; // vector para almacenar las coordenadas y de los puntos
-    Mat ySorted; // vector para almacenar los indices de yCoord con las valores ordenados;
-
-    // almacenar coordenadas en el vector
-    for (int i = 0; i<matches.size();i++) 
-    {
-        yCoord.at<float>(0, i) = keypoints_1[matches[i].queryIdx].pt.y;
+    if (useGPU){
+        
     }
-
-    // Ordenar arreglos de coordenadas de forma ascendente, y guardar los indices en ySorted;
-    
-    cv::sortIdx(yCoord, ySorted, CV_SORT_EVERY_ROW + CV_SORT_ASCENDING); 
-
-    int index; // indice del arreglo de matches
-    for (int i = 0; i<matches.size(); i++)
-    {
-        index = ySorted.at<int>(0, i); // indice
-        sortedMatches.push_back(matches[index]);
-    }
-    
 }

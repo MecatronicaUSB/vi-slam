@@ -65,21 +65,29 @@ set(vi_slam_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/Matcher.cpp
     ${PROJECT_SOURCE_DIR}/src/DataReader.cpp
     ${PROJECT_SOURCE_DIR}/src/Imu.cpp
-    ${PROJECT_SOURCE_DIR}/src/Plus.cpp
-
-    
+    ${PROJECT_SOURCE_DIR}/src/Plus.cpp  
 )
+
+#INCLUDE(/usr/local/cuda-8.0/targets/x86_64-linux/include)
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/include
+  /usr/local/cuda-8.0/targets/x86_64-linux/include
+  #${PROJECT_SOURCE_DIR}/include/thirdparty/akaze
+  #${CUDASIFT}
 )
 
+
+
+#add_library(cuda_prof_lib ${cuda_PROFILER})
 add_library(vi_slam_libs ${vi_slam_SOURCE_FILES}) # comentado hasta que se cree librerias
 
 add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slam.cpp)
+#add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/akaze.cpp)
 
 ## IMPORTANT - TO WORK WITH CUDA AND ROS (CUDA INSTALLED IN ANOTHER OPENCV)
 string(REPLACE "/opt/ros/kinetic/lib/libopencv_core3.so.3.3;" "" catkin_LIBRARIES "${catkin_LIBRARIES}")
 
 target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES} ${CUDA_LIBRARIES})
+
