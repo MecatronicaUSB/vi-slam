@@ -23,7 +23,7 @@ NO_MODULE
 PATHS /usr/local
 NO_DEFAULT_PATH)
 
-find_package(CUDA REQUIRED)
+find_package(CUDA)
 
 set(CMAKE_BUILD_TYPE Debug)
 
