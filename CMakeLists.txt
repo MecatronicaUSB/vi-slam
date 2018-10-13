@@ -34,12 +34,17 @@ if(CUDA_FOUND)
   # be set, you can find the full list with descriptions
   # in the CUDAConfig.cmake file.
   # Print some message showing some of them
+  message("******************")
+  message("CUDA found")
+  message("vi_slam GPU version will be compiled")
+  message("******************")
   message(STATUS "CUDA library status:")
   message(STATUS "    toolkit root dir: ${CUDA_TOOLKIT_ROOT_DIR}")
   message(STATUS "    version: ${CUDA_VERSION}")
   message(STATUS "    libraries: ${CUDA_LIBRARIES}")
   message(STATUS "    include path: ${CUDA_INCLUDE_DIRS}")
   message(STATUS "    include path: ${OpenCV_PATH}")
+
 
 endif(CUDA_FOUND)
 
@@ -73,7 +78,7 @@ set(vi_slam_SOURCE_FILES
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/include
-  /usr/local/cuda-8.0/targets/x86_64-linux/include
+  #/usr/local/cuda-8.0/targets/x86_64-linux/include
   #${PROJECT_SOURCE_DIR}/include/thirdparty/akaze
   #${CUDASIFT}
 )
@@ -81,13 +86,30 @@ include_directories(
 
 
 #add_library(cuda_prof_lib ${cuda_PROFILER})
-add_library(vi_slam_libs ${vi_slam_SOURCE_FILES}) # comentado hasta que se cree librerias
 
-add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slam.cpp)
+if(CUDA_FOUND)
+  set(vi_slam_GPU_SOURCE_FILES
+      ${PROJECT_SOURCE_DIR}/src/MatcherGPU.cpp 
+  )
+  add_library(vi_slam_libs ${vi_slam_SOURCE_FILES} ${vi_slam_GPU_SOURCE_FILES}) # comentado hasta que se cree librerias
+  add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slamGPU.cpp)
+  target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES} ${CUDA_LIBRARIES})
+  else(CUDA_FOUND)
+    message("******************")
+    message("CUDA not found")
+    message("vi_slam CPU version will be compiled")
+    message("******************")
+    add_library(vi_slam_libs ${vi_slam_SOURCE_FILES}) 
+    add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slam.cpp)
+    target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES})
+
+endif(CUDA_FOUND)
+
+
 #add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/akaze.cpp)
 
 ## IMPORTANT - TO WORK WITH CUDA AND ROS (CUDA INSTALLED IN ANOTHER OPENCV)
 string(REPLACE "/opt/ros/kinetic/lib/libopencv_core3.so.3.3;" "" catkin_LIBRARIES "${catkin_LIBRARIES}")
 
-target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES} ${CUDA_LIBRARIES})
+
 

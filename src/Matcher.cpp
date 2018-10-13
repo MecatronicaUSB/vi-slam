@@ -1,6 +1,8 @@
 #include "../include/Matcher.hpp"
 #include <iostream>
+#include <iomanip>
 #include <cmath>
+#include <ctime>
 
 Matcher::Matcher()
 {
@@ -81,31 +83,44 @@ void Matcher::setMatcher(int _matcher)
 }
 
 void Matcher::detectFeatures()
-{                                        //ROI
+{             
+    clock_t begin = clock(); // Tiempo de inicio del codigo
     detector -> detectAndCompute( frame1, Mat(), keypoints_1, descriptors_1 );
+    clock_t detect1 = clock(); 
     detector -> detectAndCompute( frame2, Mat(), keypoints_2, descriptors_2 );
+    clock_t detect2 = clock();  
+    elapsed_detect1 = double(detect1- begin) / CLOCKS_PER_SEC;
+    elapsed_detect2 = double(detect2- detect1) / CLOCKS_PER_SEC;                          
+    nPointsDetect1 = keypoints_1.size();
+    nPointsDetect2 = keypoints_2.size();
+}
+
+
+void Matcher::computeMatches()
+{ 
+    clock_t begin = clock(); // Tiempo de inicio del codigo
+    matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
+    clock_t knn1 = clock(); 
+    matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
+    clock_t knn2 = clock();  
+    elapsed_knn1 = double(knn1- begin) / CLOCKS_PER_SEC;
+    elapsed_knn2 = double(knn2- knn1) / CLOCKS_PER_SEC;
+ 
+    
 }
 
 void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de simetria
 {
-    detectFeatures(); //Detectar caracteristicas
 
-    // to store matches temporarily
-	// match using desired matcher
-    vector< vector<DMatch> > aux_matches1; // Vector auxiliar
-    vector< vector<DMatch> > aux_matches2; // Vector auxiliar
-	matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
-    matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
+   
 	// save in global class variable
-    std::cout<< "Numero de puntos emparejados en 1-2 = "<<aux_matches1.size()<<endl;
-    std::cout<< "Numero de puntos emparejados en 2-1 = "<<aux_matches2.size()<<endl;
     
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
     int removed1;
     int removed2;
-    removed1 = nn_filter(aux_matches1, nn_match_ratio);
-    removed2 = nn_filter(aux_matches2, nn_match_ratio);
+    removed1 = nnFilter(aux_matches1, nn_match_ratio);
+    removed2 = nnFilter(aux_matches2, nn_match_ratio);
 
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator2; // iterator for matches
@@ -135,13 +150,13 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
         }
     }
 
-    //sortMatches();
-    cout << "Filtrado de correspondencias = " << matches.size()<<endl;
+    
+    nSymMatches = matches.size();
 }
 
 
 
-int Matcher::nn_filter(vector<vector<DMatch> > &matches, double nn_ratio)
+int Matcher::nnFilter(vector<vector<DMatch> > &matches, double nn_ratio)
 {
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator; // iterator for matches
     int removed;
@@ -184,7 +199,7 @@ int Matcher::bestMatchesFilter(int n_features){
     int root_n;
 
     root_n = static_cast<int>(floor(sqrt(n_features)));
-    cout <<"root_n = "<< root_n<<endl;
+    //cout <<"root_n = "<< root_n<<endl;
     vector<DMatch> VectorMatches; // Cambio
     DMatch point;
     point.distance = 100000.0f;
@@ -199,6 +214,7 @@ int Matcher::bestMatchesFilter(int n_features){
     int i;
     for (int j = 0; j<root_n; j++) {
         // if 2 NN has been identified
+            
             while (keypoints_1[(*matchIterator).queryIdx].pt.y <= h_final )
             {
                     w_final = winWSize;
@@ -207,11 +223,13 @@ int Matcher::bestMatchesFilter(int n_features){
                     {
                          w_final = w_final+winWSize;
                          i++;
-                         
+                         cout<<"Distance = "<<VectorMatches[i].distance<<endl;
+                        cout<<"pos x = "<<VectorMatches[i].distance<<endl;
+                     
                     }
                     if((*matchIterator).distance < (VectorMatches[i]).distance)
                     {
-                        //cout << "Aprueba "<<i<<endl;
+                        cout << "Aprueba "<<i<<endl;
                         
                         VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
                         VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
@@ -231,8 +249,8 @@ int Matcher::bestMatchesFilter(int n_features){
 
     }
 
-    //cout<<"Tamaño final = "<<goodMatches.size()<<endl;
 
+    nBestMatches = goodMatches.size();
     return goodMatches.size();
 
     
@@ -271,7 +289,8 @@ void Matcher::getGrid(int n_features, vector<KeyPoint> &grid_points)
         h_final = h_final+winHSize;
                 
     }
-    cout<< "Size= " <<grid_points.size()<<endl;
+
+    cout<< "\nSize grid= " <<grid_points.size()<<endl;
     
     
 
@@ -339,4 +358,39 @@ void Matcher::sortMatches()
         sortedMatches.push_back(matches[index]);
     }
     
+}
+
+void Matcher::computeBestmatches(int n_features)
+{
+        clock_t begin = clock(); // Tiempo de inicio del codigo
+        computeSymMatches();
+        clock_t sym = clock(); 
+        sortMatches();
+        clock_t sort = clock(); 
+        int matches_found = bestMatchesFilter(n_features);
+        clock_t best = clock(); 
+        elapsed_symMatches = double(sym- begin) / CLOCKS_PER_SEC;
+        elapsed_sortMatches= double(sort- sym) / CLOCKS_PER_SEC;
+        elapsed_bestMatches= double(best- sort) / CLOCKS_PER_SEC;
+}
+
+void Matcher::printStatistics()
+{
+    cout<<"\nESTADISTICAS"
+
+    <<"\nPuntos detectados I1: " << nPointsDetect1
+    <<"\tPuntos detectados I2: " << nPointsDetect2
+    <<"\nNumero de matches simetricos: " << nSymMatches
+    <<"\tNumero de matches finales: " << nBestMatches
+
+    <<"\nTiempo de deteccion  I1: " << fixed<< setprecision(3) << elapsed_detect1*1000<<" ms"
+    <<"\tTiempo de deteccion  I2: " << fixed<< setprecision(3) << elapsed_detect2*1000<<" ms"
+    <<"\nTiempo de knn I1: " << fixed<< setprecision(3) << elapsed_knn1*1000<<" ms"
+    <<"\tTiempo de knn I2: " << fixed<< setprecision(3) << elapsed_knn2*1000<<" ms"
+    <<"\nTiempo de symMatches: " << fixed<< setprecision(3) << elapsed_symMatches*1000<<" ms"
+    <<"\tTiempo de sortMatches " << fixed<< setprecision(3) << elapsed_sortMatches*1000<<" ms"
+    <<"\nTiempo de bestMatches " << fixed<< setprecision(3) << elapsed_bestMatches*1000<<" ms"
+    <<endl;
+    ;
+
 }

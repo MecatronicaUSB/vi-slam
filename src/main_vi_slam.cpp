@@ -115,47 +115,28 @@ int main( int argc, char** argv ){
         vector<KeyPoint> matched1, matched2;
         vector<KeyPoint> aux1, aux2, grid;
         
-        Matcher matcher(USE_ORB, USE_BRUTE_FORCE);
+        Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
         frame1 = Data.image1;
         frame2 = Data.image2;
-        
-        
-        clock_t begin = clock(); // Tiempo de inicio del codigo
+
         matcher.setFrames(frame1, frame2);
-        
-        matcher.computeSymMatches();
-        clock_t comp = clock(); 
-        matcher.sortMatches();
-        clock_t sort = clock(); 
-        int n_features = matcher.bestMatchesFilter(12*12);
-        clock_t best = clock(); 
+        matcher.detectFeatures();
+        matcher.computeMatches();
+        matcher.computeBestmatches(12*12);
+        matcher.printStatistics();
+
         matcher.getGoodMatches(matched1, matched2);
-        matcher.getMatches(aux1, aux2);
-        clock_t get = clock(); 
-        matcher.getMatches(aux1, aux2);
-
-        double elapsed_comp = double(comp- begin) / CLOCKS_PER_SEC;
-        double elapsed_sort = double(sort- comp) / CLOCKS_PER_SEC;
-        double elapsed_best = double(best- sort) / CLOCKS_PER_SEC;
-        double elapsed_get = double(get- best) / CLOCKS_PER_SEC;
-
-        cout<<"comp, sort, best, get = \n"
-        <<fixed<<elapsed_comp<<"\t"<<elapsed_sort<<"\t"<<elapsed_best<<"\t"<<elapsed_get<<endl;
-
-        matcher.getGrid(144 , grid);
-        cout<<"Size"<<Data.imuAcceleration.size()<<endl;
+       // cout<<"Size"<<Data.imuAcceleration.size()<<endl;
 
         cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
         cv::KeyPoint::convert(matched2, points2_OK, point_indexs);
-        std::cout << "Puntos totales = "<<matched1.size()<< endl;
-        std::cout << "Puntos detectados imagen 1= "<<matcher.keypoints_1.size()<< endl;
-        std::cout << "Puntos detectados imagen 2 = "<<matcher.keypoints_2.size()<< endl;
+      
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
         
-        drawKeypoints( frame1, matcher.keypoints_1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints( frame2, matcher.keypoints_2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
-        imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
+        drawKeypoints( frame1, matched1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints( frame2, matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        //imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
+        //imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
        
         
 
