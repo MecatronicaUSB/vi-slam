@@ -21,10 +21,8 @@ class MatcherGPU : public Matcher
         void detectGPUFeatures();
         void setGPUDetector(int _detector);
         void setGPUMatcher(int _matcher);
-
         bool useGPU; // utilizar detector y matcher basado en GPU
-    private:
-        
+
         int detectorType;
         int matcherType;
         Ptr<cuda::Feature2DAsync> detectorGPU;                    //!< Pointer to OpenCV feature extractor

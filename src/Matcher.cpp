@@ -214,7 +214,6 @@ int Matcher::bestMatchesFilter(int n_features){
     int i;
     for (int j = 0; j<root_n; j++) {
         // if 2 NN has been identified
-            
             while (keypoints_1[(*matchIterator).queryIdx].pt.y <= h_final )
             {
                     w_final = winWSize;
@@ -223,13 +222,11 @@ int Matcher::bestMatchesFilter(int n_features){
                     {
                          w_final = w_final+winWSize;
                          i++;
-                         cout<<"Distance = "<<VectorMatches[i].distance<<endl;
-                        cout<<"pos x = "<<VectorMatches[i].distance<<endl;
-                     
+                         
                     }
                     if((*matchIterator).distance < (VectorMatches[i]).distance)
                     {
-                        cout << "Aprueba "<<i<<endl;
+                        //cout << "Aprueba "<<i<<endl;
                         
                         VectorMatches[i].distance = (*matchIterator).distance; // Puede haber un problema de memoria
                         VectorMatches[i].queryIdx = (*matchIterator).queryIdx;
@@ -249,7 +246,7 @@ int Matcher::bestMatchesFilter(int n_features){
 
     }
 
-
+    //cout<<"Tamaño final = "<<goodMatches.size()<<endl;
     nBestMatches = goodMatches.size();
     return goodMatches.size();
 
@@ -335,6 +332,8 @@ void Matcher::pushBackVectorMatches(vector<DMatch> &Vector)
         }
     }
 }
+
+
 void Matcher::sortMatches()
 {
     
@@ -359,8 +358,7 @@ void Matcher::sortMatches()
     }
     
 }
-
-void Matcher::computeBestmatches(int n_features)
+void Matcher::computeBestMatches(int n_features)
 {
         clock_t begin = clock(); // Tiempo de inicio del codigo
         computeSymMatches();

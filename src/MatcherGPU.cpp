@@ -12,6 +12,8 @@ MatcherGPU::MatcherGPU(int _detector, int _matcher)
 void MatcherGPU::setGPUFrames(Mat _frame1, Mat _frame2)
 {
     if (useGPU){
+        frame1GPU.release(); // liberar de memoria
+        frame2GPU.release();
         frame1GPU.upload(_frame1); // Copiar apuntadores
         frame2GPU.upload(_frame2);
         
@@ -21,8 +23,8 @@ void MatcherGPU::setGPUFrames(Mat _frame1, Mat _frame2)
         frame2 = _frame2;    
     }
 
-    h_size  = frame1.rows;
-    w_size = frame1.cols;
+    h_size  = _frame1.rows;
+    w_size = _frame1.cols;
 }
 void MatcherGPU::setGPUDetector(int _detector)
 {
@@ -92,6 +94,12 @@ void MatcherGPU::setGPUMatcher(int _matcher)
 
 void MatcherGPU::detectGPUFeatures()
 {    
+    // Liberarobjetos de la  memoria de GPU
+    descriptorsGPU[0].release();
+    descriptorsGPU[1].release();
+    keypointsGPU[0].release();
+    keypointsGPU[1].release();
+
     if (useGPU)
     {
         if (detectorType == USE_SURF)
@@ -113,6 +121,7 @@ void MatcherGPU::detectGPUFeatures()
         // Downloading results
         surf.downloadKeypoints(keypointsGPU[0], keypoints_1);
         surf.downloadKeypoints(keypointsGPU[1], keypoints_2);
+        surf.releaseMemory();
 
        
 
@@ -129,9 +138,12 @@ void MatcherGPU::detectGPUFeatures()
             clock_t detect2 = clock();  
             elapsed_detect1 = double(detect1- begin) / CLOCKS_PER_SEC;
             elapsed_detect2 = double(detect2- detect1) / CLOCKS_PER_SEC;  
-            nPointsDetect1 = keypoints_1.size();
-            nPointsDetect2 = keypoints_2.size();
+            orb.release();
         }
+        
+        nPointsDetect1 = keypoints_1.size();
+        nPointsDetect2 = keypoints_2.size();
+       
     }                                    //ROI
    else{
             detectFeatures();
@@ -139,6 +151,7 @@ void MatcherGPU::detectGPUFeatures()
 
     
 }
+
 
 void MatcherGPU::computeGPUMatches()  // Calcula las parejas y realiza prueba de simetria
 {
@@ -157,3 +170,4 @@ void MatcherGPU::computeGPUMatches()  // Calcula las parejas y realiza prueba de
         computeMatches();
     }
 }
+

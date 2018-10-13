@@ -99,7 +99,7 @@ int main( int argc, char** argv ){
     fy = 7.188560000000e+02;
     cx =  6.071928000000e+02;
     cy =  1.852157000000e+02;
-    */
+    
     focal = fx;
     Mat E, R, t; // matriz esencial
 
@@ -139,15 +139,16 @@ int main( int argc, char** argv ){
         vector<KeyPoint> aux1, aux2;
         vector<KeyPoint> aux;
         
-        MatcherGPU matcher(USE_SURF, USE_BRUTE_FORCE);
+        MatcherGPU matcher(USE_ORB, USE_BRUTE_FORCE);
         frame1 = Data.image1;
         frame2 = Data.image2;
         
         matcher.setGPUFrames(frame1, frame2);
         matcher.detectGPUFeatures();
         matcher.computeGPUMatches();
-        matcher.computeBestmatches(12*12);
+        matcher.computeBestMatches(144);
         matcher.printStatistics();
+
 
         matcher.getGoodMatches(matched1, matched2);
        // cout<<"Size"<<Data.imuAcceleration.size()<<endl;

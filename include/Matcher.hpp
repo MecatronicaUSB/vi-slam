@@ -49,7 +49,7 @@ class Matcher
         void getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
         void sortMatches();
         double getMatchPercentage();
-        void computeBestmatches(int n_features);
+        void computeBestMatches(int n_features);
         void getGrid(int n_features, vector<KeyPoint> &grid_point);
         void printStatistics();
 

@@ -122,7 +122,7 @@ int main( int argc, char** argv ){
         matcher.setFrames(frame1, frame2);
         matcher.detectFeatures();
         matcher.computeMatches();
-        matcher.computeBestmatches(12*12);
+        matcher.computeBestMatches(12*12);
         matcher.printStatistics();
 
         matcher.getGoodMatches(matched1, matched2);
