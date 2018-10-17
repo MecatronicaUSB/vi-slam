@@ -52,7 +52,7 @@ class Matcher
         void computeBestMatches(int n_features);
         void getGrid(int n_features, vector<KeyPoint> &grid_point);
         
-        void 
+
         void printStatistics();
 
 

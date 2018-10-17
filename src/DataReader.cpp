@@ -76,14 +76,26 @@ void DataReader::setProperties(string image_path, string imu_path, string gt_pat
         cout<<"Groundtruth no sincronizada con Camara...\n\t-> Se tomara la medida más cercana en tiempo"<<endl;
     }
 
-    
-    cout<<"index"<<imageIndex0<<endl;
-    cout<<"imuindex"<<imuIndex0<<endl;
-    cout<<"gtindex"<<gtIndex0<<endl;
+
+    cout<<"index camera = "<<imageIndex0<<endl;
+    cout<<"index imu = "<<imuIndex0<<endl;
+    cout<<"index get ="<<gtIndex0<<endl;
+
+
 
     timeStepCamara = imageReader.TimeStep;
     timeStepImu = imuReader.TimeStep;
     timeStepGt = gtReader.TimeStep;
+
+     // Encontrar el indice de la ultima imagen permitida
+    double timelastLineGt= gtReader.getGroundTruthData(gtReader.getRows()-2, 0);//Ultimo tiempo de gt
+    initialTime = timeFirstImage;
+    indexLastData = static_cast<int> (floor((timelastLineGt-initialTime)/timeStepCamara) - imageIndex0);
+    lastTime = (indexLastData*timeStepCamara)/1000000;
+    cout << "last time gt = " << timelastLineGt<<endl;
+    cout <<" Duración data set con gt = " << lastTime<< " ms"<<endl;
+    cout <<" Numero de imágenes con gt = "<< indexLastData<<endl;
+    
 
 }
 
@@ -176,7 +188,34 @@ void DataReader::UpdateDataReader(int index){
     //cout <<"ImuIndex2 "<<indexImuReader<<endl;
     //cout <<"GtIndex2 "<<indexGtReader<<endl;
 
+    currentTimeMs = (imageReader.getImageTime(imageIndex0 +index+1)-initialTime)/1000000.0;
 
 
+}
 
+void DataReader::UpdateImu(int index, int n_measures)
+{
+    imuAngularVelocity.clear();
+    imuAcceleration.clear();
+    Point3d angularVelocity;
+    Point3d acceleration;
+
+    int indexImuReader;
+    indexImuReader = index;
+    for (int i = 0; i< n_measures;i++)
+    {
+        angularVelocity.x =  imuReader.getGroundTruthData(indexImuReader, 1);
+        angularVelocity.y =  imuReader.getGroundTruthData(indexImuReader, 2);
+        angularVelocity.z =  imuReader.getGroundTruthData(indexImuReader, 3);
+
+        acceleration.x = imuReader.getGroundTruthData(indexImuReader, 4);
+        acceleration.y = imuReader.getGroundTruthData(indexImuReader, 5);
+        acceleration.z = imuReader.getGroundTruthData(indexImuReader, 6);
+    
+        imuAngularVelocity.push_back(angularVelocity);
+        imuAcceleration.push_back(acceleration); 
+        indexImuReader++;
+
+    }
+    
 }

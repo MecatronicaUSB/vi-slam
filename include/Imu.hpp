@@ -8,6 +8,7 @@ using namespace cv;
     public: 
         Imu(double timestep);//revisar el paso por size
         void setImuData(vector <Point3d> &w_measure,vector <Point3d>  &a_measure);
+        void setImuBias(Point3d acc_Bias, Point3d ang_Bias);
         void estimate();
         void computePosition();
         void computeVelocity();

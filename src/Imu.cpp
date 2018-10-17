@@ -14,6 +14,16 @@ void Imu::setImuData(vector <Point3d> &w_measure, vector <Point3d>  &a_measure)
     n = angularVelocityMeasure.size();
 }
 
+void Imu::setImuBias(Point3d acc_bias, Point3d ang_bias)
+{
+    accBias = acc_bias;
+    angBias = ang_bias;
+}
+
+void Imu::setImuGravity(Point3d gravity)
+{
+    imuGravity = gravity;
+}
 
 void Imu::computeVelocity()
 {

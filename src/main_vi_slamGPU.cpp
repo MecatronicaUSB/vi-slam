@@ -74,6 +74,7 @@ int main( int argc, char** argv ){
     VisualizerMarker visualizer_est("est_poses", "/my_frame", 30, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
     VisualizerFrame visualizerFrame("current_frame", 30);
     VisualizerFrame visualizerFrame2("current_frame2", 30);
+    VisualizerVector3 vector3d ("vector3d", 30);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -83,7 +84,7 @@ int main( int argc, char** argv ){
     double position2[3];
     double orientation2[4];
     orientation[3] = 1.0;
-
+    
     Imu imuCore(Data.timeStepImu/1000000000);
 
     //-- Paso 4: Calcular la matriz Esencial
@@ -93,7 +94,7 @@ int main( int argc, char** argv ){
     fy = 457.296;
     cx =  367.215;
     cy = 248.375;
-    /*
+    
     fx = 7.188560000000e+02;
 
     fy = 7.188560000000e+02;
@@ -109,6 +110,9 @@ int main( int argc, char** argv ){
     Mat odometry = Mat::zeros(1, 3, CV_64F); // Matriz vacia de vectores de longitud 3 (comienza con 000)
     Mat R_p ; // matriz de rotacion temporal
     Mat traslation; 
+    Point3d gravity;
+    Point3d acc_bias;
+    Point3d ang_bias;
 
     int i = 0;
     vector<KeyPoint> vectorMatches;
@@ -117,13 +121,13 @@ int main( int argc, char** argv ){
     position2[0] = Data.gtPosition[Data.gtPosition.size()-1].x;   //x
     position2[1] = Data.gtPosition[Data.gtPosition.size()-1].y;   //x
     position2[2] = Data.gtPosition[Data.gtPosition.size()-1].z;
-    
-    for (int j = 0;  j <3000; j++)
+    cout <<"be"<<endl;
+    for (int j = Data.indexLastData-2;  j <Data.indexLastData; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j);
-        /*
-        for (int ii = 0; ii<Data.imuAcceleration.size(); ii++)
+        
+        /*for (int ii = 0; ii<Data.imuAcceleration.size(); ii++)
         {
             cout << fixed<<Data.imuAcceleration[ii].x<<"\t"
              <<Data.imuAcceleration[ii].y<<"\t"
@@ -132,8 +136,6 @@ int main( int argc, char** argv ){
         }
         */
        
-        imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
-        imuCore.estimate();
 
         vector<KeyPoint> matched1, matched2;
         vector<KeyPoint> aux1, aux2;
@@ -142,7 +144,7 @@ int main( int argc, char** argv ){
         MatcherGPU matcher(USE_ORB, USE_BRUTE_FORCE);
         frame1 = Data.image1;
         frame2 = Data.image2;
-        
+        /*
         matcher.setGPUFrames(frame1, frame2);
         matcher.detectGPUFeatures();
         matcher.computeGPUMatches();
@@ -157,7 +159,7 @@ int main( int argc, char** argv ){
         cv::KeyPoint::convert(matched2, points2_OK, point_indexs);
       
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
-        
+        */
         drawKeypoints( frame1, matched1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints( frame2, matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         //imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
@@ -167,6 +169,24 @@ int main( int argc, char** argv ){
 
         visualizerFrame.UpdateMessages(finalImage);
         visualizerFrame2.UpdateMessages(finalImage2);
+
+        imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
+        imuCore.setImuBias(acc_bias, ang_bias);
+        imuCore.setImuGravity(gravity);
+        imuCore.estimate();
+        double module_gravity;
+        module_gravity = sqrt(pow(imuCore.acceleration.x, 2) + pow(imuCore.acceleration.y, 2) + pow(imuCore.acceleration.z, 2));
+        double percent = 0.5;
+        double module_gravity_fixed  =9.565;
+        Point3d dgravity;
+        //cout<<"Accx = "<<imuCore.acceleration.x << " Accy = "<< imuCore.acceleration.y<< " Accz = "
+        //<< imuCore.acceleration.z<< " Modulo = " << module_gravity<<endl;
+        cout <<" Modulo = " << module_gravity<< " Time = "<< Data.currentTimeMs<< " ms"<<endl;
+        dgravity.x = module_gravity;
+        dgravity.y = 9.68;
+        dgravity.z = module_gravity_fixed;
+        vector3d.UpdateMessages(dgravity);
+
         
         /*
         E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
