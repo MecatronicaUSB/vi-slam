@@ -70,11 +70,11 @@ int main( int argc, char** argv ){
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
     //VisualizerVector3 rqt_error("error", 10.0);
-    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 30, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
-    VisualizerMarker visualizer_est("est_poses", "/my_frame", 30, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    VisualizerFrame visualizerFrame("current_frame", 30);
-    VisualizerFrame visualizerFrame2("current_frame2", 30);
-    VisualizerVector3 vector3d ("vector3d", 30);
+    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 200, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+    VisualizerMarker visualizer_est("est_poses", "/my_frame", 200, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    VisualizerFrame visualizerFrame("current_frame", 200);
+    VisualizerFrame visualizerFrame2("current_frame2",200);
+    VisualizerVector3 vector3d ("vector3d", 200);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -122,7 +122,7 @@ int main( int argc, char** argv ){
     position2[1] = Data.gtPosition[Data.gtPosition.size()-1].y;   //x
     position2[2] = Data.gtPosition[Data.gtPosition.size()-1].z;
     cout <<"be"<<endl;
-    for (int j = Data.indexLastData-2;  j <Data.indexLastData; j++)
+    for (int j = 0;  j <Data.indexLastData; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j);

@@ -92,9 +92,8 @@ void DataReader::setProperties(string image_path, string imu_path, string gt_pat
     initialTime = timeFirstImage;
     indexLastData = static_cast<int> (floor((timelastLineGt-initialTime)/timeStepCamara) - imageIndex0);
     lastTime = (indexLastData*timeStepCamara)/1000000;
-    cout << "last time gt = " << timelastLineGt<<endl;
-    cout <<" Duración data set con gt = " << lastTime<< " ms"<<endl;
-    cout <<" Numero de imágenes con gt = "<< indexLastData<<endl;
+    cout <<"Duración data set con gt = " << lastTime<< " ms"<<endl;
+    cout <<"Numero de imágenes con gt = "<< indexLastData<<endl;
     
 
 }

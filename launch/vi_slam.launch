@@ -2,9 +2,9 @@
 <launch>
     <!-- VI-SLAM main thread-->
     <node pkg="vi_slam" type="vi_slam" name="main"  
-        args="-filePath=/home/mecatronica/Documents/mav0/state_groundtruth_estimate0/data.csv 
-              -imuPath=/home/mecatronica/Documents/mav0/imu0/data.csv 
-              -imagePath=/home/mecatronica/Documents/mav0/cam0/data/"
+        args="-filePath=/home/mecatronica/Documents/mav4/state_groundtruth_estimate0/data.csv 
+              -imuPath=/home/mecatronica/Documents/mav4/imu0/data.csv 
+              -imagePath=/home/mecatronica/Documents/mav4/cam0/data/"
         clear_params="true" 
         output="screen"/>
         
