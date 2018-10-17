@@ -17,15 +17,16 @@ void Imu::setImuData(vector <Point3d> &w_measure, vector <Point3d>  &a_measure)
 
 void Imu::computeVelocity()
 {
+    velocity.x = 0; // velocidad promedio
+    velocity.y = 0;
+    velocity.z = 0;
     for(int i= 0; i<n;i++)
     {
-        velocity.x= accelerationMeasure[i].x*(n-i);// Se asume velocidad inicial 0
-        velocity.y= accelerationMeasure[i].y*(n-i);
-        velocity.z= accelerationMeasure[i].z*(n-i);
+        velocity.x= velocity.x + (accelerationMeasure[i].x -imuGravity.x-accBias.x)*timeStep;// Se asume velocidad inicial 0
+        velocity.y= velocity.y + (accelerationMeasure[i].y -imuGravity.y-accBias.y)*timeStep;
+        velocity.z= velocity.z + (accelerationMeasure[i].z -imuGravity.z-accBias.z)*timeStep;
     }
-    velocity.x = velocity.x*timeStep/n; // velocidad promedio
-    velocity.y = velocity.y*timeStep/n;
-    velocity.z = velocity.z*timeStep/n;
+  
 }
 
 void Imu::computePosition()
@@ -61,7 +62,7 @@ void Imu::computeAngularPosition() // rad/s
 
 }
 
-void Imu::computeAcceleration()
+void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
 {
     acceleration.x = 0.0;
     acceleration.y = 0.0;
@@ -72,9 +73,9 @@ void Imu::computeAcceleration()
         acceleration.y = acceleration.y +accelerationMeasure[i].y;
         acceleration.z = acceleration.z +accelerationMeasure[i].z;
     }
-    acceleration.x = acceleration.x/n;
-    acceleration.y = acceleration.y/n;
-    acceleration.z = acceleration.z/n;
+    acceleration.x = acceleration.x/n - imuGravity.x;
+    acceleration.y = acceleration.y/n - imuGravity.y;
+    acceleration.z = acceleration.z/n - imuGravity.z;
 }
 
 void Imu::estimate()

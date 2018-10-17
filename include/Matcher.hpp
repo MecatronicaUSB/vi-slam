@@ -51,7 +51,10 @@ class Matcher
         double getMatchPercentage();
         void computeBestMatches(int n_features);
         void getGrid(int n_features, vector<KeyPoint> &grid_point);
+        
+        void 
         void printStatistics();
+
 
         vector< vector<DMatch> > aux_matches1; // Vector auxiliar
         vector< vector<DMatch> > aux_matches2; // Vector auxiliar
