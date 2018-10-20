@@ -20,9 +20,14 @@ Quaterniond toQuaternion(double pitch, double roll, double yaw)
 
 
 
-static void toEulerAngle(const Quaterniond& q, double& roll, double& pitch, double& yaw)
+Point3d toEulerAngle(const Quaterniond& q)
 {
 	// roll (x-axis rotation)
+	double roll, pitch,  yaw;
+	
+
+
+
 	double sinr_cosp = +2.0 * (q.w * q.x + q.y * q.z);
 	double cosr_cosp = +1.0 - 2.0 * (q.x * q.x + q.y * q.y);
 	roll = atan2(sinr_cosp, cosr_cosp);
@@ -38,4 +43,24 @@ static void toEulerAngle(const Quaterniond& q, double& roll, double& pitch, doub
 	double siny_cosp = +2.0 * (q.w * q.z + q.x * q.y);
 	double cosy_cosp = +1.0 - 2.0 * (q.y * q.y + q.z * q.z);  
 	yaw = atan2(siny_cosp, cosy_cosp);
+
+	Point3d angles;
+	angles.x = roll;
+	angles.y = pitch;
+	angles.z = yaw;
+
+
+	return angles;
+}
+
+double computeDiffAng(double gt_angle, double gt_est)
+{
+	double diff;
+	if ((gt_angle> 0.0) && (gt_est>0.0) ) diff = gt_angle-gt_est;
+	if ((gt_angle< 0.0) && (gt_est<0.0) ) diff = -(gt_angle-gt_est);
+	if ((gt_angle> 0.0) && (gt_est<0.0) ) diff = gt_angle+gt_est;
+	if ((gt_angle< 0.0) && (gt_est>0.0) ) diff = -(gt_angle+gt_est);
+
+	return abs(diff*180/M_PI);
+
 }

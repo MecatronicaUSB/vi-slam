@@ -4,9 +4,9 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
-
+#include "opencv2/core.hpp"
 using namespace std;
-
+using namespace cv;
 struct Quaterniond {
     double w;
 	double x;
@@ -18,6 +18,8 @@ struct Quaterniond {
 Quaterniond toQuaternion(double pitch, double roll, double yaw);
 
 
-static void toEulerAngle(const Quaterniond& q, double& roll, double& pitch, double& yaw);
+Point3d toEulerAngle(const Quaterniond& q);
+
+double computeDiffAng(double gt_angle, double gt_est);
 
 #endif

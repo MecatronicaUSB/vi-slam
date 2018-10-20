@@ -1,5 +1,6 @@
 #include "../include/Imu.hpp"
 #include <cmath>
+
 Imu::Imu(double timestep)
 {
     timeStep = timestep;

@@ -182,3 +182,100 @@ string VisualizerVector3::getMarkerName(){
 double VisualizerVector3::getRateHZ(){
     return rateHZ;
 }
+
+ImuFilter::ImuFilter(double rate)
+{
+    createROSPublisher(rate);
+}
+void ImuFilter::createROSPublisher(double rate)
+{
+    rateHZ = rate;
+    
+    ros::NodeHandle n;
+    publisher = n.advertise< sensor_msgs::Imu >("imu/data_raw", 1000);
+}
+
+
+void ImuFilter::createROSSubscriber()
+{
+    ros::NodeHandle nh;
+    int queue_size = 15;
+    imu_subscriber_.reset(new ImuSubscriber(
+    nh, ros::names::resolve("imu") + "/data", queue_size));
+    imu_subscriber_->registerCallback(&ImuFilter::imuCallback, this);
+    timeNs = 0;
+    timeS = 0;
+}
+
+void ImuFilter::imuCallback(const sensor_msgs::Imu::ConstPtr& imu_msg_raw)
+{
+    imuFusedData.angular_velocity = imu_msg_raw->angular_velocity;
+    imuFusedData.linear_acceleration = imu_msg_raw->linear_acceleration;
+    imuFusedData.orientation = imu_msg_raw->orientation;
+    /*cout<<"\nReceived : qx=" <<imu_msg_raw->orientation.x
+    <<" qy="<<imu_msg_raw->orientation.y
+    <<" qz="<<imu_msg_raw->orientation.z
+    <<" qw="<<imu_msg_raw->orientation.w
+    <<endl;
+    */
+    
+
+
+}
+
+void ImuFilter::UpdatePublisher( Point3d w_measure, Point3d a_measure)
+{
+    
+    timeNs = timeNs+5000;
+    ros::Rate r(rateHZ);
+    message.orientation.x = 0.0;
+    message.orientation.y = 0.0;
+    message.orientation.z = 0.0;
+    message.orientation.w = 1.0;
+    message.orientation_covariance[0] = -1.0;
+    message.angular_velocity.x = w_measure.x;
+    message.angular_velocity.y = w_measure.y;
+    message.angular_velocity.z = w_measure.z;
+    message.linear_acceleration.x = a_measure.x;
+    message.linear_acceleration.y = a_measure.y;
+    message.linear_acceleration.z = a_measure.z;
+    message.header.frame_id = "/imu";
+    message.header.stamp.nsec =timeNs;
+    message.header.stamp.sec = static_cast <uint32_t> (floor(timeNs/1000000.0));//ros::Time::now().toSec();
+    while (publisher.getNumSubscribers() < 1)
+    {
+        if (!ros::ok())
+        {
+            exit(1);
+        }
+        else{
+            ROS_WARN_ONCE("Please create a subscriber to Imu data");
+            sleep(1);
+        }
+    }
+    /*cout<<" ax = "<< message.linear_acceleration.x 
+    <<"ay = "<< message.linear_acceleration.y 
+    <<"az = "<< message.linear_acceleration.z
+    <<endl;
+    */
+    
+    publisher.publish(message);
+    r.sleep();
+
+    
+   
+}
+
+void ImuFilter::UpdateSubscriber()
+{
+    ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
+}
+
+string ImuFilter::getNodeName(){
+    return "ImuFilter" ;
+}
+
+double ImuFilter::getRateHZ(){
+    return rateHZ;
+}
+
