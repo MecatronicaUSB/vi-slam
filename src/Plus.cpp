@@ -20,7 +20,7 @@ Quaterniond toQuaternion(double pitch, double roll, double yaw)
 
 
 
-Point3d toEulerAngle(const Quaterniond& q)
+Point3d toRPY(const Quaterniond& q)
 {
 	// roll (x-axis rotation)
 	double roll, pitch,  yaw;
@@ -53,7 +53,7 @@ Point3d toEulerAngle(const Quaterniond& q)
 	return angles;
 }
 
-double computeDiffAng(double gt_angle, double gt_est)
+double computeDiff(double gt_angle, double gt_est)
 {
 	double diff;
 	if ((gt_angle> 0.0) && (gt_est>0.0) ) diff = gt_angle-gt_est;
@@ -61,6 +61,6 @@ double computeDiffAng(double gt_angle, double gt_est)
 	if ((gt_angle> 0.0) && (gt_est<0.0) ) diff = gt_angle+gt_est;
 	if ((gt_angle< 0.0) && (gt_est>0.0) ) diff = -(gt_angle+gt_est);
 
-	return abs(diff*180/M_PI);
+	return abs(diff);
 
 }

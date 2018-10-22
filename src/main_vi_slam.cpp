@@ -62,8 +62,6 @@ int main( int argc, char** argv ){
     //VisualizerFrame visualizerFrame("current_frame", 90);
     //VisualizerFrame visualizerFrame2("current_frame2", 90);
     VisualizerVector3 vector3d ("vector3d", 700);
-    ImuFilter imuFilter(1000);
-    imuFilter.createROSSubscriber();
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -174,23 +172,26 @@ int main( int argc, char** argv ){
         //cout << "position x" << imuCore.position.x<<endl;
         //cout << "position y" << imuCore.position.y<<endl;
         //cout << "position z" << imuCore.position.z<<endl;
-        Point3d angle_diff;
-        Point3d angle_gt, angle_ft;
-        for (int ii = 0 ; ii< Data.gtQuaternion.size();ii++)
+        Point3d angle_diff, acc_diff;
+        Point3d angle_gt, angle_ft, gravity_imu;
+        double elapsed_f;
+        int ii;
+        for ( ii = 0 ; ii< Data.gtQuaternion.size();ii++)
         {
             Quaterniond qFilter;
             Quaterniond qGt;
             
+            
             //imuCore.estimate();
-            imuFilter.UpdatePublisher(Data.imuAngularVelocity[ii], Data.imuAcceleration[ii]);
+            
             position2[0] = Data.gtPosition[ii].x;   //x
             position2[1] = Data.gtPosition[ii].y;   //x
             position2[2] = Data.gtPosition[ii].z;   //x
-            imuFilter.UpdateSubscriber();
-            qFilter.x = orientation2[1] = imuFilter.imuFusedData.orientation.x;   //x
-           qFilter.y = orientation2[2] = imuFilter.imuFusedData.orientation.y;  
-            qFilter.z = orientation2[3] = imuFilter.imuFusedData.orientation.z;  
-           qFilter.w = orientation2[0] =imuFilter.imuFusedData.orientation.w;  
+            
+            qFilter.x = orientation2[0] = imuFilter.imuFusedData.orientation.x;   //x
+           qFilter.y = orientation2[1] = imuFilter.imuFusedData.orientation.y;  
+            qFilter.z = orientation2[2] = imuFilter.imuFusedData.orientation.z;  
+           qFilter.w = orientation2[3] =imuFilter.imuFusedData.orientation.w;  
       
             visualizer_est.UpdateMessages(position2, orientation2);
 
@@ -198,35 +199,47 @@ int main( int argc, char** argv ){
         position[0] = Data.gtPosition[ii].x;   //x
         position[1] = Data.gtPosition[ii].y;   //x
         position[2] = Data.gtPosition[ii].z;   //x
-        qGt.x = orientation[1] = Data.gtQuaternion[ii].x;   //x
-        qGt.y = orientation[2] = Data.gtQuaternion[ii].y; // y
-        qGt.z = orientation[3] = Data.gtQuaternion[ii].z; // z
-        qGt.w = orientation[0] = Data.gtQuaternion[ii].w; // w
+        qGt.x = orientation[0] = Data.gtQuaternion[ii].x;   //x
+        qGt.y = orientation[1] = Data.gtQuaternion[ii].y; // y
+        qGt.z = orientation[2] = Data.gtQuaternion[ii].z; // z
+        qGt.w = orientation[3] = Data.gtQuaternion[ii].w; // w
         visualizer_gt.UpdateMessages(position, orientation);
 
         
-        
-        angle_ft = toEulerAngle(qFilter);
-        angle_gt = toEulerAngle(qGt);
-        
 
-        angle_diff.x = computeDiffAng(angle_gt.x, angle_ft.x);
-        angle_diff.y = computeDiffAng(angle_gt.y, angle_ft.y);
-        angle_diff.z = computeDiffAng(angle_gt.z-M_PI/2, angle_ft.z);
+        angle_diff.x = computeDiff(angle_gt.x, angle_ft.x);
+        angle_diff.y = computeDiff(angle_gt.y, angle_ft.y);
+        angle_diff.z = computeDiff(angle_gt.z, angle_ft.z);
 
-      
-        vector3d.UpdateMessages(angle_diff);
+        angle_diff = angle_diff*180/M_PI;
+
+
+        gravity_imu.x = -sin(angle_ft.y)*9.68;
+        gravity_imu.y = sin(angle_ft.x)*cos(angle_ft.y)*9.68;
+        gravity_imu.z = cos(angle_ft.x)*cos(angle_ft.y)*9.68;
+        
+        acc_diff.x = computeDiff(Data.imuAcceleration[ii].x, gravity_imu.x);
+        acc_diff.y = computeDiff(Data.imuAcceleration[ii].y, gravity_imu.y);
+        acc_diff.z = computeDiff(Data.imuAcceleration[ii].z,gravity_imu.z);
+         
+
+        //vector3d.UpdateMessages(angle_diff);
             
-
+        vector3d.UpdateMessages(acc_diff);
             
         }
 
-        cout << " diffx = " << angle_diff.x
-        <<" diffy = "<<angle_diff.y
-        <<" diffz = "<< angle_diff.z
+
+    
+        cout << " diffx = " << acc_diff.x
+        <<" diffy = "<<acc_diff.y
+        <<" diffz = "<< acc_diff.z
         << " Current time = "<< Data.currentTimeMs <<" ms "
         <<endl;
+
+
         
+
         
         
       

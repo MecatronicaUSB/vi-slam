@@ -16,7 +16,7 @@
         
     <node name="ImuFilter" pkg="imu_filter_madgwick" type="imu_filter_node"
          args="_use_mag:=false _use_magnectic_field_msg:=false 
-         _gain:=0.3 _world_frame:=nwu _stateless:=false 
+         _gain:=0.1 _world_frame:=nwu _stateless:=false 
          _publish_debug_topics:=true _constant_dt:=0.005"
     />
 </launch>

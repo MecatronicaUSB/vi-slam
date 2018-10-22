@@ -18,8 +18,8 @@ struct Quaterniond {
 Quaterniond toQuaternion(double pitch, double roll, double yaw);
 
 
-Point3d toEulerAngle(const Quaterniond& q);
+Point3d toRPY(const Quaterniond& q);
 
-double computeDiffAng(double gt_angle, double gt_est);
+double computeDiff(double gt_angle, double gt_est);
 
 #endif

@@ -7,9 +7,6 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <geometry_msgs/Vector3.h>
-#include <sensor_msgs/Imu.h>
-#include <message_filters/subscriber.h>
-#include <ros/callback_queue.h>
 
 
 // vi_slam librarie
@@ -84,29 +81,4 @@ class VisualizerFrame
 };
 
 
-class ImuFilter{
-    typedef sensor_msgs::Imu              ImuMsg;
-    typedef message_filters::Subscriber<ImuMsg> ImuSubscriber;
-    public:
-        ImuFilter(double rate);
-        void createROSPublisher(double rate);
-        void createROSSubscriber();
-        void UpdatePublisher(Point3d w_measure, Point3d a_measure);
-        void UpdateSubscriber();
-        void imuCallback(const ImuMsg::ConstPtr& imu_msg_raw);
-        string getNodeName();
-        double getRateHZ();
 
-        ImuMsg imuFusedData;
-        uint timeNs;
-        uint timeS;
-        
-
-    private:
-        double rateHZ;
-        ros::Publisher publisher; 
-        boost::shared_ptr<ImuSubscriber> imu_subscriber_;
-        sensor_msgs::Imu message;
-        
-
-};
