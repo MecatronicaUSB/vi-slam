@@ -1,17 +1,19 @@
 #include "../include/Imu.hpp"
 #include <cmath>
-
+#include <iomanip>
 Imu::Imu(double timestep)
 {
     timeStep = timestep;
-    // Crear el publicador con una frecuencia 20 veces mayor a la respuesta de la imu
-    createROSPublisher(static_cast<int>(1.0/(timeStep*20))); 
+    // Crear el publicador con una frecuencia 10 veces mayor a la respuesta de la imu
+    createROSPublisher(static_cast<int>((1.0/timeStep)*20)); 
     createROSSubscriber();
 
 }
 
 void Imu::setImuData(vector <Point3d> &w_measure, vector <Point3d>  &a_measure)
 {
+    angularVelocityMeasure.clear();
+    accelerationMeasure.clear();
     angularVelocityMeasure.reserve(w_measure.size());
     accelerationMeasure.reserve(a_measure.size());
     copy(w_measure.begin(), w_measure.end(), back_inserter(angularVelocityMeasure));
@@ -25,43 +27,73 @@ void Imu::setImuBias(Point3d acc_bias, Point3d ang_bias)
     angBias = ang_bias;
 }
 
-
-void Imu::computeGravity() // Calcula la direccion de la gravedad respecto a la imu
-{  
-    imuFilterGravity.clear();
+void Imu::initializate(double gt_yaw)
+{
+    initialYawGt = gt_yaw;
     Quaterniond orientation;
-    Point3d rpyAngles;
-    Point3d gravity_imu;
     for (int i = 0; i < n ; i++)
     {
-        UpdatePublisher( imuAngularVelocity[i], imuAcceleration[i]); //
+        UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
         UpdateSubscriber();
+    }
+    orientation.x = imuFusedData.orientation.x;
+    orientation.y = imuFusedData.orientation.y;
+    orientation.z = imuFusedData.orientation.z;
+    orientation.w = imuFusedData.orientation.w;
+    Point3d angle_filter_initial = toRPY(orientation);
+    
+    initialYawFilter =  angle_filter_initial.z;  // ultima estimacion angulo inicial
+        
+
+}
+
+
+void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
+{
+    accelerationWorld.clear();
+    rpyAnglesWorld.clear();
+    quaternionWorld.clear();
+    angularVelocityIMUFilter.clear();
+
+    Quaterniond orientation;
+    
+    Point3d gravity_imu;
+    elapsed_filter = 0.0;
+    for (int i = 0; i < n ; i++)
+    {
+        clock_t t1 = clock(); 
+        UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
+        UpdateSubscriber();
+        clock_t t2 = clock(); 
+        elapsed_filter= double(t2- t1) / CLOCKS_PER_SEC +elapsed_filter;
         orientation.x = imuFusedData.orientation.x;
         orientation.y = imuFusedData.orientation.y;
         orientation.z = imuFusedData.orientation.z;
         orientation.w = imuFusedData.orientation.w;
-        rpyAngles = toRPY(orientation);
-        gravity_imu.x = -sin(rpyAngles.y)*9.68; // roll
-        gravity_imu.y = sin(rpyAngles.x)*cos(rpyAngles.y)*9.68; // roll, pitch
-        gravity_imu.z = cos(rpyAngles.x)*cos(rpyAngles.y)*9.68;
-        imuFilterGravity.push_back(gravity_imu);
-        
+        rpyAnglesWorld.push_back(toRPY(orientation));
+        // Alineacion del angulo yaw gt inicial
+        rpyAnglesWorld[i].z = rpyAnglesWorld[i].z - initialYawFilter+initialYawGt ;
+        orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
+        Point3d accWorld;
+        // restar bias local
+        accelerationMeasure[i].x = accelerationMeasure[i].x -accBias.x;
+        accelerationMeasure[i].y = accelerationMeasure[i].y -accBias.y;
+        accelerationMeasure[i].z = accelerationMeasure[i].z -accBias.z;
+        // transformar acelerarion al sistema fijo (world)
+        accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
+        accWorld.z = accWorld.z - 9.68; // restar la aceleracion de gravedad
+        accelerationWorld.push_back(accWorld);
+        quaternionWorld.push_back(orientation);
+        // Guardar la velocidad angular filtrada
+        Point3d angularw;
+        angularw.x  = imuFusedData.angular_velocity.x;
+        angularw.y  = imuFusedData.angular_velocity.y;
+        angularw.z  = imuFusedData.angular_velocity.z;
+        angularVelocityIMUFilter.push_back(angularw);
+    
     }
-}
-void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
-{
-    acceleration.x = 0.0;
-    acceleration.y = 0.0;
-    acceleration.z = 0.0;
-    for(int i= 0; i<n;i++)
-    {
-        acceleration.x = acceleration.x +accelerationMeasure[i].x - imuFilterGravity[i].x;
-        acceleration.y = acceleration.y +accelerationMeasure[i].y - imuFilterGravity[i].y;
-        acceleration.z = acceleration.z +accelerationMeasure[i].z - imuFilterGravity[i].z;
-    }
-    acceleration.x = acceleration.x/n ; // Aceleracion promedio entre dos frames
-    acceleration.y = acceleration.y/n ;
-    acceleration.z = acceleration.z/n ;
+    elapsed_filter = elapsed_filter/n;
+
 }
 
 void Imu::computeVelocity()
@@ -71,18 +103,27 @@ void Imu::computeVelocity()
     velocity.z = 0;
     for(int i= 0; i<n;i++)
     {
-        velocity.x= velocity.x + (accelerationMeasure[i].x -imuFilterGravity[i].x-accBias.x)*timeStep;// Se asume velocidad inicial 0
-        velocity.y= velocity.y + (accelerationMeasure[i].y -imuFilterGravity[i].y-accBias.y)*timeStep;
-        velocity.z= velocity.z + (accelerationMeasure[i].z -imuFilterGravity[i].z-accBias.z)*timeStep;
+        velocity.x= velocity.x + (accelerationWorld[i].x)*timeStep;// Se asume velocidad inicial 0
+        velocity.y= velocity.y + (accelerationWorld[i].y)*timeStep;
+        velocity.z= velocity.z + (accelerationWorld[i].z)*timeStep;
     }
   
 }
 
 void Imu::computePosition()
 {
-    position.x = velocity.x*n*timeStep;//n mediciones despues del frame1
-    position.y = velocity.y*n*timeStep;// mas la medicion inicial asumida 0
-    position.z = velocity.x*n*timeStep;
+   
+    Point3d translationBetweenFrames;
+    for(int i= 0; i<n;i++)
+    {
+        translationBetweenFrames.x = 2*(n-i)*(accelerationWorld[i].x)*timeStep*timeStep;
+        translationBetweenFrames.y = 2*(n-i)*(accelerationWorld[i].y)*timeStep*timeStep;
+        translationBetweenFrames.z = 2*(n-i)*(accelerationWorld[i].z)*timeStep*timeStep;
+    }
+    position.x = initialVelocity.x*n*timeStep+0.5*translationBetweenFrames.x;//n mediciones despues del frame1
+    position.y = initialVelocity.y*n*timeStep+0.5*translationBetweenFrames.y;// mas la medicion inicial asumida 0
+    position.z = initialVelocity.z*n*timeStep+0.5*translationBetweenFrames.z;// revisar n
+
 }
 
 void Imu::computeAngularVelocity()
@@ -106,7 +147,7 @@ void Imu::computeAngularPosition() // rad/s
     angularPosition.x = angularVelocity.x*timeStep*n;
     angularPosition.y = angularVelocity.x*timeStep*n;
     angularPosition.z = angularVelocity.x*timeStep*n;
-    quaternion = toQuaternion(angularPosition.y, angularPosition.x, angularPosition.z);
+    //quaternion = toQuaternion(angularPosition.y, angularPosition.x, angularPosition.z);
     
 
 }
@@ -114,14 +155,39 @@ void Imu::computeAngularPosition() // rad/s
 
 void Imu::estimate()
 {   
-    computeGravity();
     computeAcceleration();
     computeVelocity();
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
+    initialVelocity.x = velocity.x;
+    initialVelocity.y = velocity.y;
+    initialVelocity.z = velocity.z;
 }
 
+void Imu::setImuInitialPosition()
+{
+
+}
+
+void Imu::setImuInitialVelocity()
+{
+    initialVelocity.x = 0.0;
+    initialVelocity.y = 0.0;
+    initialVelocity.z = 0.0;
+
+}
+
+
+void Imu::printStatistics()
+{
+     cout<<"\nESTADISTICAS IMU"
+     <<"\nTiempo de filtrado: " << fixed<< setprecision(3) << elapsed_filter*1000<< " ms" <<endl;
+
+
+}
+
+// Imu filter node
 ImuFilterNode::ImuFilterNode()
 {
 
@@ -145,7 +211,7 @@ void ImuFilterNode::createROSSubscriber()
     int queue_size = 15;
     imu_subscriber_.reset(new ImuSubscriber(
     nh, ros::names::resolve("imu") + "/data", queue_size));
-    imu_subscriber_->registerCallback(&ImuFilter::imuCallback, this);
+    imu_subscriber_->registerCallback(&ImuFilterNode::imuCallback, this);
     timeNs = 0;
     timeS = 0;
 }
@@ -222,3 +288,15 @@ double ImuFilterNode::getRateHZ(){
     return rateHZ;
 }
 
+Point3d Imu::transform2World(Point3d acc, Point3d angl)
+{
+    Point3d worldVector;
+    double roll = angl.x;
+    double pitch = angl.y;
+    double yaw = angl.z;
+    worldVector.x = cos(pitch)*cos(yaw)*acc.x+ (sin(roll)*sin(pitch)*cos(yaw)-cos(roll)*sin(yaw))*acc.y
+     +(cos(roll)*sin(pitch)*cos(yaw)-sin(roll)*sin(yaw))*acc.z;
+    worldVector.y = cos(pitch)*sin(yaw)*acc.x+ (sin(roll)*sin(pitch)*sin(yaw)+cos(roll)*cos(yaw))*acc.y
+     +(cos(roll)*sin(pitch)*sin(yaw)-sin(roll)*cos(yaw))*acc.z;
+    worldVector.z = -sin(pitch)*acc.x +sin(yaw)*cos(pitch)*acc.y +cos(roll)*cos(pitch)*acc.z;
+}

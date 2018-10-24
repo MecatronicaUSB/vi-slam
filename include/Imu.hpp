@@ -13,7 +13,7 @@ class ImuFilterNode{
     typedef message_filters::Subscriber<ImuMsg> ImuSubscriber;
     public:
         ImuFilterNode();
-        ImuFilterNode(double rate);
+        ImuFilterNode(int rate);
         void createROSPublisher(int rate);
         void createROSSubscriber();
         void UpdatePublisher(Point3d w_measure, Point3d a_measure);
@@ -43,6 +43,9 @@ class ImuFilterNode{
         Imu(double timestep);//revisar el paso por size
         void setImuData(vector <Point3d> &w_measure,vector <Point3d>  &a_measure);
         void setImuBias(Point3d acc_Bias, Point3d ang_Bias);
+        void setImuInitialVelocity();
+        void setImuInitialPosition();
+        void initializate(double gt_yaw);
         void estimate();
         void computeGravity();
         void computePosition();
@@ -50,17 +53,24 @@ class ImuFilterNode{
         void computeAcceleration();
         void computeAngularVelocity();
         void computeAngularPosition();
-        Quaterniond quaternion;
+        void printStatistics();
+        Point3d transform2World(Point3d acc, Point3d localAngles);
         Point3d angularPosition;
         Point3d angularVelocity;
+        Point3d initialVelocity;
+        double initialYawGt;
+        double initialYawFilter;
         Point3d position; // posicion en x, y, z
         Point3d velocity; // velocidad en x, y, z
-        Point3d acceleration; // promedio de acceleracion en x, y, z
         Point3d accBias;
         Point3d angBias;
-        vector <Point3d> imuFilterGravity;
+        vector <Point3d> angularVelocityIMUFilter; // velocidad angular
+        vector <Quaterniond> quaternionWorld;
+        vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
+        vector <Point3d> accelerationWorld; // celeracion del robot respecto al mundo
 
     private:
+        double elapsed_filter;
         vector <Point3d> angularVelocityMeasure; // Imu measurements x, y, z
         vector <Point3d> accelerationMeasure;    // Imu measurements x, y, z
         int n; // numero de mediciones

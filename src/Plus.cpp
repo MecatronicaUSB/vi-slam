@@ -1,6 +1,6 @@
 #include "../include/Plus.hpp"
 
-Quaterniond toQuaternion(double pitch, double roll, double yaw)
+Quaterniond toQuaternion( double roll, double pitch, double yaw)
 {
 	Quaterniond q;
         // Abbreviations for the various angular functions
@@ -53,14 +53,55 @@ Point3d toRPY(const Quaterniond& q)
 	return angles;
 }
 
-double computeDiff(double gt_angle, double gt_est)
+double computeDiff(double angle_ref, double angle2)
 {
 	double diff;
-	if ((gt_angle> 0.0) && (gt_est>0.0) ) diff = gt_angle-gt_est;
-	if ((gt_angle< 0.0) && (gt_est<0.0) ) diff = -(gt_angle-gt_est);
-	if ((gt_angle> 0.0) && (gt_est<0.0) ) diff = gt_angle+gt_est;
-	if ((gt_angle< 0.0) && (gt_est>0.0) ) diff = -(gt_angle+gt_est);
+	double diff2;
+	diff2 = abs(angle_ref-angle2);
+	if (diff2>M_PI){
+		diff2 = abs(diff2-2*M_PI);
+	}
+	if (angle_ref<0.0)
+	{
+		angle_ref= angle_ref+2*M_PI;
+	}
+	if (angle2<0.0)
+	{
+		angle2 = angle2+2*M_PI;
+	}
+	diff = angle_ref-angle2;
 
-	return abs(diff);
+	if ((diff < M_PI) && (diff>0.0)){
+		return -diff2;
+	}
+	else if (diff < - M_PI){
+		return -diff2;
+	}
+	else{
+		return diff2;
+	}
+
+	
 
 }
+
+Point3d toRPY360(Point3d angles)
+{
+	Point3d transform360;
+	transform360 = angles;
+	if (angles.x < 0.0)
+	{
+		transform360.x = angles.x +2*M_PI;
+	}
+	if (angles.y < 0.0)
+	{
+		transform360.y = angles.y +2*M_PI;
+	}
+	if (angles.z < 0.0)
+	{
+		transform360.z = angles.z +2*M_PI;
+	}
+
+	return transform360;
+}
+

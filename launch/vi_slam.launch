@@ -8,8 +8,8 @@
         clear_params="true" 
         output="screen"/>
         
-    <!-- Rviz visualize-->
-    <node pkg="rviz" type="rviz" name="rviz"/>
+    <!-- Rviz visualize
+    <node pkg="rviz" type="rviz" name="rviz"/>-->
 
     <!-- rqt_plot visualizer-->
     <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>

@@ -57,11 +57,15 @@ int main( int argc, char** argv ){
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
     //VisualizerVector3 rqt_error("error", 10.0);
-    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 700, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
-    VisualizerMarker visualizer_est("est_poses", "/my_frame", 700, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    //VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+    //VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
     //VisualizerFrame visualizerFrame("current_frame", 90);
     //VisualizerFrame visualizerFrame2("current_frame2", 90);
-    VisualizerVector3 vector3d ("vector3d", 700);
+    VisualizerVector3 error_angular ("error_angular", 800);
+    //VisualizerVector3 angulo_estimado ("angulo_estimado", 800);
+    //VisualizerVector3 angulo_groundtruth ("angulo_groundtruth",800);
+    //VisualizerVector3 angulo_y ("angulo_y", 700);
+    //VisualizerVector3 angulo_z ("angulo_z", 700);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -72,7 +76,8 @@ int main( int argc, char** argv ){
     double orientation2[4];
     orientation[3] = 1.0;
 
-    Imu imuCore(Data.timeStepImu/1000000000);
+    Imu imuCore(Data.timeStepImu/1000000000.0);
+    imuCore.setImuInitialVelocity();
 
     //-- Paso 4: Calcular la matriz Esencial
     // Parametros intrisecos de la camara
@@ -100,26 +105,36 @@ int main( int argc, char** argv ){
 
     int i = 0;
     vector<KeyPoint> vectorMatches;
-    
-    Data.UpdateDataReader(0);
-    position2[0] = Data.gtPosition[Data.gtPosition.size()-1].x;   //x
-    position2[1] = Data.gtPosition[Data.gtPosition.size()-1].y;   //x
-    position2[2] = Data.gtPosition[Data.gtPosition.size()-1].z;
+    Quaterniond qGt_initial;
 
-    for (int j = 0;  j <Data.indexLastData; j++)
+    Data.UpdateDataReader(0);
+    int n = Data.gtPosition.size()-1;
+    position2[0] = Data.gtPosition[n].x;   //x
+    position2[1] = Data.gtPosition[n].y;   //x
+    position2[2] = Data.gtPosition[n].z;
+    qGt_initial.x = Data.gtQuaternion[n].x;   //x
+    qGt_initial.y = Data.gtQuaternion[n].y; // y
+    qGt_initial.z = Data.gtQuaternion[n].z; // z
+    qGt_initial.w = Data.gtQuaternion[n].w; // w
+    Point3d angle_gt_initial = toRPY(qGt_initial);
+    imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration); // primeras medidas
+    imuCore.initializate(angle_gt_initial.z); // Poner yaw inicial del gt
+
+    for (int j = 1;  j <Data.indexLastData; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j);
        
         //imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
         
-       
+       /*
         vector<KeyPoint> matched1, matched2;
         vector<KeyPoint> aux1, aux2, grid;
         
         Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
         frame1 = Data.image1;
         frame2 = Data.image2;
+        */
         /*
         matcher.setFrames(frame1, frame2);
         matcher.detectFeatures();
@@ -135,8 +150,8 @@ int main( int argc, char** argv ){
       
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
         */
-        drawKeypoints( frame1, matched1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints( frame2, matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        //drawKeypoints( frame1, matched1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        //drawKeypoints( frame2, matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         //imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
         //imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
        
@@ -172,70 +187,77 @@ int main( int argc, char** argv ){
         //cout << "position x" << imuCore.position.x<<endl;
         //cout << "position y" << imuCore.position.y<<endl;
         //cout << "position z" << imuCore.position.z<<endl;
-        Point3d angle_diff, acc_diff;
+        Point3d angle_diff, angle_x, angle_y, angle_z;
         Point3d angle_gt, angle_ft, gravity_imu;
         double elapsed_f;
-        int ii;
-        for ( ii = 0 ; ii< Data.gtQuaternion.size();ii++)
+        
+        
+        imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
+        clock_t t1 = clock(); 
+        imuCore.computeAcceleration();
+        //imuCore.printStatistics(); // imprime el tiempo de computo del filtro
+        
+       
+        
+        for ( int ii = 0 ; ii< Data.gtQuaternion.size();ii++)
         {
             Quaterniond qFilter;
             Quaterniond qGt;
             
             
-            //imuCore.estimate();
-            
+            orientation2[0] = imuCore.quaternionWorld[ii].x;
+            orientation2[1] = imuCore.quaternionWorld[ii].y;
+            orientation2[2] = imuCore.quaternionWorld[ii].z;
+            orientation2[3] = imuCore.quaternionWorld[ii].w;
             position2[0] = Data.gtPosition[ii].x;   //x
             position2[1] = Data.gtPosition[ii].y;   //x
             position2[2] = Data.gtPosition[ii].z;   //x
+    
             
-            qFilter.x = orientation2[0] = imuFilter.imuFusedData.orientation.x;   //x
-           qFilter.y = orientation2[1] = imuFilter.imuFusedData.orientation.y;  
-            qFilter.z = orientation2[2] = imuFilter.imuFusedData.orientation.z;  
-           qFilter.w = orientation2[3] =imuFilter.imuFusedData.orientation.w;  
-      
-            visualizer_est.UpdateMessages(position2, orientation2);
 
          
-        position[0] = Data.gtPosition[ii].x;   //x
-        position[1] = Data.gtPosition[ii].y;   //x
-        position[2] = Data.gtPosition[ii].z;   //x
-        qGt.x = orientation[0] = Data.gtQuaternion[ii].x;   //x
-        qGt.y = orientation[1] = Data.gtQuaternion[ii].y; // y
-        qGt.z = orientation[2] = Data.gtQuaternion[ii].z; // z
-        qGt.w = orientation[3] = Data.gtQuaternion[ii].w; // w
-        visualizer_gt.UpdateMessages(position, orientation);
+            position[0] = Data.gtPosition[ii].x;   //x
+            position[1] = Data.gtPosition[ii].y;   //x
+            position[2] = Data.gtPosition[ii].z;   //x
+            qGt.x = orientation[0] = Data.gtQuaternion[ii].x;   //x
+            qGt.y = orientation[1] = Data.gtQuaternion[ii].y; // y
+            qGt.z = orientation[2] = Data.gtQuaternion[ii].z; // z
+            qGt.w = orientation[3] = Data.gtQuaternion[ii].w; // w
+           
 
-        
+            angle_gt = toRPY(qGt);
 
-        angle_diff.x = computeDiff(angle_gt.x, angle_ft.x);
-        angle_diff.y = computeDiff(angle_gt.y, angle_ft.y);
-        angle_diff.z = computeDiff(angle_gt.z, angle_ft.z);
+            angle_diff.x = computeDiff(angle_gt.x, imuCore.rpyAnglesWorld[ii].x);
+            angle_diff.y = computeDiff(angle_gt.y, imuCore.rpyAnglesWorld[ii].y);
+            angle_diff.z = computeDiff(angle_gt.z, imuCore.rpyAnglesWorld[ii].z);
 
-        angle_diff = angle_diff*180/M_PI;
+            angle_diff = angle_diff*180/M_PI;
 
+            Point3d f_angles = toRPY360(imuCore.rpyAnglesWorld[ii]); // pasar a representacion 0-360
+            Point3d gt_angles = toRPY360(angle_gt);
+            //angulo_estimado.UpdateMessages(f_angles*180/M_PI );
+            //angulo_groundtruth.UpdateMessages(gt_angles*180/M_PI );
 
-        gravity_imu.x = -sin(angle_ft.y)*9.68;
-        gravity_imu.y = sin(angle_ft.x)*cos(angle_ft.y)*9.68;
-        gravity_imu.z = cos(angle_ft.x)*cos(angle_ft.y)*9.68;
-        
-        acc_diff.x = computeDiff(Data.imuAcceleration[ii].x, gravity_imu.x);
-        acc_diff.y = computeDiff(Data.imuAcceleration[ii].y, gravity_imu.y);
-        acc_diff.z = computeDiff(Data.imuAcceleration[ii].z,gravity_imu.z);
-         
+            //visualizer_gt.UpdateMessages(position, orientation);
+            //visualizer_est.UpdateMessages(position2, orientation2);
+            error_angular.UpdateMessages(angle_diff);
 
-        //vector3d.UpdateMessages(angle_diff);
-            
-        vector3d.UpdateMessages(acc_diff);
-            
+                
+            //vector3d.UpdateMessages(acc_diff);
+                
         }
 
-
-    
-        cout << " diffx = " << acc_diff.x
-        <<" diffy = "<<acc_diff.y
-        <<" diffz = "<< acc_diff.z
+        clock_t t2 = clock(); 
+        double elapsed_time= double(t2- t1) / CLOCKS_PER_SEC;
+        /*cout << " diffx = " << angle_diff.x
+        <<" diffy = "<<angle_diff.y
+        <<" diffz = "<< angle_diff.z
         << " Current time = "<< Data.currentTimeMs <<" ms "
+        */
+        cout << " Current time = "<< Data.currentTimeMs <<" ms "
         <<endl;
+        
+
 
 
         

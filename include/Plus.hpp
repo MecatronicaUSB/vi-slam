@@ -15,10 +15,12 @@ struct Quaterniond {
 	
 };
 
-Quaterniond toQuaternion(double pitch, double roll, double yaw);
+Quaterniond toQuaternion(double roll, double pitch,  double yaw);
 
 
 Point3d toRPY(const Quaterniond& q);
+
+Point3d toRPY360(Point3d angles);
 
 double computeDiff(double gt_angle, double gt_est);
 
