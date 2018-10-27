@@ -17,13 +17,17 @@ class DataReader{
         // Datos de imu actuales entre la imagen actual y la posterior
         vector<Point3d> imuAngularVelocity;
         vector<Point3d> imuAcceleration;
+
         // Imagen actual
         Mat image1;
         // Imagen siguiente
         Mat image2;
-        // Variables groundtruth
-        vector<Point3d> gtPosition;
+        // Datos del groundtruth
+        vector<Point3d> gtPosition, gtLinearVelocity;
         vector<Quaterniond> gtQuaternion;
+        vector<Point3d> gtRPY;
+        Point3d accBias;
+        Point3d angBias;
         double currentTimeMs;
         double initialTime;
         double lastTime;

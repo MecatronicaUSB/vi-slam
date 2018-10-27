@@ -27,6 +27,8 @@ void Imu::setImuBias(Point3d acc_bias, Point3d ang_bias)
     angBias = ang_bias;
 }
 
+
+
 void Imu::initializate(double gt_yaw)
 {
     initialYawGt = gt_yaw;
@@ -82,6 +84,56 @@ void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
         // transformar acelerarion al sistema fijo (world)
         accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
         accWorld.z = accWorld.z - 9.68; // restar la aceleracion de gravedad
+        accelerationWorld.push_back(accWorld);
+        quaternionWorld.push_back(orientation);
+        // Guardar la velocidad angular filtrada
+        Point3d angularw;
+        angularw.x  = imuFusedData.angular_velocity.x;
+        angularw.y  = imuFusedData.angular_velocity.y;
+        angularw.z  = imuFusedData.angular_velocity.z;
+        angularVelocityIMUFilter.push_back(angularw);
+    
+    }
+    elapsed_filter = elapsed_filter/n;
+
+}
+
+
+void Imu::computeAcceleration(vector <Point3d> gtRPY) // Implementar la estimación del bias y ruido
+{
+    accelerationWorld.clear();
+    rpyAnglesWorld.clear();
+    quaternionWorld.clear();
+    angularVelocityIMUFilter.clear();
+
+    Quaterniond orientation;
+    
+    Point3d gravity_imu;
+    elapsed_filter = 0.0;
+    for (int i = 0; i < n ; i++)
+    {
+        clock_t t1 = clock(); 
+        UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
+        UpdateSubscriber();
+        clock_t t2 = clock(); 
+        elapsed_filter= double(t2- t1) / CLOCKS_PER_SEC +elapsed_filter;
+        orientation.x = imuFusedData.orientation.x;
+        orientation.y = imuFusedData.orientation.y;
+        orientation.z = imuFusedData.orientation.z;
+        orientation.w = imuFusedData.orientation.w;
+        Point3d angles = toRPY(orientation);
+        angles.z = gtRPY[i].z;
+        rpyAnglesWorld.push_back(angles);
+        // Alineacion del angulo yaw gt inicial
+        orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
+        Point3d accWorld;
+        // restar bias local
+        accelerationMeasure[i].x = accelerationMeasure[i].x -accBias.x;
+        accelerationMeasure[i].y = accelerationMeasure[i].y -accBias.y;
+        accelerationMeasure[i].z = accelerationMeasure[i].z -accBias.z;
+        // transformar acelerarion al sistema fijo (world)
+        accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
+        accWorld.z = accWorld.z-9.68; // restar la aceleracion de gravedad
         accelerationWorld.push_back(accWorld);
         quaternionWorld.push_back(orientation);
         // Guardar la velocidad angular filtrada
@@ -165,10 +217,23 @@ void Imu::estimate()
     initialVelocity.z = velocity.z;
 }
 
+void Imu::estimate(vector <Point3d> gtRPY)
+{   
+    computeAcceleration(gtRPY);
+    computeVelocity();
+    computePosition();
+    computeAngularVelocity();
+    computeAngularPosition();
+    initialVelocity.x = velocity.x;
+    initialVelocity.y = velocity.y;
+    initialVelocity.z = velocity.z;
+}
+
 void Imu::setImuInitialPosition()
 {
 
 }
+
 
 void Imu::setImuInitialVelocity()
 {
@@ -294,9 +359,11 @@ Point3d Imu::transform2World(Point3d acc, Point3d angl)
     double roll = angl.x;
     double pitch = angl.y;
     double yaw = angl.z;
-    worldVector.x = cos(pitch)*cos(yaw)*acc.x+ (sin(roll)*sin(pitch)*cos(yaw)-cos(roll)*sin(yaw))*acc.y
-     +(cos(roll)*sin(pitch)*cos(yaw)-sin(roll)*sin(yaw))*acc.z;
-    worldVector.y = cos(pitch)*sin(yaw)*acc.x+ (sin(roll)*sin(pitch)*sin(yaw)+cos(roll)*cos(yaw))*acc.y
+    worldVector.x = cos(pitch)*cos(yaw)*acc.x + (sin(roll)*sin(pitch)*cos(yaw)-cos(roll)*sin(yaw))*acc.y
+     +(cos(roll)*sin(pitch)*cos(yaw)+sin(roll)*sin(yaw))*acc.z;
+    worldVector.y = cos(pitch)*sin(yaw)*acc.x + (sin(roll)*sin(pitch)*sin(yaw)+cos(roll)*cos(yaw))*acc.y
      +(cos(roll)*sin(pitch)*sin(yaw)-sin(roll)*cos(yaw))*acc.z;
-    worldVector.z = -sin(pitch)*acc.x +sin(yaw)*cos(pitch)*acc.y +cos(roll)*cos(pitch)*acc.z;
+    worldVector.z = -sin(pitch)*acc.x +sin(roll)*cos(pitch)*acc.y +cos(roll)*cos(pitch)*acc.z;
+
+    return worldVector;
 }

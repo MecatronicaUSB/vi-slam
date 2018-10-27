@@ -1,4 +1,5 @@
 #include "../include/DataReader.hpp"
+#include "../include/Plus.hpp"
 #include <cmath>
 DataReader::DataReader(){
 
@@ -141,13 +142,15 @@ void DataReader::UpdateDataReader(int index){
     Point3d acceleration;
 
     double timeGtReader = gtReader.getGroundTruthData(indexGtReader, 0);
-    Point3d position;
+    Point3d position, linear_velocity, rpy;
     Quaterniond quaternion;
     // Limpiar vectores
      imuAngularVelocity.clear();
      imuAcceleration.clear();
+     gtLinearVelocity.clear();
      gtPosition.clear();
      gtQuaternion.clear();
+     gtRPY.clear();
     // Obtener todos los datos entre las dos imagenes
     while(timeImuReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index+1)))
     {
@@ -166,9 +169,19 @@ void DataReader::UpdateDataReader(int index){
         timeImuReader = imuReader.getGroundTruthData(indexImuReader, 0);
     }
 
+    // Tomar los datos del primer bias acc y ang
+    angBias.x = gtReader.getGroundTruthData(indexGtReader, 11);
+    angBias.y = gtReader.getGroundTruthData(indexGtReader, 12);
+    angBias.z = gtReader.getGroundTruthData(indexGtReader, 13);
 
+    accBias.x = gtReader.getGroundTruthData(indexGtReader, 14);
+    accBias.y = gtReader.getGroundTruthData(indexGtReader, 15);
+    accBias.z = gtReader.getGroundTruthData(indexGtReader, 16);
+
+    // tomar el resto de los datos de gt
     while(timeGtReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index+1)))
     {
+       
         position.x = gtReader.getGroundTruthData(indexGtReader, 1);
         position.y = gtReader.getGroundTruthData(indexGtReader, 2);
         position.z = gtReader.getGroundTruthData(indexGtReader, 3);
@@ -176,9 +189,19 @@ void DataReader::UpdateDataReader(int index){
         quaternion.w = gtReader.getGroundTruthData(indexGtReader, 4);
         quaternion.x = gtReader.getGroundTruthData(indexGtReader, 5);
         quaternion.y = gtReader.getGroundTruthData(indexGtReader, 6);
-        quaternion.z = gtReader.getGroundTruthData(indexGtReader, 7);//w
+        quaternion.z = gtReader.getGroundTruthData(indexGtReader, 7);
+
+        rpy = toRPY(quaternion);
+
+        linear_velocity.x = gtReader.getGroundTruthData(indexGtReader, 8);
+        linear_velocity.y = gtReader.getGroundTruthData(indexGtReader, 9);
+        linear_velocity.z = gtReader.getGroundTruthData(indexGtReader, 10);
+
+        gtLinearVelocity.push_back(linear_velocity);
         gtPosition.push_back(position);
         gtQuaternion.push_back(quaternion);
+        gtRPY.push_back(rpy);
+
 
         indexGtReader++;
         timeGtReader = gtReader.getGroundTruthData(indexGtReader, 0);

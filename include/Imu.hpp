@@ -1,4 +1,3 @@
-#include <vector>
 #include "Plus.hpp"
 #include "opencv2/core.hpp"
 #include <sensor_msgs/Imu.h>
@@ -47,10 +46,12 @@ class ImuFilterNode{
         void setImuInitialPosition();
         void initializate(double gt_yaw);
         void estimate();
+        void estimate(vector <Point3d> gtRPY);
         void computeGravity();
         void computePosition();
         void computeVelocity();
         void computeAcceleration();
+        void computeAcceleration(vector <Point3d> gtRPY);
         void computeAngularVelocity();
         void computeAngularPosition();
         void printStatistics();
@@ -60,22 +61,23 @@ class ImuFilterNode{
         Point3d initialVelocity;
         double initialYawGt;
         double initialYawFilter;
+        double YawGt;
         Point3d position; // posicion en x, y, z
         Point3d velocity; // velocidad en x, y, z
-        Point3d accBias;
-        Point3d angBias;
+        Point3d accBias; // Bias aceleracion
+        Point3d angBias; // Bias angular
         vector <Point3d> angularVelocityIMUFilter; // velocidad angular
         vector <Quaterniond> quaternionWorld;
         vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
         vector <Point3d> accelerationWorld; // celeracion del robot respecto al mundo
-
+        double timeStep;
     private:
         double elapsed_filter;
         vector <Point3d> angularVelocityMeasure; // Imu measurements x, y, z
         vector <Point3d> accelerationMeasure;    // Imu measurements x, y, z
         int n; // numero de mediciones
        
-        double timeStep;
+        
 
 
 
