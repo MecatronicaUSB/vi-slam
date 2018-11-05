@@ -1,7 +1,7 @@
 #include <iostream>
 #include "DataReader.hpp"
 #include "Visualizer.hpp"
-#include "Matcher.hpp"
+#include "Camera.hpp"
 #include "Imu.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
@@ -59,8 +59,8 @@ int main( int argc, char** argv ){
     //VisualizerVector3 rqt_error("error", 10.0);
     VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
     VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    //VisualizerFrame visualizerFrame("current_frame", 90);
-    //VisualizerFrame visualizerFrame2("current_frame2", 90);
+    VisualizerFrame visualizerFrame("current_frame", 90);
+    VisualizerFrame visualizerFrame2("current_frame2", 90);
     VisualizerVector3 velocidad_groundtruth("velocidad_groundtruth", 1200);
     VisualizerVector3 velocidad_estimado("velocidad_estimado", 1200);
     //VisualizerVector3 error_angular ("error_angular", 1200);
@@ -125,54 +125,34 @@ int main( int argc, char** argv ){
     velocity.x = 0.0;
     velocity.y = 0.0;
     velocity.z = 0.0;
-    for (int j = 1;  j <Data.indexLastData; j++)
+    
+    Camera camera(USE_SIFT, USE_BRUTE_FORCE, Data.image1.cols, Data.image1.rows);
+    for (int j = 1;  j <Data.indexLastData; j=j+3)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j);
-       
-        //imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
         
-       /*
-        vector<KeyPoint> matched1, matched2;
-        vector<KeyPoint> aux1, aux2, grid;
-        
-        Matcher matcher(USE_SIFT, USE_BRUTE_FORCE);
-        frame1 = Data.image1;
-        frame2 = Data.image2;
-        */
-        /*
-        matcher.setFrames(frame1, frame2);
-        matcher.detectFeatures();
-        matcher.computeMatches();
-        matcher.computeBestMatches(12*12);
-        matcher.printStatistics();
-
-        matcher.getGoodMatches(matched1, matched2);
-       // cout<<"Size"<<Data.imuAcceleration.size()<<endl;
-
-        cv::KeyPoint::convert(matched1, points1_OK,point_indexs);
-        cv::KeyPoint::convert(matched2, points2_OK, point_indexs);
       
+        
+        
+        camera.Update(Data.image1);
+        camera.addKeyframe();
+        if (camera.frameList.size()> 1) // primera imagen agregada
+        {
+            
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
-        */
-        //drawKeypoints( frame1, matched1, finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        //drawKeypoints( frame2, matched2, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        visualizerFrame.UpdateMessages(finalImage);
+        visualizerFrame2.UpdateMessages(finalImage2);
         //imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
         //imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
        
-        
-
-       // visualizerFrame.UpdateMessages(finalImage);
-        //visualizerFrame2.UpdateMessages(finalImage2);
-        
-        /*
+         /*
         E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
         int p;
         p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
         int k = 0;
-        
-        
-
         if (j == 0){
             traslation = Mat::zeros(3, 1, CV_64F);
             R_p = Mat::eye(Size(3, 3), CV_64F);
@@ -180,18 +160,15 @@ int main( int argc, char** argv ){
         else{
             traslation = traslation +R_p*t;
             R_p = R*R_p;
+            */
         }
 
+       
         
-        
-        position2[0] = traslation.at<double>(0,0);   //x
-        position2[1] = traslation.at<double>(2,0);   //y
-        position2[2] = traslation.at<double>(1,0);
-        orientation2[0] = 1.0;
-        */
-        //cout << "position x" << imuCore.position.x<<endl;
-        //cout << "position y" << imuCore.position.y<<endl;
-        //cout << "position z" << imuCore.position.z<<endl;
+      
+       
+
+
         Point3d angle_diff;
         Point3d angle_gt, angle_ft, gravity_imu;
         double elapsed_f;
@@ -250,6 +227,7 @@ int main( int argc, char** argv ){
         velocidad_estimado.UpdateMessages(velocity/10);
         clock_t t2 = clock(); 
         double elapsed_time= double(t2- t1) / CLOCKS_PER_SEC;
+        /*
         cout << " diffx = " << imuCore.accelerationWorld[9].x
         <<" diffy = "<<imuCore.accelerationWorld[9].y
         <<" diffz = "<<imuCore.accelerationWorld[9].z
@@ -257,9 +235,9 @@ int main( int argc, char** argv ){
         << "accx = "  << Data.accBias.x
         << "timestep = "<< imuCore.timeStep
 
-    
         
-	<<endl;
+        
+	<<endl;*/
         
 
 

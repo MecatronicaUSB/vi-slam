@@ -6,59 +6,45 @@
 
 Matcher::Matcher()
 {
-    setDetector(0);
     setMatcher(0);
+
 }
 
-Matcher::Matcher(int _detector, int _matcher)
+Matcher::Matcher(int _matcher)
 {
-    setDetector(_detector);
     setMatcher(_matcher);
 }
 
-void Matcher::setFrames(Mat _frame1, Mat _frame2)
+void Matcher::clear()
 {
-    frame1 = _frame1; // Copiar apuntadores
-    frame2 = _frame2;
-    h_size  = frame1.rows;
-    w_size = frame1.cols;
+  keypoints_1.clear();
+  keypoints_2.clear();
+  descriptors_1.release();
+  descriptors_2.release();
+  aux_matches1.clear();
+  aux_matches2.clear();
+  matches.clear();
+  goodMatches.clear();
+  sortedMatches.clear();
 }
-void Matcher::setDetector(int _detector)
+void Matcher::setImageDimensions(int w, int h)
 {
-    switch (_detector)
-    {
-        case USE_KAZE:
-        {
-            detector = KAZE::create(); // Normaliza distancia
-            break;
-        }
-        case USE_AKAZE:
-        {
-            detector = AKAZE::create();
-            break;
-        }
-        case USE_SIFT:
-        {
-            detector = SIFT::create();
-            break;
-        }
-        case USE_SURF:
-        {
-            detector = SURF::create(400); // Normaliza distancia
-            break;
-        }
-        case USE_ORB:
-        {
-            detector = ORB::create(1500);
-            break;
-        }
-        default:
-        {
-            detector = KAZE::create();
-            break;
-        }
-    }
+    w_size = w;
+    h_size = h;
 }
+void Matcher::setKeypoints(vector<KeyPoint> _keypoints_1, vector<KeyPoint> _keypoints_2)
+{
+
+  keypoints_1 = _keypoints_1;
+  keypoints_2 = _keypoints_2;
+}
+
+void Matcher::setDescriptors(Mat _descriptors_1, Mat _descriptors_2)
+{
+    descriptors_1 = _descriptors_1;
+    descriptors_2 = _descriptors_2;
+}
+
 
 void Matcher::setMatcher(int _matcher)
 {
@@ -82,18 +68,7 @@ void Matcher::setMatcher(int _matcher)
     }
 }
 
-void Matcher::detectFeatures()
-{             
-    clock_t begin = clock(); // Tiempo de inicio del codigo
-    detector -> detectAndCompute( frame1, Mat(), keypoints_1, descriptors_1 );
-    clock_t detect1 = clock(); 
-    detector -> detectAndCompute( frame2, Mat(), keypoints_2, descriptors_2 );
-    clock_t detect2 = clock();  
-    elapsed_detect1 = double(detect1- begin) / CLOCKS_PER_SEC;
-    elapsed_detect2 = double(detect2- detect1) / CLOCKS_PER_SEC;                          
-    nPointsDetect1 = keypoints_1.size();
-    nPointsDetect2 = keypoints_2.size();
-}
+
 
 
 void Matcher::computeMatches()
@@ -117,19 +92,25 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
     
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
+    
     int removed1;
     int removed2;
+   
     removed1 = nnFilter(aux_matches1, nn_match_ratio);
     removed2 = nnFilter(aux_matches2, nn_match_ratio);
+    
 
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator2; // iterator for matches
     for (matchIterator1= aux_matches1.begin();matchIterator1!= aux_matches1.end(); ++matchIterator1) 
     {
+        
         if (matchIterator1->size() >= 2) // dos  o mas vecinos
         {
+            
             for (matchIterator2= aux_matches2.begin();matchIterator2!= aux_matches2.end(); ++matchIterator2) 
             {
+               
                 if (matchIterator1->size() >= 2) // dos  o mas vecinos
                 {
                     if ((*matchIterator1)[0].queryIdx == (*matchIterator2)[0].trainIdx && 
@@ -190,6 +171,7 @@ int Matcher::bestMatchesFilter(int n_features){
 
     //cout <<"Win w size = "<<fixed<<winWSize<<endl;
     //cout <<"Win h size = "<< fixed<<winHSize<<endl;
+    
 
      // iterator for matches
     std::vector<cv::DMatch> ::iterator matchIterator; // iterator for matches
@@ -358,14 +340,16 @@ void Matcher::sortMatches()
     }
     
 }
-void Matcher::computeBestMatches(int n_features)
+void Matcher::computeBestMatches(int n_cells)
 {
         clock_t begin = clock(); // Tiempo de inicio del codigo
         computeSymMatches();
         clock_t sym = clock(); 
         sortMatches();
         clock_t sort = clock(); 
-        int matches_found = bestMatchesFilter(n_features);
+        int matches_found = bestMatchesFilter(n_cells);
+
+
         clock_t best = clock(); 
         elapsed_symMatches = double(sym- begin) / CLOCKS_PER_SEC;
         elapsed_sortMatches= double(sort- sym) / CLOCKS_PER_SEC;
@@ -375,14 +359,8 @@ void Matcher::computeBestMatches(int n_features)
 void Matcher::printStatistics()
 {
     cout<<"\nESTADISTICAS"
-
-    <<"\nPuntos detectados I1: " << nPointsDetect1
-    <<"\tPuntos detectados I2: " << nPointsDetect2
     <<"\nNumero de matches simetricos: " << nSymMatches
     <<"\tNumero de matches finales: " << nBestMatches
-
-    <<"\nTiempo de deteccion  I1: " << fixed<< setprecision(3) << elapsed_detect1*1000<<" ms"
-    <<"\tTiempo de deteccion  I2: " << fixed<< setprecision(3) << elapsed_detect2*1000<<" ms"
     <<"\nTiempo de knn I1: " << fixed<< setprecision(3) << elapsed_knn1*1000<<" ms"
     <<"\tTiempo de knn I2: " << fixed<< setprecision(3) << elapsed_knn2*1000<<" ms"
     <<"\nTiempo de symMatches: " << fixed<< setprecision(3) << elapsed_symMatches*1000<<" ms"
