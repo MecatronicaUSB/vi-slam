@@ -58,8 +58,8 @@ tar xvf opencv-3.2.0.tar.gz
 
 **Download OpenCV contrib**
 ```bash
-wget https://codeload.github.com/opencv/opencv_contrib/zip/master -O opencv_contrib-master.zip
-unzip opencv_contrib-master.zip
+wget hhttps://github.com/opencv/opencv_contrib/archive/3.2.0.zip
+unzip 3.2.0.zip
 ```
 *Specified contrib package may have some bugs when compiled against OpenCV 3.2.0*
 
@@ -91,7 +91,7 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
     -D CUDA_FAST_MATH=0 \
     -D WITH_CUBLAS=1 \
     -D INSTALL_PYTHON_EXAMPLES=OFF \
-    -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-master/modules \
+    -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-3.2.0/modules \
     -DBUILD_PNG=ON \
     -DBUILD_TIFF=ON \
     -DBUILD_JPEG=OFF \
