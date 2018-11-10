@@ -32,6 +32,7 @@ void Camera::Update (Mat _grayImage){
     _grayImage.copyTo(currentFrame->grayImage); // Copiar imagen
     
 }
+
 int Camera::detectFeatures(){
             
     clock_t begin = clock(); // Tiempo de inicio del codigo

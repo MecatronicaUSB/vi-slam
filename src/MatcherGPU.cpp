@@ -5,50 +5,7 @@
 
 MatcherGPU::MatcherGPU(int _detector, int _matcher)
 {
-    setGPUDetector(_detector);
     setGPUMatcher(_matcher);
-}
-
-void MatcherGPU::setGPUFrames(Mat _frame1, Mat _frame2)
-{
-    if (useGPU){
-        frame1GPU.release(); // liberar de memoria
-        frame2GPU.release();
-        frame1GPU.upload(_frame1); // Copiar apuntadores
-        frame2GPU.upload(_frame2);
-        
-    }
-    else{
-        frame1 = _frame1; // Copiar apuntadores
-        frame2 = _frame2;    
-    }
-
-    h_size  = _frame1.rows;
-    w_size = _frame1.cols;
-}
-void MatcherGPU::setGPUDetector(int _detector)
-{
-    switch (_detector)
-    {
-        case USE_SURF:
-        {   
-            useGPU = true;
-            detectorType = _detector; 
-            break;
-        }
-        case USE_ORB:
-        {
-            useGPU= true;
-            detectorType = _detector;
-            break;
-        }
-        default:
-        {
-            useGPU = false;
-            setDetector(_detector); // utilizar detector basado en CPU
-            break;
-        }
-    }
 }
 
 void MatcherGPU::setGPUMatcher(int _matcher)
@@ -89,73 +46,14 @@ void MatcherGPU::setGPUMatcher(int _matcher)
     }
 }
 
-    
-
-
-void MatcherGPU::detectGPUFeatures()
-{    
-    // Liberarobjetos de la  memoria de GPU
-    descriptorsGPU[0].release();
-    descriptorsGPU[1].release();
-    keypointsGPU[0].release();
-    keypointsGPU[1].release();
-
-    if (useGPU)
-    {
-        if (detectorType == USE_SURF)
-        {
-        
-        // Loading previous keypoints found
-        // Detecting keypoints and computing descriptors
-       
-        cuda::SURF_CUDA surf;  
-
-        clock_t begin = clock(); // Tiempo de inicio del codigo
-        surf(frame1GPU, cuda::GpuMat(), keypointsGPU[0], descriptorsGPU[0]);
-        clock_t detect1 = clock(); 
-        surf(frame2GPU, cuda::GpuMat(), keypointsGPU[1], descriptorsGPU[1]);
-        clock_t detect2 = clock();  
-        elapsed_detect1 = double(detect1- begin) / CLOCKS_PER_SEC;
-        elapsed_detect2 = double(detect2- detect1) / CLOCKS_PER_SEC;  
-              
-        // Downloading results
-        surf.downloadKeypoints(keypointsGPU[0], keypoints_1);
-        surf.downloadKeypoints(keypointsGPU[1], keypoints_2);
-        surf.releaseMemory();
-
-       
-
-        }
-        else
-        {
-            Ptr<cuda::ORB> orb = cuda::ORB::create();
-            
-            
-            clock_t begin = clock(); // Tiempo de inicio del codigo
-            orb->detectAndCompute(frame1GPU, cuda::GpuMat(), keypoints_1, descriptorsGPU[0]);
-            clock_t detect1 = clock(); 
-            orb->detectAndCompute(frame2GPU, cuda::GpuMat(), keypoints_2, descriptorsGPU[1]);
-            clock_t detect2 = clock();  
-            elapsed_detect1 = double(detect1- begin) / CLOCKS_PER_SEC;
-            elapsed_detect2 = double(detect2- detect1) / CLOCKS_PER_SEC;  
-            orb.release();
-        }
-        
-        nPointsDetect1 = keypoints_1.size();
-        nPointsDetect2 = keypoints_2.size();
-       
-    }                                    //ROI
-   else{
-            detectFeatures();
-   }
-
-    
-}
-
-
 void MatcherGPU::computeGPUMatches()  // Calcula las parejas y realiza prueba de simetria
 {
+    descriptorsGPU[0].release();
+    descriptorsGPU[1].release();
     if (useGPU){
+        descriptorsGPU[0].upload(descriptors_1);
+        descriptorsGPU[1].upload(descriptors_2);
+        
         clock_t begin = clock(); // Tiempo de inicio del codigo
         matcherGPU->knnMatch(descriptorsGPU[0], descriptorsGPU[1], aux_matches1, 2);
         clock_t knn1 = clock(); 

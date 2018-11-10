@@ -1,9 +1,18 @@
+/**
+ * @file Camera.hpp
+ * @brief Description of Camera(CPU) Class
+ * @version 0.2
+ * @date 10/11/2018
+ * @author Luis Lujano
+ */
+
+#pragma once
 #include "Matcher.hpp"
 #include <opencv2/imgproc.hpp>
 using namespace cv;
 using namespace cv::xfeatures2d;
 
-// Tipos de detectores soportados
+/// Tipos de detectores soportados
 enum detectorType
 {
     USE_KAZE,
@@ -14,41 +23,39 @@ enum detectorType
 };
 
 
-
+/// Clase Frame: Contiene toda la informacion de la imagen actual
 class Frame
 {
     public:
         /**
          * @brief Constructor of Frame.
-         * 
          */
         Frame();
 
         /**
          * @brief Destructor of Frame
-         * 
          */
         ~Frame();
-        int idFrame;
-        Mat grayImage;
-        Mat gradientX;
-        Mat gradientY;
-        Mat gradient;
-        
-        vector<KeyPoint> keypoints;
-        vector<KeyPoint>  prevGoodMatches; // matches con la imagen anterior
-        vector<KeyPoint>  nextGoodMatches; // matches con la imagen siguiente
-        Mat descriptors;
-        vector<Mat> prevPatches; // Parches de intensidad alrededor de los features
-        vector<Mat> nextPatches; // Parches de intensidad alrededor de los features
-        
-        int idFrame_;
-        int nMatches;  
-        double imageTime; // tiempo en el que fue tomado la imagen
 
-        bool obtainedGradients;
-        bool obtainedGoodMatches;     
-        bool isKeyFrame;
+        // ---------- Attributes
+        Mat grayImage;  //!< imagen en escala de grises
+        Mat gradientX;  //!< gradiente en direccion x de la imagen
+        Mat gradientY;  //!< gradiente en direccion y de la imagen
+        Mat gradient;   //!< gradiente en direccion x y y de la imagen
+        
+        vector<KeyPoint> keypoints;        //!< keypoints de la imagen
+        vector<KeyPoint>  prevGoodMatches; //!< matches con la imagen anterior
+        vector<KeyPoint>  nextGoodMatches; //!< matches con la imagen siguiente
+        Mat descriptors;                   //!< keypoints de la imagen
+        vector<Mat> prevPatches; //!< Parches de intensidad alrededor de los features
+        vector<Mat> nextPatches; //!< Parches de intensidad alrededor de los features
+
+        int idFrame;      //!< identificador del frame
+        double imageTime; //!< tiempo en el que fue tomado la imagen
+
+        bool obtainedGradients;   //!< flag de obtencion del gradiente
+        bool obtainedGoodMatches; //!< flag de obtencion de matches    
+        bool isKeyFrame;          //!< flag de keyframe
 };
 
 class Camera
