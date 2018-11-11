@@ -12,6 +12,8 @@ using namespace cv;
 
 class CameraGPU : public Camera
 {
+    CameraGPU::CameraGPU(int _detector, int _matcher, int _w_size, int _h_size);
+    void initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size);
     void setGPUDetector(int _detector);
     void detectGPUFeatures();
     void setGPUMatcher (int _matcher);

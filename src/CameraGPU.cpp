@@ -1,5 +1,22 @@
 #include "../include/CameraGPU.hpp"
 
+
+CameraGPU::CameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
+{
+    initializateCameraGPU(_detector, _matcher, _w_size, _h_size); 
+  
+    n_cells = 144;
+    w_patch = h_patch = 3;
+}
+
+void Camera::initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
+{
+    w_size = _w_size;
+    h_size = _h_size;
+    setGPUDetector(_detector);
+    setGPUMatcher(_matcher);
+}
+
 void CameraGPU::setGPUDetector(int _detector)
 {
     switch (_detector)
