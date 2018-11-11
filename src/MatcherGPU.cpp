@@ -3,7 +3,12 @@
 #include <cmath>
 #include <ctime>
 
-MatcherGPU::MatcherGPU(int _detector, int _matcher)
+MatcherGPU::MatcherGPU()
+{
+    setGPUMatcher(0);
+}
+
+MatcherGPU::MatcherGPU(int _matcher)
 {
     setGPUMatcher(_matcher);
 }
@@ -16,9 +21,9 @@ void MatcherGPU::setGPUMatcher(int _matcher)
         case USE_BRUTE_FORCE:
         {   
             if(useGPU){
-                if (detectorType == USE_ORB) 
-                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
-                else
+               // if (detectorType == USE_ORB) 
+                 //   matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
+                //else
                     matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
             }
             else
@@ -31,9 +36,10 @@ void MatcherGPU::setGPUMatcher(int _matcher)
              {
                 std::cout<<"ERROR! FLANN no esta implementado para GPU"
                  <<"\n Se seleccionara Fuerza Bruta"<<endl;
-                if (detectorType == USE_ORB) 
-                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
-                else matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
+                //if (detectorType == USE_ORB) 
+                  //  matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
+               // else 
+                matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
              }
              else matcher = FlannBasedMatcher::create();
             break;
@@ -51,8 +57,10 @@ void MatcherGPU::computeGPUMatches()  // Calcula las parejas y realiza prueba de
     descriptorsGPU[0].release();
     descriptorsGPU[1].release();
     if (useGPU){
+        cout << "des1s"<<descriptors_1.size()<<endl;
         descriptorsGPU[0].upload(descriptors_1);
         descriptorsGPU[1].upload(descriptors_2);
+        cout << "des2s"<<descriptors_1.size()<<endl;
         
         clock_t begin = clock(); // Tiempo de inicio del codigo
         matcherGPU->knnMatch(descriptorsGPU[0], descriptorsGPU[1], aux_matches1, 2);

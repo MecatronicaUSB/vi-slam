@@ -4,12 +4,12 @@
 CameraGPU::CameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
 {
     initializateCameraGPU(_detector, _matcher, _w_size, _h_size); 
-  
+
     n_cells = 144;
     w_patch = h_patch = 3;
 }
 
-void Camera::initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
+void CameraGPU::initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
 {
     w_size = _w_size;
     h_size = _h_size;
@@ -73,7 +73,7 @@ int CameraGPU::detectAndComputeGPUFeatures()
             Ptr<cuda::ORB> orb = cuda::ORB::create();
 
             
-            orb->detect(frameGPU, cuda::GpuMat(), currentFrame->keypoints, descriptorsGPU); 
+            orb->detectAndCompute(frameGPU, cuda::GpuMat(), currentFrame->keypoints, descriptorsGPU); 
             descriptorsGPU.download(currentFrame->descriptors);
             orb.release();
         }
@@ -93,23 +93,30 @@ int CameraGPU::detectAndComputeGPUFeatures()
 void CameraGPU::setGPUMatcher (int _matcher)
 {
     matcherGPU.setGPUMatcher(_matcher);
+    cout << "wS"<<w_size<<endl;
     matcherGPU.setImageDimensions(w_size, h_size);
 }
 
 void CameraGPU::computeGPUGoodMatches()
 {
     matcherGPU.clear();
+    cout << "a"<<endl;
     matcherGPU.setKeypoints(frameList[frameList.size()-1]->keypoints, currentFrame->keypoints);
+    cout << "a"<<endl;
     matcherGPU.setDescriptors(frameList[frameList.size()-1]->descriptors, currentFrame->descriptors );
+    cout << "a"<<endl;
     matcherGPU.computeGPUMatches(); // Computa las primeras parejas
+    cout << "a"<<endl;
     matcherGPU.computeBestMatches(n_cells); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
+    cout << "a"<<endl;
     matcherGPU.getGoodMatches(frameList[frameList.size()-1]->nextGoodMatches, currentFrame->prevGoodMatches) ;// matched 1, 2
     //matcher.printStatistics();
     currentFrame->obtainedGoodMatches = true;
+    cout << "a"<<endl;
 
 }
 
-bool CameraGPU::addGPUKeyFrame()
+bool CameraGPU::addGPUKeyframe()
 {
     clock_t cbegin, cdetect, cdescriptors, cgood, cgradient, cpatches;  
     cbegin = clock(); // Tiempo de inicio del codigo

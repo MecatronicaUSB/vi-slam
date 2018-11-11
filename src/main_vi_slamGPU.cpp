@@ -1,7 +1,7 @@
 #include <iostream>
 #include "DataReader.hpp"
 #include "Visualizer.hpp"
-#include "MatcherGPU.hpp"
+#include "CameraGPU.hpp"
 #include "Imu.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
@@ -70,11 +70,12 @@ int main( int argc, char** argv ){
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
     //VisualizerVector3 rqt_error("error", 10.0);
-    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 200, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
-    VisualizerMarker visualizer_est("est_poses", "/my_frame", 200, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    VisualizerFrame visualizerFrame("current_frame", 200);
-    VisualizerFrame visualizerFrame2("current_frame2",200);
-    VisualizerVector3 vector3d ("vector3d", 200);
+    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+    VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    VisualizerFrame visualizerFrame("current_frame", 90);
+    VisualizerFrame visualizerFrame2("current_frame2", 90);
+    VisualizerVector3 velocidad_groundtruth("velocidad_groundtruth", 1200);
+    VisualizerVector3 velocidad_estimado("velocidad_estimado", 1200);
     Mat frame1;
     Mat frame2;
     Point3f error;
@@ -136,7 +137,7 @@ int main( int argc, char** argv ){
     velocity.y = 0.0;
     velocity.z = 0.0;
     
-    CameraGPU camera(USE_SIFT, USE_BRUTE_FORCE, Data.image1.cols, Data.image1.rows);
+    CameraGPU camera(USE_SURF, USE_BRUTE_FORCE, Data.image1.cols, Data.image1.rows);
     for (int j = 0;  j <Data.indexLastData; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;

@@ -91,6 +91,7 @@ include_directories(
 if(CUDA_FOUND)
   set(vi_slam_GPU_SOURCE_FILES
       ${PROJECT_SOURCE_DIR}/src/MatcherGPU.cpp 
+      ${PROJECT_SOURCE_DIR}/src/CameraGPU.cpp 
   )
   add_library(vi_slam_libs ${vi_slam_SOURCE_FILES} ${vi_slam_GPU_SOURCE_FILES}) # comentado hasta que se cree librerias
   add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slamGPU.cpp)

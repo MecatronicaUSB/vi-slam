@@ -10,6 +10,11 @@ Frame::Frame(){
     isKeyFrame = false;
 }
 
+Camera::Camera()
+{
+    
+}
+
 Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size)
 {
     initializate(_detector, _matcher, _w_size, _h_size); 

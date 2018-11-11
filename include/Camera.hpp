@@ -6,8 +6,8 @@
  * @author Luis Lujano
  */
 
-#pragma once
 #include "Matcher.hpp"
+#include <iostream>
 #include <opencv2/imgproc.hpp>
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -61,6 +61,7 @@ class Frame
 class Camera
 {
     public:
+        Camera();
         Camera(int _detector, int _matcher, int _w_size, int _h_size);
         void initializate(int _detector, int _matcher, int _w_size, int _h_size);
         void Update (Mat _grayImage); // Ingresa una nueva imagen al sistema

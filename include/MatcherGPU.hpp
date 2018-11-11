@@ -8,11 +8,13 @@
 #include <opencv2/cudafilters.hpp>
 #include "opencv2/cudaimgproc.hpp"
 #include "opencv2/cudaarithm.hpp"
-
+#include "opencv2/cudafeatures2d.hpp"
+#include "opencv2/xfeatures2d/cuda.hpp"
 
 class MatcherGPU : public Matcher
 {
     public:
+        MatcherGPU();
         MatcherGPU(int _matcher); // Anexar ROI pendiente
         void setGPUFrames(Mat _frame1, Mat _frame2);
         void computeGPUMatches();
