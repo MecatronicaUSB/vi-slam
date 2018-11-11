@@ -93,26 +93,19 @@ int CameraGPU::detectAndComputeGPUFeatures()
 void CameraGPU::setGPUMatcher (int _matcher)
 {
     matcherGPU.setGPUMatcher(_matcher);
-    cout << "wS"<<w_size<<endl;
     matcherGPU.setImageDimensions(w_size, h_size);
 }
 
 void CameraGPU::computeGPUGoodMatches()
 {
     matcherGPU.clear();
-    cout << "a"<<endl;
     matcherGPU.setKeypoints(frameList[frameList.size()-1]->keypoints, currentFrame->keypoints);
-    cout << "a"<<endl;
     matcherGPU.setDescriptors(frameList[frameList.size()-1]->descriptors, currentFrame->descriptors );
-    cout << "a"<<endl;
     matcherGPU.computeGPUMatches(); // Computa las primeras parejas
-    cout << "a"<<endl;
     matcherGPU.computeBestMatches(n_cells); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
-    cout << "a"<<endl;
     matcherGPU.getGoodMatches(frameList[frameList.size()-1]->nextGoodMatches, currentFrame->prevGoodMatches) ;// matched 1, 2
-    //matcher.printStatistics();
+    //matcherGPU.printStatistics();
     currentFrame->obtainedGoodMatches = true;
-    cout << "a"<<endl;
 
 }
 
@@ -135,6 +128,7 @@ bool CameraGPU::addGPUKeyframe()
         computeResiduals();
         cpatches = clock();
         saveFrame();
+        nBestMatches =  matcherGPU.goodMatches.size();
     }
     else if ( (nPointsDetect > 350) && (frameList.size() == 0)) // Primer frame
     {

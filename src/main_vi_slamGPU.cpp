@@ -137,7 +137,7 @@ int main( int argc, char** argv ){
     velocity.y = 0.0;
     velocity.z = 0.0;
     
-    CameraGPU camera(USE_SURF, USE_BRUTE_FORCE, Data.image1.cols, Data.image1.rows);
+    CameraGPU camera(USE_ORB, USE_BRUTE_FORCE, Data.image1.cols, Data.image1.rows);
     for (int j = 0;  j <Data.indexLastData; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;

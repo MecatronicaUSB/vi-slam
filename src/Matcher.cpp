@@ -99,7 +99,6 @@ void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de si
     removed1 = nnFilter(aux_matches1, nn_match_ratio);
     removed2 = nnFilter(aux_matches2, nn_match_ratio);
     
-    cout<<"aix"<<aux_matches1.size()<<endl;
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
     std::vector<std::vector<cv::DMatch> >::iterator matchIterator2; // iterator for matches
     for (matchIterator1= aux_matches1.begin();matchIterator1!= aux_matches1.end(); ++matchIterator1) 

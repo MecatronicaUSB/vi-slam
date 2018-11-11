@@ -22,9 +22,9 @@ void MatcherGPU::setGPUMatcher(int _matcher)
         {   
             if(useGPU){
                // if (detectorType == USE_ORB) 
-                 //   matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
+                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
                 //else
-                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
+                   // matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
             }
             else
                 matcher = BFMatcher::create();
@@ -57,10 +57,9 @@ void MatcherGPU::computeGPUMatches()  // Calcula las parejas y realiza prueba de
     descriptorsGPU[0].release();
     descriptorsGPU[1].release();
     if (useGPU){
-        cout << "des1s"<<descriptors_1.size()<<endl;
         descriptorsGPU[0].upload(descriptors_1);
         descriptorsGPU[1].upload(descriptors_2);
-        cout << "des2s"<<descriptors_1.size()<<endl;
+  
         
         clock_t begin = clock(); // Tiempo de inicio del codigo
         matcherGPU->knnMatch(descriptorsGPU[0], descriptorsGPU[1], aux_matches1, 2);

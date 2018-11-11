@@ -12,7 +12,7 @@ Frame::Frame(){
 
 Camera::Camera()
 {
-    
+
 }
 
 Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size)
@@ -161,6 +161,7 @@ bool Camera::addKeyframe()
         computeResiduals();
         cpatches = clock();
         saveFrame();
+        nBestMatches =  matcher.goodMatches.size();
     }
     else if ( (nPointsDetect > 350) && (frameList.size() == 0)) // Primer frame
     {
@@ -250,7 +251,7 @@ void Camera::printStatistics()
     <<" Tgrad: " << fixed<< setprecision(3) << elapsed_computeGradient*1000<<"ms"
     <<" Tpatch: " << fixed<< setprecision(3) << elapsed_computePatches*1000<<"ms"
     <<" Ndetect: "<< nPointsDetect
-    <<" Nmatch: " << matcher.nBestMatches
+    <<" Nmatch: " << nBestMatches
     <<" Nimg: " << frameList.size()
     <<std::endl;
     /*

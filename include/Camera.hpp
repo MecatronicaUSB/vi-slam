@@ -96,6 +96,7 @@ class Camera
 
         Matcher matcher; // Matcher del sistema
         int nPointsDetect;  // numero de puntos detectados en la imagen actual
+        int nBestMatches ; // numero de matches finales
         int n_cells;  // numero de celdas del grid
         Ptr<Feature2D> detector;   //!< Pointer to OpenCV feature extractor
 
