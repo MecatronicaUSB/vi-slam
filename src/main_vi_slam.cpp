@@ -126,7 +126,7 @@ int main( int argc, char** argv ){
     velocity.y = 0.0;
     velocity.z = 0.0;
     
-    Camera camera(USE_SIFT, USE_BRUTE_FORCE, Data.image1.cols, Data.image1.rows);
+    Camera camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
     for (int j = 1;  j <Data.indexLastData; j=j+3)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;

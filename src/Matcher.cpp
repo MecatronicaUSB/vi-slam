@@ -55,6 +55,11 @@ void Matcher::setMatcher(int _matcher)
             matcher = BFMatcher::create();
             break;
         }
+        case USE_BRUTE_FORCE_HAMMING:
+        {
+            matcher = BFMatcher::create(NORM_HAMMING);
+            break;
+        }
         case USE_FLANN:
         {   
             matcher = FlannBasedMatcher::create();

@@ -18,35 +18,20 @@ void MatcherGPU::setGPUMatcher(int _matcher)
 
     switch (_matcher)
     {
-        case USE_BRUTE_FORCE:
+        case USE_BRUTE_FORCE_GPU:
         {   
-            if(useGPU){
-               // if (detectorType == USE_ORB) 
-                    matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
-                //else
-                   // matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
-            }
-            else
-                matcher = BFMatcher::create();
-            break;
+            matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
+            useGPU = true;  
         }
-        case USE_FLANN:
+        case USE_BRUTE_FORCE_GPU_HAMMING:
         {   
-             if(useGPU)
-             {
-                std::cout<<"ERROR! FLANN no esta implementado para GPU"
-                 <<"\n Se seleccionara Fuerza Bruta"<<endl;
-                //if (detectorType == USE_ORB) 
-                  //  matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
-               // else 
-                matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
-             }
-             else matcher = FlannBasedMatcher::create();
-            break;
+            matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
+            useGPU = true;  
         }
         default:
         {
-            matcher = BFMatcher::create();
+            useGPU = false;
+            setMatcher(_matcher); // set cpu matcher
             break;
         }
     }

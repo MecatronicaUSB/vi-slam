@@ -15,7 +15,11 @@ using namespace std;
 enum matcherType
 {
     USE_BRUTE_FORCE,
-    USE_FLANN
+    USE_BRUTE_FORCE_HAMMING,
+    USE_FLANN,
+    USE_BRUTE_FORCE_GPU,
+    USE_BRUTE_FORCE_GPU_HAMMING
+
 };
 
 class Matcher
