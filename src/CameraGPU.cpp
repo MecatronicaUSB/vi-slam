@@ -7,6 +7,8 @@ CameraGPU::CameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
 
     n_cells = 144;
     w_patch = h_patch = 3;
+    nPointsDetect_sum = 0.0;
+    nBestMatches_sum = 0.0; 
 }
 
 void CameraGPU::initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
@@ -70,7 +72,7 @@ int CameraGPU::detectAndComputeGPUFeatures()
         }
         else
         {
-            Ptr<cuda::ORB> orb = cuda::ORB::create();
+            Ptr<cuda::ORB> orb = cuda::ORB::create(1000);
 
             
             orb->detectAndCompute(frameGPU, cuda::GpuMat(), currentFrame->keypoints, descriptorsGPU); 
@@ -141,12 +143,30 @@ bool CameraGPU::addGPUKeyframe()
         cout <<"First Image detected"<< "list = "<<frameList.size()<<endl;
     }
 
-    if (currentFrame->isKeyFrame){
+    if (currentFrame->isKeyFrame && frameList.size()>1){
         elapsed_detect = double(cdetect-cbegin) / CLOCKS_PER_SEC; 
         elapsed_descriptors = double(cdescriptors-cdetect) / CLOCKS_PER_SEC; 
         elapsed_computeGoodMatches = double(cgood-cdescriptors) / CLOCKS_PER_SEC; 
         elapsed_computeGradient = double(cgradient-cgood) / CLOCKS_PER_SEC; 
         elapsed_computePatches = double(cpatches-cgradient) / CLOCKS_PER_SEC; 
+
+        elapsed_detect_sum = elapsed_detect_sum+elapsed_detect; 
+        elapsed_descriptors_sum = elapsed_descriptors_sum+elapsed_descriptors; 
+        elapsed_computeGoodMatches_sum =elapsed_computeGoodMatches_sum+elapsed_computeGoodMatches;
+        elapsed_computeGradient_sum = elapsed_computeGradient_sum +elapsed_computeGradient ;
+        elapsed_computePatches_sum = elapsed_computePatches_sum+ elapsed_computePatches ; 
+        nPointsDetect_sum = nPointsDetect_sum+nPointsDetect;
+        nBestMatches_sum = nBestMatches_sum +nBestMatches; 
+
+        elapsed_detect_mean = (elapsed_detect_sum)/(frameList.size()-1) ; 
+        elapsed_descriptors_mean = (elapsed_descriptors_sum)/(frameList.size()-1) ; 
+        elapsed_computeGoodMatches_mean = (elapsed_computeGoodMatches_sum)/(frameList.size()-1) ; 
+        elapsed_computeGradient_mean = (elapsed_computeGradient_sum)/(frameList.size()-1) ; 
+        elapsed_computePatches_mean =(elapsed_computePatches_sum)/(frameList.size()-1) ; 
+
+        nPointsDetect_mean = nPointsDetect_sum/(frameList.size()-1);
+        nBestMatches_mean = nBestMatches_sum/(frameList.size()-1); 
+        
         printStatistics();
     }
   

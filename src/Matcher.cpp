@@ -53,20 +53,24 @@ void Matcher::setMatcher(int _matcher)
         case USE_BRUTE_FORCE:
         {
             matcher = BFMatcher::create();
+            cout << "Using Brute Force CPU Matcher"<<endl;
             break;
         }
         case USE_BRUTE_FORCE_HAMMING:
         {
             matcher = BFMatcher::create(NORM_HAMMING);
+            cout << "Using Brute Force -Hamming CPU Matcher"<<endl;
             break;
         }
         case USE_FLANN:
         {   
             matcher = FlannBasedMatcher::create();
+            cout << "Using FLANN CPU Matcher"<<endl;
             break;
         }
         default:
         {
+            cout << "Using FLANN CPU Matcher"<<endl;
             matcher = FlannBasedMatcher::create();
             break;
         }

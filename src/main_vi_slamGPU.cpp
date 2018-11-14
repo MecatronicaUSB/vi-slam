@@ -137,7 +137,7 @@ int main( int argc, char** argv ){
     velocity.y = 0.0;
     velocity.z = 0.0;
     
-    CameraGPU camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
+    CameraGPU camera(USE_SURF, USE_BRUTE_FORCE_GPU, Data.image1.cols, Data.image1.rows);
     for (int j = 0;  j <Data.indexLastData; j++)
     {  // Cambiar por constante
         Mat finalImage, finalImage2;
@@ -187,6 +187,7 @@ int main( int argc, char** argv ){
         clock_t t1 = clock(); 
         imuCore.setImuBias(Data.accBias, Data.angBias);
         imuCore.estimate(Data.gtRPY);
+        imuCore.printStatistics();
         //imuCore.printStatistics(); // imprime el tiempo de computo del filtro
         
         

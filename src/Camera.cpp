@@ -12,7 +12,13 @@ Frame::Frame(){
 
 Camera::Camera()
 {
-
+    elapsed_detect_sum = 0.0; 
+    elapsed_descriptors_sum = 0.0; 
+    elapsed_computeGoodMatches_sum = 0.0;
+    elapsed_computeGradient_sum = 0.0 ;
+    elapsed_computePatches_sum = 0.0; 
+    nPointsDetect_sum = 0.0;
+    nBestMatches_sum = 0.0; 
 }
 
 Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size)
@@ -21,6 +27,13 @@ Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size)
   
     n_cells = 144;
     w_patch = h_patch = 3;
+    elapsed_detect_sum = 0.0; 
+    elapsed_descriptors_sum = 0.0; 
+    elapsed_computeGoodMatches_sum = 0.0;
+    elapsed_computeGradient_sum = 0.0 ;
+    elapsed_computePatches_sum = 0.0; 
+    nPointsDetect_sum = 0.0;
+    nBestMatches_sum = 0.0; 
 }
 
 void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size)
@@ -69,12 +82,12 @@ void Camera::setDetector(int _detector)
         }
         case USE_SURF:
         {
-            detector = SURF::create(400); // Normaliza distancia
+            detector = SURF::create(); // Normaliza distancia
             break;
         }
         case USE_ORB:
         {
-            detector = ORB::create(1500);
+            detector = ORB::create(1000);
             break;
         }
         default:
@@ -175,12 +188,33 @@ bool Camera::addKeyframe()
         cout <<"First Image detected"<< "list = "<<frameList.size()<<endl;
     }
 
-    if (currentFrame->isKeyFrame){
+    if (currentFrame->isKeyFrame && frameList.size()>1){
         elapsed_detect = double(cdetect-cbegin) / CLOCKS_PER_SEC; 
         elapsed_descriptors = double(cdescriptors-cdetect) / CLOCKS_PER_SEC; 
         elapsed_computeGoodMatches = double(cgood-cdescriptors) / CLOCKS_PER_SEC; 
         elapsed_computeGradient = double(cgradient-cgood) / CLOCKS_PER_SEC; 
         elapsed_computePatches = double(cpatches-cgradient) / CLOCKS_PER_SEC; 
+
+        elapsed_detect_sum = elapsed_detect_sum+elapsed_detect; 
+        elapsed_descriptors_sum = elapsed_descriptors_sum+elapsed_descriptors; 
+        elapsed_computeGoodMatches_sum =elapsed_computeGoodMatches_sum+elapsed_computeGoodMatches;
+        elapsed_computeGradient_sum = elapsed_computeGradient_sum +elapsed_computeGradient ;
+        elapsed_computePatches_sum = elapsed_computePatches_sum+ elapsed_computePatches ; 
+        
+        nPointsDetect_sum = nPointsDetect_sum+nPointsDetect;
+        nBestMatches_sum = nBestMatches_sum +nBestMatches; 
+
+        elapsed_detect_mean = (elapsed_detect_sum)/(frameList.size()-1) ; 
+        elapsed_descriptors_mean = (elapsed_descriptors_sum)/(frameList.size()-1) ; 
+        elapsed_computeGoodMatches_mean = (elapsed_computeGoodMatches_sum)/(frameList.size()-1) ; 
+        elapsed_computeGradient_mean = (elapsed_computeGradient_sum)/(frameList.size()-1) ; 
+        elapsed_computePatches_mean =(elapsed_computePatches_sum)/(frameList.size()-1) ; 
+
+                
+        nPointsDetect_mean = nPointsDetect_sum/(frameList.size()-1);
+        nBestMatches_mean = nBestMatches_sum/(frameList.size()-1); 
+        
+
         printStatistics();
     }
   
@@ -236,8 +270,8 @@ void Camera::computeResiduals()
         Mat Residual =  frameList.back()-> nextPatches[i] -currentFrame-> prevPatches[i] ;
         Residuals.push_back(Residual);
     }
-    cout<< "R = " <<Residuals.back()<<endl;
-    cout<< "Rsize = " <<Residuals.size()<<endl;
+    //cout<< "R = " <<Residuals.back()<<endl;
+    //cout<< "Rsize = " <<Residuals.size()<<endl;
 }
 
 
@@ -245,7 +279,7 @@ void Camera::computeResiduals()
 void Camera::printStatistics()
 {
    
-    cout<<"\nTdetect: " << fixed<< setprecision(1) << elapsed_detect*1000<<"ms"
+    /*cout<<"\nTdetect: " << fixed<< setprecision(1) << elapsed_detect*1000<<"ms"
     <<" Tdesc: " << fixed<< setprecision(1) << elapsed_descriptors*1000<<"ms"
     <<" Tmatch: " << fixed<< setprecision(1) << elapsed_computeGoodMatches*1000<<"ms"
     <<" Tgrad: " << fixed<< setprecision(3) << elapsed_computeGradient*1000<<"ms"
@@ -253,6 +287,16 @@ void Camera::printStatistics()
     <<" Ndetect: "<< nPointsDetect
     <<" Nmatch: " << nBestMatches
     <<" Nimg: " << frameList.size()
+    <<std::endl;
+    */
+   cout<<"\nESTADISTICAS CAMARA"
+    <<"\nTdetectM: " << fixed<< setprecision(1) << elapsed_detect_mean*1000<<"ms"
+    <<" TdescM: " << fixed<< setprecision(1) << elapsed_descriptors_mean*1000<<"ms"
+    <<" TmatchM: " << fixed<< setprecision(1) << elapsed_computeGoodMatches_mean*1000<<"ms"
+    <<" TgradM: " << fixed<< setprecision(3) << elapsed_computeGradient_mean*1000<<"ms"
+    <<" TpatchM: " << fixed<< setprecision(3) << elapsed_computePatches_mean*1000<<"ms"
+    <<" NdetectM: "<< nPointsDetect_mean
+    <<" NmatchM: " << nBestMatches_mean
     <<std::endl;
     /*
     <<"\nTiempo de knn I1: " << fixed<< setprecision(3) << elapsed_knn1*1000<<" ms"

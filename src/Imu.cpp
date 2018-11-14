@@ -247,9 +247,7 @@ void Imu::setImuInitialVelocity()
 void Imu::printStatistics()
 {
      cout<<"\nESTADISTICAS IMU"
-     <<"\nTiempo de filtrado: " << fixed<< setprecision(3) << elapsed_filter*1000<< " ms" <<endl;
-
-
+     <<"\nTiempo de filtrado : " << fixed<< setprecision(3) << elapsed_filter*1000<< " ms" <<endl;
 }
 
 // Imu filter node

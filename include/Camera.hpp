@@ -96,7 +96,7 @@ class Camera
 
         Matcher matcher; // Matcher del sistema
         int nPointsDetect;  // numero de puntos detectados en la imagen actual
-        int nBestMatches ; // numero de matches finales
+        int nBestMatches; // numero de matches finales
         int n_cells;  // numero de celdas del grid
         Ptr<Feature2D> detector;   //!< Pointer to OpenCV feature extractor
 
@@ -111,5 +111,23 @@ class Camera
         double elapsed_computeGoodMatches;
         double elapsed_computeGradient;
         double elapsed_computePatches;
+
+        // Promedios
+        double elapsed_detect_mean;
+        double elapsed_descriptors_mean;
+        double elapsed_computeGoodMatches_mean;
+        double elapsed_computeGradient_mean;
+        double elapsed_computePatches_mean;
+        double nPointsDetect_mean;
+        double nBestMatches_mean;
+
+          // Suma total de tiempos
+        double elapsed_detect_sum;
+        double elapsed_descriptors_sum;
+        double elapsed_computeGoodMatches_sum;
+        double elapsed_computeGradient_sum;
+        double elapsed_computePatches_sum;
+        double nPointsDetect_sum;
+        double nBestMatches_sum;
     
 };
