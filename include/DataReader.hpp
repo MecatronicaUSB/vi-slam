@@ -11,7 +11,7 @@ class DataReader{
         DataReader();
         DataReader(string image_path, string imu_path, string gt_path, char separator);
         void setProperties(string image_path, string imu_path, string gt_path, char separator);
-        void UpdateDataReader(int index); // Funcion encarga de actualizar todos los datos actuales del sistema y sincronizarlos        
+        void UpdateDataReader(int index, int index2); // Funcion encarga de actualizar todos los datos actuales del sistema y sincronizarlos        
         void setGtOffset(int gt_offset);
         void UpdateImu(int index, int n_measures); // Adquiere solo la data de la imu
         // Datos de imu actuales entre la imagen actual y la posterior
@@ -26,7 +26,7 @@ class DataReader{
         vector<Point3d> gtPosition, gtLinearVelocity;
         vector<Quaterniond> gtQuaternion;
         vector<Point3d> gtRPY;
-        Point3d accBias;
+        vector<Point3d> accBias;
         Point3d angBias;
         double currentTimeMs;
         double initialTime;

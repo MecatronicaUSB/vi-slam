@@ -68,6 +68,7 @@ class Camera
 
         void setDetector(int _detector); //
         int detectFeatures(); // Retorna el numero de features detectados
+        int detectAndComputeFeatures(); // Retorna el numero de features detectados
 
         void setMatcher (int _matcher);
         void computeDescriptors();

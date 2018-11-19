@@ -4,6 +4,7 @@
 DataReader::DataReader(){
 
 }
+
 DataReader::DataReader(string image_path, string imu_path, string gt_path, char separator){
     setProperties(image_path, imu_path, gt_path, separator);
 }
@@ -99,9 +100,9 @@ void DataReader::setProperties(string image_path, string imu_path, string gt_pat
 
 }
 
-void DataReader::UpdateDataReader(int index){
+void DataReader::UpdateDataReader(int index, int index2){
     image1 = imageReader.getImage(imageIndex0+index);
-    image2 = imageReader.getImage(imageIndex0+index+1);
+    image2 = imageReader.getImage(imageIndex0+index2);
     // Localizacion de los datos de IMU y GroundTruth correspondientes a la imagen actual
     int scalerImuCamara = static_cast<int> (floor((imageReader.TimeStep/imuReader.TimeStep)*index));
     int scalerGtCamara = static_cast<int> (floor((imageReader.TimeStep/gtReader.TimeStep)*index));
@@ -151,8 +152,9 @@ void DataReader::UpdateDataReader(int index){
      gtPosition.clear();
      gtQuaternion.clear();
      gtRPY.clear();
+     accBias.clear();
     // Obtener todos los datos entre las dos imagenes
-    while(timeImuReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index+1)))
+    while(timeImuReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index2)))
     {
         angularVelocity.x =  imuReader.getGroundTruthData(indexImuReader, 1);
         angularVelocity.y =  imuReader.getGroundTruthData(indexImuReader, 2);
@@ -174,12 +176,9 @@ void DataReader::UpdateDataReader(int index){
     angBias.y = gtReader.getGroundTruthData(indexGtReader, 12);
     angBias.z = gtReader.getGroundTruthData(indexGtReader, 13);
 
-    accBias.x = gtReader.getGroundTruthData(indexGtReader, 14);
-    accBias.y = gtReader.getGroundTruthData(indexGtReader, 15);
-    accBias.z = gtReader.getGroundTruthData(indexGtReader, 16);
-
+    Point3d biasAcc;
     // tomar el resto de los datos de gt
-    while(timeGtReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index+1)))
+    while(timeGtReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index2)))
     {
        
         position.x = gtReader.getGroundTruthData(indexGtReader, 1);
@@ -197,10 +196,19 @@ void DataReader::UpdateDataReader(int index){
         linear_velocity.y = gtReader.getGroundTruthData(indexGtReader, 9);
         linear_velocity.z = gtReader.getGroundTruthData(indexGtReader, 10);
 
+
+
+        biasAcc.x = gtReader.getGroundTruthData(indexGtReader, 14);
+        biasAcc.y = gtReader.getGroundTruthData(indexGtReader, 15);
+        biasAcc.z = gtReader.getGroundTruthData(indexGtReader, 16);
+
         gtLinearVelocity.push_back(linear_velocity);
         gtPosition.push_back(position);
         gtQuaternion.push_back(quaternion);
-        gtRPY.push_back(rpy);
+        gtRPY.push_back(rpy);   
+        accBias.push_back(biasAcc);
+
+
 
 
         indexGtReader++;
@@ -210,7 +218,7 @@ void DataReader::UpdateDataReader(int index){
     //cout <<"ImuIndex2 "<<indexImuReader<<endl;
     //cout <<"GtIndex2 "<<indexGtReader<<endl;
 
-    currentTimeMs = (imageReader.getImageTime(imageIndex0 +index+1)-initialTime)/1000000.0;
+    currentTimeMs = (imageReader.getImageTime(imageIndex0 +index2)-initialTime)/1000000.0;
 
 
 }

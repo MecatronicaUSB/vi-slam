@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "DataReader.hpp"
 #include "Visualizer.hpp"
 #include "Camera.hpp"
@@ -57,13 +58,17 @@ int main( int argc, char** argv ){
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
     //VisualizerVector3 rqt_error("error", 10.0);
-    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
-    VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    VisualizerFrame visualizerFrame("current_frame", 90);
-    VisualizerFrame visualizerFrame2("current_frame2", 90);
+   //VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+   // VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    //VisualizerFrame visualizerFrame("current_frame", 90);
+    //VisualizerFrame visualizerFrame2("current_frame2", 90);
     VisualizerVector3 velocidad_groundtruth("velocidad_groundtruth", 1200);
     VisualizerVector3 velocidad_estimado("velocidad_estimado", 1200);
-    //VisualizerVector3 error_angular ("error_angular", 1200);
+    VisualizerVector3 error_angular ("error_angular", 1200);
+    //VisualizerVector3 error_velocidad ("error_velocidad", 1200);
+   // VisualizerVector3 error_posicion ("error_posicion", 1200);
+    //VisualizerVector3 posicion_estimada ("posicion_estimada", 1200);
+     //VisualizerVector3 posicion_groundtruth ("posicion_gt", 1200);
     //VisualizerVector3 angulo_estimado ("angulo_estimado", 1200);
     //VisualizerVector3 angulo_groundtruth ("angulo_groundtruth",1200);
     Mat frame1;
@@ -75,9 +80,9 @@ int main( int argc, char** argv ){
     double position2[3];
     double orientation2[4];
     orientation[3] = 1.0;
+    int min_points;
 
     Imu imuCore(Data.timeStepImu/1000000000.0);
-    imuCore.setImuInitialVelocity();
 
     //-- Paso 4: Calcular la matriz Esencial
     // Parametros intrisecos de la camara
@@ -107,7 +112,7 @@ int main( int argc, char** argv ){
     vector<KeyPoint> vectorMatches;
     Quaterniond qGt_initial;
 
-    Data.UpdateDataReader(0);
+    Data.UpdateDataReader(0, 1);
     int n = Data.gtPosition.size()-1;
     position2[0] = Data.gtPosition[n].x;   //x
     position2[1] = Data.gtPosition[n].y;   //x
@@ -125,26 +130,58 @@ int main( int argc, char** argv ){
     velocity.x = 0.0;
     velocity.y = 0.0;
     velocity.z = 0.0;
+    min_points = 250;
+
+
+    std::ofstream accx ("/home/lujano/Documents/testx.out");
+    std::ofstream accy ("/home/lujano/Documents/testy.out");
+    std::ofstream accz ("/home/lujano/Documents/testz.out");
+
+
+    std::ofstream accxIMU ("/home/lujano/Documents/accxIMU.out");
+    std::ofstream accyIMU ("/home/lujano/Documents/accyIMU.out");
+    std::ofstream acczIMU ("/home/lujano/Documents/acczIMU.out");
+
     
-    Camera camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
-    for (int j = 1;  j <Data.indexLastData; j=j+3)
-    {  // Cambiar por constante
+
+    std::ofstream velx ("/home/lujano/Documents/velx.out");
+    std::ofstream vely ("/home/lujano/Documents/vely.out");
+    std::ofstream velz ("/home/lujano/Documents/velz.out");
+
+
+    std::ofstream biasx ("/home/lujano/Documents/biasx.out");
+    std::ofstream biasy ("/home/lujano/Documents/biasy.out");
+    std::ofstream biasz ("/home/lujano/Documents/biasz.out");
+   
+    //Camera camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
+    int j = 1;
+     while(j <Data.indexLastData)
+    {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j);
-        
+        Data.UpdateDataReader(j, j+1);
+        j = j+1;
       
         
-        
-        camera.Update(Data.image1);
-        camera.addKeyframe();
-        if (camera.frameList.size()> 1) // primera imagen agregada
+        Data.image1.copyTo(finalImage);
+	    Data.image2.copyTo(finalImage2);
+            //camera.Update(Data.image2);
+        //camera.addKeyframe();
+
+        /*if (camera.frameList.size()> 1) // primera imagen agregada
         {
-            
+            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_points)
+            {
+                cout << "Puntos minimos AAAAA = "<< min_points<<endl;
+                min_points = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
+                camera.printStatistics();
+                 cout<< " Current time = "<< Data.currentTimeMs <<" ms "<<endl;
+            }
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        visualizerFrame.UpdateMessages(finalImage);
-        visualizerFrame2.UpdateMessages(finalImage2);
+*/
+       // visualizerFrame.UpdateMessages(finalImage);
+        //visualizerFrame2.UpdateMessages(finalImage2);
         //imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
         //imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
        
@@ -161,7 +198,7 @@ int main( int argc, char** argv ){
             traslation = traslation +R_p*t;
             R_p = R*R_p;
             */
-        }
+        //}
 
        
         
@@ -176,21 +213,37 @@ int main( int argc, char** argv ){
         
         imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
         clock_t t1 = clock(); 
-        imuCore.setImuBias(Data.accBias, Data.angBias);
+        //imuCore.setImuBias(Data.accBias, Data.angBias);
+        imuCore.setImuInitialVelocity(Data.gtLinearVelocity[0]);
         imuCore.estimate(Data.gtRPY);
+
+        orientation2[0] = imuCore.quaternionWorld[imuCore.quaternionWorld.size()-1].x;
+        orientation2[1] = imuCore.quaternionWorld[imuCore.quaternionWorld.size()-1].y;
+        orientation2[2] = imuCore.quaternionWorld[imuCore.quaternionWorld.size()-1].z;
+        orientation2[3] = imuCore.quaternionWorld[imuCore.quaternionWorld.size()-1].w;
+
+        orientation[0] = Data.gtQuaternion[Data.gtQuaternion.size()-1].x;   //x
+        orientation[1] = Data.gtQuaternion[Data.gtQuaternion.size()-1].y; // y
+        orientation[2] = Data.gtQuaternion[Data.gtQuaternion.size()-1].z; // z
+        orientation[3] = Data.gtQuaternion[Data.gtQuaternion.size()-1].w; // w
+
+        position[0] = Data.gtPosition[Data.gtPosition.size()-1].x;   //x
+        position[1] = Data.gtPosition[Data.gtPosition.size()-1].y;   //x
+        position[2] = Data.gtPosition[Data.gtPosition.size()-1].z;   //x
+
         //imuCore.printStatistics(); // imprime el tiempo de computo del filtro
         
         
         
-        for ( int ii = 0 ; ii< 10;ii++)
+        /*for ( int ii = 0 ; ii< 10;ii++)
         {
             orientation2[0] = imuCore.quaternionWorld[ii].x;
             orientation2[1] = imuCore.quaternionWorld[ii].y;
             orientation2[2] = imuCore.quaternionWorld[ii].z;
             orientation2[3] = imuCore.quaternionWorld[ii].w;
-            position2[0] = Data.gtPosition[ii].x;   //x
-            position2[1] = Data.gtPosition[ii].y;   //x
-            position2[2] = Data.gtPosition[ii].z;   //x
+            position2[0] = imuCore.position.x;   //x
+            position2[1] = imuCore.position.y;   //x
+            position2[2] = imuCore.position.z;   //x
          
             position[0] = Data.gtPosition[ii].x;   //x
             position[1] = Data.gtPosition[ii].y;   //x
@@ -214,7 +267,7 @@ int main( int argc, char** argv ){
             //angulo_estimado.UpdateMessages(f_angles*180/M_PI );
             //angulo_groundtruth.UpdateMessages(gt_angles*180/M_PI );
             //error_angular.UpdateMessages(angle_diff);
-            visualizer_gt.UpdateMessages(position, orientation);
+            visualizer_gt.UpdateMessages(position2, orientation);
             visualizer_est.UpdateMessages(position2, orientation2);
             
             velocity = velocity+imuCore.velocity;
@@ -223,10 +276,81 @@ int main( int argc, char** argv ){
             //vector3d.UpdateMessages(acc_diff);
                 
         }
-        velocidad_groundtruth.UpdateMessages(Data.gtLinearVelocity[9]);
-        velocidad_estimado.UpdateMessages(velocity/10);
+        */
+        //cout << "tamData"<< Data.gtRPY.size()<<endl;
+        Point3d error_ang_est, error_ang_gt, error_ang;
+        Point3d error_vel_est, error_vel_gt, error_vel;
+        Point3d error_pos_est, error_pos_gt, error_pos;
+        error_ang_est.x = imuCore.rpyAnglesWorld[imuCore.quaternionWorld.size()-1].x-imuCore.rpyAnglesWorld[0].x;
+        error_ang_est.y = imuCore.rpyAnglesWorld[imuCore.quaternionWorld.size()-1].y-imuCore.rpyAnglesWorld[0].y;
+        error_ang_est.z = imuCore.rpyAnglesWorld[imuCore.quaternionWorld.size()-1].z-imuCore.rpyAnglesWorld[0].z;
+        
+        error_ang_gt.x = Data.gtRPY[Data.gtRPY.size()-1].x-Data.gtRPY[0].x;
+        error_ang_gt.y = Data.gtRPY[Data.gtRPY.size()-1].y-Data.gtRPY[0].y;
+        error_ang_gt.z = Data.gtRPY[Data.gtRPY.size()-1].z-Data.gtRPY[0].z;
+
+        error_ang = error_ang_est-error_ang_gt;
+
+        //Velocidad
+        velocity = velocity+imuCore.velocity;
+        velocidad_groundtruth.UpdateMessages(Data.gtLinearVelocity[Data.gtLinearVelocity.size() -1]);
+        velocidad_estimado.UpdateMessages(velocity);
+        error_vel_gt = Data.gtLinearVelocity[Data.gtLinearVelocity.size() -1]-Data.gtLinearVelocity[0];
+        error_vel_est = imuCore.velocity;
+        error_vel = error_vel_est- error_vel_gt;
+        int n = Data.gtPosition.size()-1;
+        error_pos_est = imuCore.position;
+        error_pos_gt =  Data.gtPosition[Data.gtPosition.size()-1] - Data.gtPosition[0] ; 
+        error_pos = error_pos_est-error_pos_gt;
+        for (int jj = 0; jj < imuCore.accelerationWorld.size(); jj++)
+        {
+           accx << imuCore.accelerationWorld[jj].x<<endl;
+           accy << imuCore.accelerationWorld[jj].y<<endl;
+           accz << imuCore.accelerationWorld[jj].z<<endl;
+           accxIMU << Data.imuAcceleration[jj].x<<endl;
+           accyIMU << Data.imuAcceleration[jj].y<<endl;
+           acczIMU << Data.imuAcceleration[jj].z<<endl;
+           biasx << Data.accBias[jj].x<<endl;
+           biasy << Data.accBias[jj].y<<endl;
+           biasz << Data.accBias[jj].z<<endl;
+           velx << Data.gtLinearVelocity[jj].x << endl;
+           vely << Data.gtLinearVelocity[jj].y << endl;
+           velz << Data.gtLinearVelocity[jj].z << endl;
+        }
+        
+       
+
+
+	/*
+	if(error_vel_gt.x>0.01)
+		error_vel.x = error_vel.x/error_vel_gt.x*100;
+	else
+		error_vel.x = 0.0;
+	if(error_vel_gt.x>0.01)
+		error_vel.y = error_vel.y/error_vel_gt.y*100;
+	else
+		error_vel.y = 0.0;
+	if(error_vel_gt.x>0.01)
+		error_vel.z = error_vel.z/error_vel_gt.z*100;
+	else
+		error_vel.z = 0.0;
+*/
+        error_angular.UpdateMessages(error_ang*180/M_PI);
+        //error_velocidad.UpdateMessages(error_vel);
+        //error_posicion.UpdateMessages(error_vel);
+        Point3d vacio;
+        //posicion_estimada.UpdateMessages(error_pos_est);
+        //posicion_groundtruth.UpdateMessages(error_pos_gt);
+
+
+
+        
+        //visualizer_gt.UpdateMessages(position, orientation);
+        //visualizer_est.UpdateMessages(position, orientation2);
         clock_t t2 = clock(); 
         double elapsed_time= double(t2- t1) / CLOCKS_PER_SEC;
+
+       
         /*
         cout << " diffx = " << imuCore.accelerationWorld[9].x
         <<" diffy = "<<imuCore.accelerationWorld[9].y
@@ -257,7 +381,17 @@ int main( int argc, char** argv ){
     
 
 
-  
+     accx.close();
+     accy.close();
+     accz.close();
+
+     velx.close();
+     vely.close();
+     velz.close();
+     biasx.close();
+     biasy.close();
+     biasz.close();
+
 
     return 0;
 

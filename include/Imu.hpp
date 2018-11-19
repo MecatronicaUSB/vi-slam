@@ -42,7 +42,7 @@ class ImuFilterNode{
         Imu(double timestep);//revisar el paso por size
         void setImuData(vector <Point3d> &w_measure,vector <Point3d>  &a_measure);
         void setImuBias(Point3d acc_Bias, Point3d ang_Bias);
-        void setImuInitialVelocity();
+        void setImuInitialVelocity(Point3d initial_velocity);
         void setImuInitialPosition();
         void initializate(double gt_yaw);
         void estimate();

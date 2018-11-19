@@ -61,6 +61,16 @@ int Camera::detectFeatures(){
 
 }
 
+int Camera::detectAndComputeFeatures(){
+            
+    clock_t begin = clock(); // Tiempo de inicio del codigo
+    detector -> detectAndCompute( currentFrame->grayImage,  Mat(), currentFrame->keypoints, currentFrame->descriptors);
+    clock_t detect1 = clock(); 
+    elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;                     
+    return currentFrame-> keypoints.size();
+
+}
+
 void Camera::setDetector(int _detector)
 {
     switch (_detector)
@@ -87,7 +97,7 @@ void Camera::setDetector(int _detector)
         }
         case USE_ORB:
         {
-            detector = ORB::create(1000);
+            detector = ORB::create(250);
             break;
         }
         default:
@@ -158,13 +168,13 @@ bool Camera::addKeyframe()
                
     clock_t cbegin, cdetect, cdescriptors, cgood, cgradient, cpatches;  
     cbegin = clock(); // Tiempo de inicio del codigo
-    nPointsDetect =  detectFeatures();
+    nPointsDetect =  detectAndComputeFeatures();
     cdetect = clock(); 
 
     
-    if ( (nPointsDetect > 350) && (frameList.size()!= 0))
+    if ( (nPointsDetect > 1) && (frameList.size()!= 0))
     { // is a keyframe (maybe)
-        computeDescriptors();
+        //computeDescriptors();
         cdescriptors = clock(); 
         computeGoodMatches();
         cgood = clock();
@@ -176,9 +186,9 @@ bool Camera::addKeyframe()
         saveFrame();
         nBestMatches =  matcher.goodMatches.size();
     }
-    else if ( (nPointsDetect > 350) && (frameList.size() == 0)) // Primer frame
+    else if ( (nPointsDetect > 1) && (frameList.size() == 0)) // Primer frame
     {
-        computeDescriptors();
+        //computeDescriptors();
         cdescriptors = clock(); 
         cgood = clock();
         computeGradient();
@@ -215,7 +225,7 @@ bool Camera::addKeyframe()
         nBestMatches_mean = nBestMatches_sum/(frameList.size()-1); 
         
 
-        printStatistics();
+        //printStatistics();
     }
   
 }

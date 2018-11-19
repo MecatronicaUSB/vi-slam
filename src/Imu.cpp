@@ -122,15 +122,17 @@ void Imu::computeAcceleration(vector <Point3d> gtRPY) // Implementar la estimaci
         orientation.z = imuFusedData.orientation.z;
         orientation.w = imuFusedData.orientation.w;
         Point3d angles = toRPY(orientation);
+        angles.x = gtRPY[i].x;
+        angles.y = gtRPY[i].y;
         angles.z = gtRPY[i].z;
         rpyAnglesWorld.push_back(angles);
         // Alineacion del angulo yaw gt inicial
         orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
         Point3d accWorld;
         // restar bias local
-        accelerationMeasure[i].x = accelerationMeasure[i].x -accBias.x;
-        accelerationMeasure[i].y = accelerationMeasure[i].y -accBias.y;
-        accelerationMeasure[i].z = accelerationMeasure[i].z -accBias.z;
+        accelerationMeasure[i].x = accelerationMeasure[i].x ;//-accBias.x;
+        accelerationMeasure[i].y = accelerationMeasure[i].y ;//-accBias.y;
+        accelerationMeasure[i].z = accelerationMeasure[i].z ;//-accBias.z;
         // transformar acelerarion al sistema fijo (world)
         accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
         accWorld.z = accWorld.z-9.68; // restar la aceleracion de gravedad
@@ -168,13 +170,13 @@ void Imu::computePosition()
     Point3d translationBetweenFrames;
     for(int i= 0; i<n;i++)
     {
-        translationBetweenFrames.x = 2*(n-i)*(accelerationWorld[i].x)*timeStep*timeStep;
-        translationBetweenFrames.y = 2*(n-i)*(accelerationWorld[i].y)*timeStep*timeStep;
-        translationBetweenFrames.z = 2*(n-i)*(accelerationWorld[i].z)*timeStep*timeStep;
+        translationBetweenFrames.x = 0.5*(accelerationWorld[i].x)*timeStep*timeStep;
+        translationBetweenFrames.y = 0.5*(accelerationWorld[i].y)*timeStep*timeStep;
+        translationBetweenFrames.z = 0.5*(accelerationWorld[i].z)*timeStep*timeStep;
     }
-    position.x = initialVelocity.x*n*timeStep+0.5*translationBetweenFrames.x;//n mediciones despues del frame1
-    position.y = initialVelocity.y*n*timeStep+0.5*translationBetweenFrames.y;// mas la medicion inicial asumida 0
-    position.z = initialVelocity.z*n*timeStep+0.5*translationBetweenFrames.z;// revisar n
+    position.x = initialVelocity.x*n*timeStep+translationBetweenFrames.x;//n mediciones despues del frame1
+    position.y = initialVelocity.y*n*timeStep+translationBetweenFrames.y;// mas la medicion inicial asumida 0
+    position.z = initialVelocity.z*n*timeStep+translationBetweenFrames.z;// revisar n
 
 }
 
@@ -212,9 +214,6 @@ void Imu::estimate()
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
-    initialVelocity.x = velocity.x;
-    initialVelocity.y = velocity.y;
-    initialVelocity.z = velocity.z;
 }
 
 void Imu::estimate(vector <Point3d> gtRPY)
@@ -224,9 +223,10 @@ void Imu::estimate(vector <Point3d> gtRPY)
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
-    initialVelocity.x = velocity.x;
+    /*initialVelocity.x = velocity.x;
     initialVelocity.y = velocity.y;
     initialVelocity.z = velocity.z;
+    */
 }
 
 void Imu::setImuInitialPosition()
@@ -235,11 +235,10 @@ void Imu::setImuInitialPosition()
 }
 
 
-void Imu::setImuInitialVelocity()
+void Imu::setImuInitialVelocity(Point3d initial_velocity)
 {
-    initialVelocity.x = 0.0;
-    initialVelocity.y = 0.0;
-    initialVelocity.z = 0.0;
+    initialVelocity = initial_velocity;
+
 
 }
 
