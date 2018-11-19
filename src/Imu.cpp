@@ -356,11 +356,16 @@ Point3d Imu::transform2World(Point3d acc, Point3d angl)
     double roll = angl.x;
     double pitch = angl.y;
     double yaw = angl.z;
-    worldVector.x = cos(pitch)*cos(yaw)*acc.x + (sin(roll)*sin(pitch)*cos(yaw)-cos(roll)*sin(yaw))*acc.y
-     +(cos(roll)*sin(pitch)*cos(yaw)+sin(roll)*sin(yaw))*acc.z;
-    worldVector.y = cos(pitch)*sin(yaw)*acc.x + (sin(roll)*sin(pitch)*sin(yaw)+cos(roll)*cos(yaw))*acc.y
-     +(cos(roll)*sin(pitch)*sin(yaw)-sin(roll)*cos(yaw))*acc.z;
-    worldVector.z = -sin(pitch)*acc.x +sin(roll)*cos(pitch)*acc.y +cos(roll)*cos(pitch)*acc.z;
+
+    double c1 = cos(roll);
+    double s1 = sin(roll);
+    double c2 = cos(pitch);
+    double s2 = sin(pitch);
+    double c3 = cos(yaw);
+    double s3 = sin(yaw);
+    worldVector.x = c3*c2*acc.x + (c3*s2*s1-s3*c1)*acc.y+(c3*s2*c1+s3*s1)*acc.z;
+    worldVector.y = s3*c2*acc.x + (s3*s2*s1-c3*c1)*acc.y +(s3*s2*c1-c3*s1)*acc.z;
+    worldVector.z = -s2*acc.x +c2*s1*acc.y +c2*c1*acc.z;
 
     return worldVector;
 }
