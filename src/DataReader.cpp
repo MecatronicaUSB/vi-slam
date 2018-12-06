@@ -161,7 +161,7 @@ void DataReader::UpdateDataReader(int index, int index2){
         angularVelocity.z =  imuReader.getGroundTruthData(indexImuReader, 3);
 
         acceleration.x = imuReader.getGroundTruthData(indexImuReader, 4);
-        acceleration.y = imuReader.getGroundTruthData(indexImuReader, 5);
+        acceleration.y =  imuReader.getGroundTruthData(indexImuReader, 5);
         acceleration.z = imuReader.getGroundTruthData(indexImuReader, 6);
         
         imuAngularVelocity.push_back(angularVelocity);

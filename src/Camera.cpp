@@ -183,7 +183,7 @@ bool Camera::addKeyframe()
         computePatches();
         computeResiduals();
         cpatches = clock();
-        saveFrame();
+        //saveFrame();
         nBestMatches =  matcher.goodMatches.size();
     }
     else if ( (nPointsDetect > 1) && (frameList.size() == 0)) // Primer frame

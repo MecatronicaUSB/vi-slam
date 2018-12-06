@@ -78,9 +78,9 @@ void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
         orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
         Point3d accWorld;
         // restar bias local
-        accelerationMeasure[i].x = accelerationMeasure[i].x -accBias.x;
-        accelerationMeasure[i].y = accelerationMeasure[i].y -accBias.y;
-        accelerationMeasure[i].z = accelerationMeasure[i].z -accBias.z;
+        //accelerationMeasure[i].x = accelerationMeasure[i].x; //-accBias.x;
+        //accelerationMeasure[i].y = accelerationMeasure[i].y;// -accBias.y;
+        //accelerationMeasure[i].z = accelerationMeasure[i].z;// -accBias.z;
         // transformar acelerarion al sistema fijo (world)
         accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
         accWorld.z = accWorld.z - 9.68; // restar la aceleracion de gravedad
@@ -110,7 +110,9 @@ void Imu::computeAcceleration(vector <Point3d> gtRPY) // Implementar la estimaci
     
     Point3d gravity_imu;
     elapsed_filter = 0.0;
-    for (int i = 0; i < n ; i++)
+    int size = gtRPY.size();
+    if (size > 10) size = 10;
+    for (int i = 0; i < size ; i++)
     {
         clock_t t1 = clock(); 
         UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
@@ -122,11 +124,13 @@ void Imu::computeAcceleration(vector <Point3d> gtRPY) // Implementar la estimaci
         orientation.z = imuFusedData.orientation.z;
         orientation.w = imuFusedData.orientation.w;
         Point3d angles = toRPY(orientation);
-        angles.x = gtRPY[i].x;
-        angles.y = gtRPY[i].y;
+        //angles.x = gtRPY[i].x;
+        //angles.y = gtRPY[i].y;
+        double aux_angz = angles.z;
         angles.z = gtRPY[i].z;
         rpyAnglesWorld.push_back(angles);
         // Alineacion del angulo yaw gt inicial
+
         orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
         Point3d accWorld;
         // restar bias local
@@ -136,6 +140,7 @@ void Imu::computeAcceleration(vector <Point3d> gtRPY) // Implementar la estimaci
         // transformar acelerarion al sistema fijo (world)
         accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
         accWorld.z = accWorld.z-9.68; // restar la aceleracion de gravedad
+        rpyAnglesWorld[i].z = aux_angz;
         accelerationWorld.push_back(accWorld);
         quaternionWorld.push_back(orientation);
         // Guardar la velocidad angular filtrada
@@ -357,6 +362,7 @@ Point3d Imu::transform2World(Point3d acc, Point3d angl)
     double pitch = angl.y;
     double yaw = angl.z;
 
+    //cout << "roll = " << roll*180/M_PI << "pitch" << pitch*180/M_PI << "yaw" << yaw*180/M_PI <<endl;
     double c1 = cos(roll);
     double s1 = sin(roll);
     double c2 = cos(pitch);
@@ -364,7 +370,7 @@ Point3d Imu::transform2World(Point3d acc, Point3d angl)
     double c3 = cos(yaw);
     double s3 = sin(yaw);
     worldVector.x = c3*c2*acc.x + (c3*s2*s1-s3*c1)*acc.y+(c3*s2*c1+s3*s1)*acc.z;
-    worldVector.y = s3*c2*acc.x + (s3*s2*s1-c3*c1)*acc.y +(s3*s2*c1-c3*s1)*acc.z;
+    worldVector.y = s3*c2*acc.x + (s3*s2*s1+c3*c1)*acc.y +(s3*s2*c1-c3*s1)*acc.z;
     worldVector.z = -s2*acc.x +c2*s1*acc.y +c2*c1*acc.z;
 
     return worldVector;

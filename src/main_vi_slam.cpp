@@ -58,18 +58,20 @@ int main( int argc, char** argv ){
     ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
     //VisualizerVector3 rqt_error("error", 10.0);
-   //VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
-   // VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, CUBE, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
-    //VisualizerFrame visualizerFrame("current_frame", 90);
+   VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+   VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
+    VisualizerFrame visualizerFrame("current_frame", 90);
     //VisualizerFrame visualizerFrame2("current_frame2", 90);
-    VisualizerVector3 velocidad_groundtruth("velocidad_groundtruth", 1200);
-    VisualizerVector3 velocidad_estimado("velocidad_estimado", 1200);
-    VisualizerVector3 error_angular ("error_angular", 1200);
+    //VisualizerVector3 velocidad_groundtruth("velocidad_groundtruth", 1200);
+    //VisualizerVector3 velocidad_estimado("velocidad_estimado", 1200);
+    //VisualizerVector3 error_angular ("error_angular", 1200);
     //VisualizerVector3 error_velocidad ("error_velocidad", 1200);
-   // VisualizerVector3 error_posicion ("error_posicion", 1200);
+    //VisualizerVector3 error_posicion ("error_posicion", 1200);
     //VisualizerVector3 posicion_estimada ("posicion_estimada", 1200);
-     //VisualizerVector3 posicion_groundtruth ("posicion_gt", 1200);
+    //VisualizerVector3 posicion_groundtruth ("posicion_gt", 1200);
     //VisualizerVector3 angulo_estimado ("angulo_estimado", 1200);
+   // VisualizerVector3 residual_angEst ("residual_angEst", 1200);
+    //VisualizerVector3 residual_angGt ("residual_angGt", 1200);
     //VisualizerVector3 angulo_groundtruth ("angulo_groundtruth",1200);
     Mat frame1;
     Mat frame2;
@@ -124,34 +126,44 @@ int main( int argc, char** argv ){
     Point3d angle_gt_initial = toRPY(qGt_initial);
     imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration); // primeras medidas
     imuCore.initializate(angle_gt_initial.z); // Poner yaw inicial del gt
-
+    imuCore.setImuInitialVelocity(Data.gtLinearVelocity[0]);
+    imuCore.estimate(Data.gtRPY);
     
     Point3d velocity ;//= Data.gtLinearVelocity[9];
+    velocity = Data.gtLinearVelocity[0];
     velocity.x = 0.0;
     velocity.y = 0.0;
     velocity.z = 0.0;
     min_points = 250;
 
 
-    std::ofstream accx ("/home/lujano/Documents/testx.out");
-    std::ofstream accy ("/home/lujano/Documents/testy.out");
-    std::ofstream accz ("/home/lujano/Documents/testz.out");
+    std::ofstream accx ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/accx.out");
+    std::ofstream accy ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/accy.out");
+    std::ofstream accz ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/accz.out");
 
 
-    std::ofstream accxIMU ("/home/lujano/Documents/accxIMU.out");
-    std::ofstream accyIMU ("/home/lujano/Documents/accyIMU.out");
-    std::ofstream acczIMU ("/home/lujano/Documents/acczIMU.out");
+    std::ofstream angxGt ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/angxGt.out");
+    std::ofstream angyGt ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/angyGt.out");
+    std::ofstream angzGt ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/angzGt.out");
+
+    std::ofstream angxEst ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/angxEst.out");
+    std::ofstream angyEst ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/angyEst.out");
+    std::ofstream angzEst ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/angzEst.out");
 
     
 
-    std::ofstream velx ("/home/lujano/Documents/velx.out");
-    std::ofstream vely ("/home/lujano/Documents/vely.out");
-    std::ofstream velz ("/home/lujano/Documents/velz.out");
+    std::ofstream velx ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/velx.out");
+    std::ofstream vely ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/vely.out");
+    std::ofstream velz ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/velz.out");
+
+    std::ofstream posx ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/posx.out");
+    std::ofstream posy ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/posy.out");
+    std::ofstream posz ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/posz.out");
 
 
-    std::ofstream biasx ("/home/lujano/Documents/biasx.out");
-    std::ofstream biasy ("/home/lujano/Documents/biasy.out");
-    std::ofstream biasz ("/home/lujano/Documents/biasz.out");
+    std::ofstream biasx ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/biasx.out");
+    std::ofstream biasy ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/biasy.out");
+    std::ofstream biasz ("/home/lujano/Documents/Reporte/Testfiltraje/Procesamiento/Filtraje/biasz.out");
    
     //Camera camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
     int j = 1;
@@ -164,10 +176,10 @@ int main( int argc, char** argv ){
         
         Data.image1.copyTo(finalImage);
 	    Data.image2.copyTo(finalImage2);
-            //camera.Update(Data.image2);
+       //camera.Update(Data.image2);
         //camera.addKeyframe();
-
-        /*if (camera.frameList.size()> 1) // primera imagen agregada
+        /*
+        if (camera.frameList.size()> 1) // primera imagen agregada
         {
             if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_points)
             {
@@ -176,16 +188,19 @@ int main( int argc, char** argv ){
                 camera.printStatistics();
                  cout<< " Current time = "<< Data.currentTimeMs <<" ms "<<endl;
             }
+       
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , finalImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, finalImage2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-*/
-       // visualizerFrame.UpdateMessages(finalImage);
+
+       visualizerFrame.UpdateMessages(finalImage);
+        }
         //visualizerFrame2.UpdateMessages(finalImage2);
+        
         //imwrite("/home/lujano/Documents/Imagen1.png", finalImage);
         //imwrite("/home/lujano/Documents/Imagen2.png", finalImage2);
        
-         /*
+      
         E = findEssentialMat(points1_OK, points2_OK, focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
         int p;
         p = recoverPose(E, points1_OK, points2_OK, R, t, focal, Point2d(cx, cy), noArray()   );
@@ -197,14 +212,14 @@ int main( int argc, char** argv ){
         else{
             traslation = traslation +R_p*t;
             R_p = R*R_p;
-            */
+          
         //}
 
        
-        
+        */
       
        
-
+        velocity = velocity+imuCore.velocity;
 
         Point3d angle_diff;
         Point3d angle_gt, angle_ft, gravity_imu;
@@ -214,7 +229,7 @@ int main( int argc, char** argv ){
         imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
         clock_t t1 = clock(); 
         //imuCore.setImuBias(Data.accBias, Data.angBias);
-        imuCore.setImuInitialVelocity(Data.gtLinearVelocity[0]);
+        imuCore.setImuInitialVelocity(velocity);
         imuCore.estimate(Data.gtRPY);
 
         orientation2[0] = imuCore.quaternionWorld[imuCore.quaternionWorld.size()-1].x;
@@ -234,20 +249,22 @@ int main( int argc, char** argv ){
         //imuCore.printStatistics(); // imprime el tiempo de computo del filtro
         
         
-        
-        /*for ( int ii = 0 ; ii< 10;ii++)
+        Quaterniond orien;
+        for ( int ii = 0 ; ii< 10;ii++)
         {
-            orientation2[0] = imuCore.quaternionWorld[ii].x;
-            orientation2[1] = imuCore.quaternionWorld[ii].y;
-            orientation2[2] = imuCore.quaternionWorld[ii].z;
-            orientation2[3] = imuCore.quaternionWorld[ii].w;
+            
+            orien= toQuaternion(-175.0*M_PI/180, -68.0*M_PI/180, 0.0 );
+            orientation2[0] =  orien.x;//imuCore.quaternionWorld[ii].x;
+            orientation2[1] = orien.y;//imuCore.quaternionWorld[ii].y;
+            orientation2[2] = orien.z;//imuCore.quaternionWorld[ii].z;
+            orientation2[3] = orien.w;//imuCore.quaternionWorld[ii].w;
             position2[0] = imuCore.position.x;   //x
             position2[1] = imuCore.position.y;   //x
             position2[2] = imuCore.position.z;   //x
          
-            position[0] = Data.gtPosition[ii].x;   //x
-            position[1] = Data.gtPosition[ii].y;   //x
-            position[2] = Data.gtPosition[ii].z;   //x
+            position[0] = 0.0;Data.gtPosition[ii].x;   //x
+            position[1] = 0.0;Data.gtPosition[ii].y;   //x
+            position[2] = 0.0;Data.gtPosition[ii].z;   //x
             orientation[0] = Data.gtQuaternion[ii].x;   //x
             orientation[1] = Data.gtQuaternion[ii].y; // y
             orientation[2] = Data.gtQuaternion[ii].z; // z
@@ -270,13 +287,13 @@ int main( int argc, char** argv ){
             visualizer_gt.UpdateMessages(position2, orientation);
             visualizer_est.UpdateMessages(position2, orientation2);
             
-            velocity = velocity+imuCore.velocity;
+            
 
                 
             //vector3d.UpdateMessages(acc_diff);
                 
         }
-        */
+        
         //cout << "tamData"<< Data.gtRPY.size()<<endl;
         Point3d error_ang_est, error_ang_gt, error_ang;
         Point3d error_vel_est, error_vel_gt, error_vel;
@@ -292,31 +309,42 @@ int main( int argc, char** argv ){
         error_ang = error_ang_est-error_ang_gt;
 
         //Velocidad
-        velocity = velocity+imuCore.velocity;
-        velocidad_groundtruth.UpdateMessages(Data.gtLinearVelocity[Data.gtLinearVelocity.size() -1]);
-        velocidad_estimado.UpdateMessages(velocity);
+        //velocity = velocity+imuCore.velocity;
+       // velocidad_groundtruth.UpdateMessages(Data.gtLinearVelocity[0]);
+       // velocidad_estimado.UpdateMessages(velocity);
         error_vel_gt = Data.gtLinearVelocity[Data.gtLinearVelocity.size() -1]-Data.gtLinearVelocity[0];
         error_vel_est = imuCore.velocity;
-        error_vel = error_vel_est- error_vel_gt;
+        error_vel =  error_vel_gt - error_vel_est;
         int n = Data.gtPosition.size()-1;
         error_pos_est = imuCore.position;
         error_pos_gt =  Data.gtPosition[Data.gtPosition.size()-1] - Data.gtPosition[0] ; 
+        //cout << "Size" <<Data.gtPosition.size() <<endl;
         error_pos = error_pos_est-error_pos_gt;
-        for (int jj = 0; jj < imuCore.accelerationWorld.size(); jj++)
+        int size = Data.gtPosition.size();
+        if (size > 10) size = 10;
+        for (int jj = 0; jj < size ; jj++)
         {
            accx << imuCore.accelerationWorld[jj].x<<endl;
            accy << imuCore.accelerationWorld[jj].y<<endl;
            accz << imuCore.accelerationWorld[jj].z<<endl;
-           accxIMU << Data.imuAcceleration[jj].x<<endl;
-           accyIMU << Data.imuAcceleration[jj].y<<endl;
-           acczIMU << Data.imuAcceleration[jj].z<<endl;
+           angxGt << Data.gtRPY[jj].x<<endl;
+           angyGt << Data.gtRPY[jj].y<<endl;
+           angzGt << Data.gtRPY[jj].z<<endl;
+           angxEst << imuCore.rpyAnglesWorld[jj].x<<endl;
+           angyEst << imuCore.rpyAnglesWorld[jj].y<<endl;
+           angzEst << imuCore.rpyAnglesWorld[jj].z<<endl;
            biasx << Data.accBias[jj].x<<endl;
            biasy << Data.accBias[jj].y<<endl;
            biasz << Data.accBias[jj].z<<endl;
            velx << Data.gtLinearVelocity[jj].x << endl;
            vely << Data.gtLinearVelocity[jj].y << endl;
            velz << Data.gtLinearVelocity[jj].z << endl;
+           posx << Data.gtPosition[jj].x <<endl;
+           posy << Data.gtPosition[jj].y <<endl;
+           posz << Data.gtPosition[jj].z <<endl;
+
         }
+
         
        
 
@@ -335,9 +363,9 @@ int main( int argc, char** argv ){
 	else
 		error_vel.z = 0.0;
 */
-        error_angular.UpdateMessages(error_ang*180/M_PI);
+        //error_angular.UpdateMessages(error_ang*180/M_PI);
         //error_velocidad.UpdateMessages(error_vel);
-        //error_posicion.UpdateMessages(error_vel);
+        //error_posicion.UpdateMessages(error_pos);
         Point3d vacio;
         //posicion_estimada.UpdateMessages(error_pos_est);
         //posicion_groundtruth.UpdateMessages(error_pos_gt);
@@ -362,7 +390,7 @@ int main( int argc, char** argv ){
         
         
 	<<endl;*/
-        
+        cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
 
 
 
@@ -391,6 +419,17 @@ int main( int argc, char** argv ){
      biasx.close();
      biasy.close();
      biasz.close();
+     angxGt.close();
+     angyGt.close();
+     angzGt.close();
+
+     angxEst.close();
+     angyEst.close();
+     angzEst.close();
+     posx.close();
+     posy.close();
+     posz.close();
+
 
 
     return 0;
