@@ -70,6 +70,11 @@ class ImuFilterNode{
         vector <Quaterniond> quaternionWorld;
         vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
         vector <Point3d> accelerationWorld; // celeracion del robot respecto al mundo
+
+        // Residuales
+        Point3d residualRPY;
+        Point3d residualPosition;
+        Point3d residualVelocity;
         double timeStep;
     private:
         double elapsed_filter;

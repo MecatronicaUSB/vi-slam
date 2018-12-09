@@ -219,6 +219,10 @@ void Imu::estimate()
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
+    residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
+    residualVelocity =  velocity;
+    residualPosition = position;
+
 }
 
 void Imu::estimate(vector <Point3d> gtRPY)
@@ -228,6 +232,9 @@ void Imu::estimate(vector <Point3d> gtRPY)
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
+    residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
+    residualVelocity = velocity;
+    residualPosition = position;
     /*initialVelocity.x = velocity.x;
     initialVelocity.y = velocity.y;
     initialVelocity.z = velocity.z;

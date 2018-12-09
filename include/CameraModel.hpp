@@ -21,7 +21,7 @@
 using namespace cv;
 using namespace std;
 
-namespace uw
+namespace vi
 {
 
 class CameraModel
