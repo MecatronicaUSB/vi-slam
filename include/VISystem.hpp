@@ -1,7 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include "DataReader.hpp"
-#include "Visualizer.hpp"
 #include "Camera.hpp"
 #include "Imu.hpp"
 #include "Plus.hpp"
@@ -37,21 +35,24 @@ class VISystem
 {
     public:
         VISystem();
+        VISystem(int argc, char *argv[]);
         ~VISystem();
-        VISystem(int argc, char *argv[], int _start_index);
         
-        void InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw);
+        
+        void InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw, Mat image);
         // Gauss-Newton using Foward Compositional Algorithm - Using features
         void Calibration(string _calibration_path);
         void EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame);
-        void CalculateROI();
+        void CalculateROI(Mat image);
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) ;
         void FreeLastFrame();
         
         bool initialized, distortion_valid , depth_available;
         int  num_keyframes;
-        int num_max_keyframes;
+        int  num_max_keyframes;
+        int  min_features;
+        int  start_index;
         
         Mat map1, map2;
         int h, w, h_input, w_input;
@@ -59,17 +60,18 @@ class VISystem
 
         Point3d position;
         Point3d velocity;
-        Quateriond qOrientation;
+        Quaterniond qOrientation;
         Point3d RPYOrientation;
         CameraModel* camera_model;
         
         Camera camera;
         Imu imuCore;
-        std::ofstream outputFile;
+        
         Mat K;
         Rect ROI;
 
-        // Residuales IMU
+        std::ofstream outputFile;
+        Mat outputCurrentImage, outputLastImage;
 
         
     

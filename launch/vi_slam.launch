@@ -2,9 +2,11 @@
 <launch>
     <!-- VI-SLAM main thread-->
     <node pkg="vi_slam" type="vi_slam" name="main"  
-        args="-filePath=/home/lujano/Documents/V1_01_easy/mav0/state_groundtruth_estimate0/data.csv 
-              -imuPath=/home/lujano/Documents/V1_01_easy/mav0/imu0/data.csv 
-              -imagePath=/home/lujano/Documents/V1_01_easy/mav0/cam0/data/"
+        args="-gtFile=/home/lujano/Documents/V1_01_easy/mav0/state_groundtruth_estimate0/data.csv 
+              -imuFile=/home/lujano/Documents/V1_01_easy/mav0/imu0/data.csv 
+              -imagesPath=/home/lujano/Documents/V1_01_easy/mav0/cam0/data/
+              -calibrationFile=/home/lujano/catkin_ws/src/vi-slam/calibration/calibrationEUROC.xml
+              -outputFile=/home/lujano/Documents/ouput.txt"
         clear_params="true" 
         output="screen"/>
         

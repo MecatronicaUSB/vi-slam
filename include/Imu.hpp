@@ -39,7 +39,9 @@ class ImuFilterNode{
  class Imu: public ImuFilterNode
  {
     public: 
+        Imu();
         Imu(double timestep);//revisar el paso por size
+        void createPublisher(double _timeStep);
         void setImuData(vector <Point3d> &w_measure,vector <Point3d>  &a_measure);
         void setImuBias(Point3d acc_Bias, Point3d ang_Bias);
         void setImuInitialVelocity(Point3d initial_velocity);

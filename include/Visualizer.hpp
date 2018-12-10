@@ -1,5 +1,6 @@
 // Opencv libraries
 #include "opencv2/core.hpp"
+#include "../include/Plus.hpp"
 
 // ROS libraries
 #include <ros/ros.h>
@@ -28,7 +29,7 @@ class VisualizerMarker
     public:
         VisualizerMarker(string marker, string headerID, double rate, uint32_t shape, int32_t ID, Point3f _scale, Point3f _color);
         void createROSMarker(string markerN, string headerID, double rate, uint32_t shape, int32_t ID, Point3f _scale, Point3f _color);
-        void UpdateMessages(double position[3], double orientation[4]);
+        void UpdateMessages(Point3d position, Quaterniond orientation);
         string getMarkerName();
         string getHeaderFrameID();
         double getRateHZ();

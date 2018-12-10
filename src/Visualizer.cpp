@@ -50,19 +50,19 @@ uint32_t shapeForm, int32_t ID, Point3f scale, Point3f color)
 
 }
 
-void VisualizerMarker::UpdateMessages(double position[3], double orientation[4]){
+void VisualizerMarker::UpdateMessages(Point3d position, Quaterniond orientation){
     
     ros::Rate r(rateHZ);
 
-    marker.pose.position.x = position[0];
-    marker.pose.position.y = position[1];
-    marker.pose.position.z = position[2];
+    marker.pose.position.x = position.x;
+    marker.pose.position.y = position.y;
+    marker.pose.position.z = position.z;
     //if (orientation[0] != 0.0 && orientation[1] != 0.0 
     //&& orientation[2]!= 0.0 && orientation[3]!= 0.0 ){
-    marker.pose.orientation.x = orientation[0];
-    marker.pose.orientation.y = orientation[1];
-    marker.pose.orientation.z = orientation[2];
-    marker.pose.orientation.w = orientation[3];
+    marker.pose.orientation.x = orientation.x;
+    marker.pose.orientation.y = orientation.y;
+    marker.pose.orientation.z = orientation.z;
+    marker.pose.orientation.w = orientation.w;
    /* }
     else{
         marker.pose.orientation.w = 0.0;

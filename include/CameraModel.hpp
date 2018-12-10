@@ -114,6 +114,15 @@ public:
 	 * @return false 	Rectification off.
 	 */
 	bool IsValid() const;
+	float camera_frecuency;
+	float imu_frecuency;
+	int min_features;
+	int num_max_keyframes;
+	int start_index;
+	int use_gt;
+	int use_ros;
+	int detector, matcher;
+	int num_cells, length_patch;
 
 private:
     Mat output_intrinsic_camera_;
@@ -124,7 +133,9 @@ private:
 
     int out_width_, out_height_;
 	int in_width_, in_height_;
+	
 	cv::Mat map1_, map2_;
+	
 
     bool valid_;
 };

@@ -68,11 +68,13 @@ set(vi_slam_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/GroundTruth.cpp
     ${PROJECT_SOURCE_DIR}/src/Visualizer.cpp
     ${PROJECT_SOURCE_DIR}/src/ImageReader.cpp
-     ${PROJECT_SOURCE_DIR}/src/Camera.cpp  
+    ${PROJECT_SOURCE_DIR}/src/Camera.cpp  
     ${PROJECT_SOURCE_DIR}/src/Matcher.cpp
     ${PROJECT_SOURCE_DIR}/src/DataReader.cpp
     ${PROJECT_SOURCE_DIR}/src/Imu.cpp
     ${PROJECT_SOURCE_DIR}/src/Plus.cpp  
+    ${PROJECT_SOURCE_DIR}/src/CameraModel.cpp  
+    ${PROJECT_SOURCE_DIR}/src/VISystem.cpp  
 )
 
 #INCLUDE(/usr/local/cuda-8.0/targets/x86_64-linux/include)

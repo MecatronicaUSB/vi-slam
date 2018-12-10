@@ -3,16 +3,13 @@
 namespace vi
 {
 
-    VISystem::VISystem(int argc, char *argv[], int _start_index)
+    VISystem::VISystem(int argc, char *argv[])
     {
         ros::init(argc, argv, "vi_slam");  // Initialize ROS
-        start_index = _start_index;
         initialized = false;
         distortion_valid = false;
         depth_available = false;
-        num_frames    = 0;
         num_keyframes = 0;
-        num_valid_images = 0;
     }
 
     VISystem::~VISystem() 
@@ -32,20 +29,19 @@ namespace vi
     }
 
 
-    void VISystem::InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw);
+    void VISystem::InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw, Mat image)
     {
         // Check if depth images are available
         /*if (_depth_path != "")
             depth_available = true;
         */
-        Calibration(calPath);
-        char separator = ',';
-      
+        Calibration(_calPath);
         
+    
         // Obtain parameters of camera_model
         K = camera_model->GetK();
-        w_input = camera_model->GetInputHeight();
-        h_input = camera_model->GetInputWidth();
+        w_input = camera_model->GetInputWidth();
+        h_input = camera_model->GetInputHeight();
         map1 = camera_model->GetMap1();
         map2 = camera_model->GetMap2();
         fx = camera_model->GetK().at<float>(0,0);
@@ -53,11 +49,19 @@ namespace vi
         cx = camera_model->GetK().at<float>(0,2);
         cy = camera_model->GetK().at<float>(1,2);
         distortion_valid = camera_model->IsValid();
+       
 
         // Obtain ROI for distorted images
         if (distortion_valid)
         {
-            CalculateROI();
+            CalculateROI(image);
+            cout<< "distortion detected"<<endl;
+            cout << "Input width = "<<w_input<<"\t"<< " Output width = "<<  w <<endl;
+            cout << "Input height = "<<h_input<<"\t"<< " Output height = "<< h<< endl;
+        }
+        else{
+            w = w_input;
+            h = h_input;
         }
             
 
@@ -77,20 +81,31 @@ namespace vi
 
         initialized = true;
         cout << "Initializing system ... done" << endl << endl;
+        cout << "Ouput file in : "<< _outputPath<<endl;
         outputFile.open(_outputPath); // agregar fecha automticamente
 
         // Posicion inicial
         position = _iniPosition;
+        velocity = _iniVelocity;
+        RPYOrientation.z = _iniYaw;
+        // IMU 
+        imuCore.createPublisher(1.0/(camera_model->imu_frecuency));
         imuCore.initializate(_iniYaw); // Poner yaw inicial del gt
         imuCore.setImuInitialVelocity(_iniVelocity);
-        num_max_keyframes = 10; // Solo almacenar 10 keyframes
+     
+        // Camera
+        num_max_keyframes = camera_model->min_features; // Solo almacenar 10 keyframes
+        min_features = camera_model->min_features;
+        start_index = camera_model->start_index;
+
+        camera.initializate(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
+
     }
 
-    void VISystem::CalculateROI() {
+    void VISystem::CalculateROI(Mat image) {
         // Load first image
         Mat distorted, undistorted;
-        Data.UpdateDataReader(0, 1);
-        distorted = Data.image1;
+        distorted = image;
         remap(distorted, undistorted, map1, map2, INTER_LINEAR);
 
         // Find middle x and y of image (supposing a symmetrical distortion)
@@ -149,56 +164,62 @@ namespace vi
 
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
     {
-        imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration); // primeras medidas
+        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
-        camera.Update(Data.image2);
+        camera.Update(_currentImage);
         camera.addKeyframe();
         num_keyframes = camera.frameList.size();
         if (camera.frameList.size()> 1) // primera imagen agregada
         {
-            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_points)
+            drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
             {
-                cout << "Puntos minimos AAAAA = "<< min_points<<endl;
-                min_points = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
+                //min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
                 camera.printStatistics();
-                 cout<< " Current time = "<< Data.currentTimeMs <<" ms "<<endl;
+                
             }
             if (num_keyframes > num_max_keyframes)
             {
                 FreeLastFrame();
             }
         }
+        cout << "frame List Size = "<< camera.frameList.size()<<endl;
+        
         
 
     }
     
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) 
     {
-        imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration); // primeras medidas
+        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate(_gtRPY);
-        camera.Update(Data.image2);
+        camera.Update(_currentImage);
         camera.addKeyframe();
         num_keyframes = camera.frameList.size();
         if (camera.frameList.size()> 1) // primera imagen agregada
         {
-            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_points)
+            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
             {
-                cout << "Puntos minimos AAAAA = "<< min_points<<endl;
-                min_points = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
+                ///min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
                 camera.printStatistics();
-                 cout<< " Current time = "<< Data.currentTimeMs <<" ms "<<endl;
             }
             if (num_keyframes > num_max_keyframes)
             {
                 FreeLastFrame();
             }
         }
+        cout << "frame List Size = "<< camera.frameList.size()<<endl;
+        drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
     }
 
     void VISystem::FreeLastFrame()
     {
-        camera.frameList.pop_front();
+        camera.frameList.erase(camera.frameList.begin());
+        cout << "Num keyFrames = "<< camera.frameList.size()<<endl;
     }
+    /*
     // Gauss-Newton using Foward Compositional Algorithm - Using features
     void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
         // Gauss-Newton Optimization Options
@@ -440,4 +461,5 @@ namespace vi
         _previous_frame->rigid_transformation_ = current_pose;
 
     }
+    */
 }
