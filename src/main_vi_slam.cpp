@@ -51,6 +51,7 @@ int main( int argc, char** argv ){
     visystem.InitializeSystem( outputFile, "", calibrationFile, Data.gtPosition[0], Data.gtLinearVelocity[0], Data.gtRPY[0].z, Data.image1);
 
     //VisualizerVector3 rqt_error("error", 10.0);
+    
     VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
     //VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
     //VisualizerFrame visualizerFrame("current_frame", 90);
