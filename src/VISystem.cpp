@@ -1,4 +1,4 @@
-void System::InitializeSystem(string _images_path, string _ground_truth_dataset, string _ground_truth_path, string _depth_path) {
+void VISystem::InitializeSystem(string _images_path, string _ground_truth_dataset, string _ground_truth_path, string _depth_path) {
     // Check if depth images are available
     if (_depth_path != "")
         depth_available_ = true;
@@ -54,7 +54,7 @@ void System::InitializeSystem(string _images_path, string _ground_truth_dataset,
     cout << "Initializing system ... done" << endl << endl;
 }
 
-void System::CalculateROI() {
+void VISystem::CalculateROI() {
     // Load first image
     Mat distorted, undistorted;
     distorted = imread(images_list_[0], CV_LOAD_IMAGE_GRAYSCALE);
@@ -101,7 +101,7 @@ void System::CalculateROI() {
 
 
 // Gauss-Newton using Foward Compositional Algorithm - Using features
-void Tracker::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
+void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
     // Gauss-Newton Optimization Options
     float epsilon = 0.001;
     float intial_factor = 10;

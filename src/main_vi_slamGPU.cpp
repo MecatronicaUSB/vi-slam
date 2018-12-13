@@ -87,7 +87,7 @@ int main( int argc, char** argv ){
     orientation[3] = 1.0;
 
     Imu imuCore(Data.timeStepImu/1000000000.0);
-    imuCore.setImuInitialVelocity();
+    //imuCore.setImuInitialVelocity();
 
     //-- Paso 4: Calcular la matriz Esencial
     // Parametros intrisecos de la camara
@@ -118,7 +118,7 @@ int main( int argc, char** argv ){
     vector<KeyPoint> vectorMatches;
     Quaterniond qGt_initial;
 
-    Data.UpdateDataReader(0);
+    Data.UpdateDataReader(0, 1);
     int n = Data.gtPosition.size()-1;
     position2[0] = Data.gtPosition[n].x;   //x
     position2[1] = Data.gtPosition[n].y;   //x
@@ -138,10 +138,12 @@ int main( int argc, char** argv ){
     velocity.z = 0.0;
     
     CameraGPU camera(USE_SURF, USE_BRUTE_FORCE_GPU, Data.image1.cols, Data.image1.rows);
-    for (int j = 0;  j <Data.indexLastData; j++)
-    {  // Cambiar por constante
+     int j = 1;
+     while(j <Data.indexLastData)
+    {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j);
+        Data.UpdateDataReader(j, j+1);
+        j = j+1;
  
 
         camera.Update(Data.image1);
@@ -185,7 +187,7 @@ int main( int argc, char** argv ){
         
         imuCore.setImuData(Data.imuAngularVelocity, Data.imuAcceleration);
         clock_t t1 = clock(); 
-        imuCore.setImuBias(Data.accBias, Data.angBias);
+        //imuCore.setImuBias(Data.accBias, Data.angBias);
         imuCore.estimate(Data.gtRPY);
         imuCore.printStatistics();
         //imuCore.printStatistics(); // imprime el tiempo de computo del filtro
