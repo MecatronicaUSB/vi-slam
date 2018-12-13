@@ -21,12 +21,21 @@ Camera::Camera()
     nBestMatches_sum = 0.0; 
 }
 
-Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size)
+Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_patch)
 {
-    initializate(_detector, _matcher, _w_size, _h_size); 
+    initializate(_detector, _matcher, _w_size, _h_size, _num_cells, _length_patch); 
   
-    n_cells = 144;
-    w_patch = h_patch = 3;
+}
+
+void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path)
+{
+    w_size = _w_size;
+    h_size = _h_size;
+    setDetector(_detector);
+    setMatcher(_matcher);
+
+    n_cells = _num_cells;
+    w_patch = h_patch = _length_path;
     elapsed_detect_sum = 0.0; 
     elapsed_descriptors_sum = 0.0; 
     elapsed_computeGoodMatches_sum = 0.0;
@@ -34,14 +43,6 @@ Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size)
     elapsed_computePatches_sum = 0.0; 
     nPointsDetect_sum = 0.0;
     nBestMatches_sum = 0.0; 
-}
-
-void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size)
-{
-    w_size = _w_size;
-    h_size = _h_size;
-    setDetector(_detector);
-    setMatcher(_matcher);
 }
 // Deteccion
 void Camera::Update (Mat _grayImage){
@@ -78,31 +79,37 @@ void Camera::setDetector(int _detector)
         case USE_KAZE:
         {
             detector = KAZE::create(); // Normaliza distancia
+            cout << "Using Kaze detector"<<endl;
             break;
         }
         case USE_AKAZE:
         {
             detector = AKAZE::create();
+            cout << "Using Akaze detector"<<endl;
             break;
         }
         case USE_SIFT:
         {
             detector = SIFT::create();
+            cout << "Using SIFT detector"<<endl;
             break;
         }
         case USE_SURF:
         {
             detector = SURF::create(); // Normaliza distancia
+            cout << "Using SURF detector"<<endl;
             break;
         }
         case USE_ORB:
         {
             detector = ORB::create(250);
+            cout << "Using ORB detector"<<endl;
             break;
         }
         default:
         {
             detector = KAZE::create();
+            cout << "Using Kaze detector"<<endl;
             break;
         }
     }
@@ -183,7 +190,7 @@ bool Camera::addKeyframe()
         computePatches();
         computeResiduals();
         cpatches = clock();
-        //saveFrame();
+        saveFrame();
         nBestMatches =  matcher.goodMatches.size();
     }
     else if ( (nPointsDetect > 1) && (frameList.size() == 0)) // Primer frame

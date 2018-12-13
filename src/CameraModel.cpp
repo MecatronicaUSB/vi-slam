@@ -5,9 +5,9 @@
 
 */
 
-#include "CameraModel.hpp"
+#include "../include/CameraModel.hpp"
 
-namespace uw
+namespace vi
 {
 
 CameraModel::~CameraModel() {}
@@ -28,6 +28,18 @@ void CameraModel::GetCameraModel(string _calibration_path) {
         opencv_file["out_height"] >> out_height_;
         opencv_file["calibration_values"] >> calibration_values;
         opencv_file["rectification"] >> distortion_values;
+        opencv_file["camera_frecuency"]>> camera_frecuency;
+        opencv_file["imu_frecuency"]>> imu_frecuency;
+        opencv_file["min_features"]>>min_features;
+        opencv_file["num_max_keyframes"]>> num_max_keyframes;
+        opencv_file["start_index"]>> start_index;
+        opencv_file["use_gt"]>> use_gt;
+        opencv_file["use_ros"]>> use_ros;
+        opencv_file["num_cells"]>> num_cells;
+        opencv_file["length_patch"]>> length_patch;
+        opencv_file["detector"]>> detector;
+        opencv_file["matcher"]>> matcher;
+        
         opencv_file.release();
     } else {
         cout << " ... not found" << endl;

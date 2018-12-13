@@ -24,6 +24,7 @@ PATHS /usr/local
 NO_DEFAULT_PATH)
 
 find_package(CUDA)
+find_package(Eigen3 REQUIRED)
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -67,18 +68,22 @@ set(vi_slam_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/GroundTruth.cpp
     ${PROJECT_SOURCE_DIR}/src/Visualizer.cpp
     ${PROJECT_SOURCE_DIR}/src/ImageReader.cpp
-     ${PROJECT_SOURCE_DIR}/src/Camera.cpp  
+    ${PROJECT_SOURCE_DIR}/src/Camera.cpp  
     ${PROJECT_SOURCE_DIR}/src/Matcher.cpp
     ${PROJECT_SOURCE_DIR}/src/DataReader.cpp
     ${PROJECT_SOURCE_DIR}/src/Imu.cpp
     ${PROJECT_SOURCE_DIR}/src/Plus.cpp  
+    ${PROJECT_SOURCE_DIR}/src/CameraModel.cpp  
+    ${PROJECT_SOURCE_DIR}/src/VISystem.cpp  
 )
 
 #INCLUDE(/usr/local/cuda-8.0/targets/x86_64-linux/include)
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_SOURCE_DIR}/thirdparty
   #/usr/local/cuda-8.0/targets/x86_64-linux/include
   #${PROJECT_SOURCE_DIR}/include/thirdparty/akaze
   #${CUDASIFT}

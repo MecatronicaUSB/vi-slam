@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!-- EUROC DATASET -->
+<opencv_storage>
+<calibrationDate>"Thu 07 Apr 2016 04:23:03 PM MSK"</calibrationDate>
+
+<!-- Images dimensions (Input) -->
+<in_width  type_id="integer"> 752 </in_width>
+<in_height type_id="integer"> 480 </in_height>
+
+<!-- Images dimensions (Output) -->
+<out_width  type_id="integer"> 736 </out_width>
+<out_height type_id="integer"> 480 </out_height>
+
+<!-- Calibration Values of Dataset -->
+<calibration_values type_id="opencv-matrix">
+  <rows>1</rows>
+  <cols>4</cols>
+  <dt>f</dt>
+  <data>
+    458.654	 457.296  367.215  248.375 </data></calibration_values> 
+
+<!-- Distortion coefficients -->
+<rectification type_id="opencv-matrix">
+  <rows>1</rows>
+  <cols>4</cols>
+  <dt>f</dt>
+  <data>
+    -0.28340811 0.07395907  0.00019359  1.76187114e-05 </data></rectification>
+
+<!-- Frecuency Rate (Hz)-->
+<camera_frecuency  type_id="float"> 20 </camera_frecuency> 
+<imu_frecuency type_id="float"> 200 </imu_frecuency>
+
+<!-- System Config -->
+<min_features type_id="integer"> 20</min_features>
+<num_max_keyframes type_id="integer"> 10</num_max_keyframes>
+<start_index  type_id="integer"> 0 </start_index>
+<use_gt type_id="integer">1</use_gt>
+<use_ros type_id="integer">1</use_ros>
+
+<num_cells type_id="integer"> 144</num_cells>
+<length_patch type_id="integer"> 3</length_patch>
+
+<detector type_id="integer">0</detector>
+<matcher type_id="integer">0</matcher>
+  <!--USE_KAZE,
+    USE_AKAZE,
+    USE_ORB,
+    USE_SIFT,
+    USE_SURF
+    -->
+</opencv_storage>

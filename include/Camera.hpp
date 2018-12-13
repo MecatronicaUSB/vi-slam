@@ -62,8 +62,8 @@ class Camera
 {
     public:
         Camera();
-        Camera(int _detector, int _matcher, int _w_size, int _h_size);
-        void initializate(int _detector, int _matcher, int _w_size, int _h_size);
+        Camera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
+        void initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
         void Update (Mat _grayImage); // Ingresa una nueva imagen al sistema
 
         void setDetector(int _detector); //

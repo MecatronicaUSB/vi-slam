@@ -1,13 +1,22 @@
 #include "../include/Imu.hpp"
 #include <cmath>
 #include <iomanip>
+Imu::Imu()
+{
+
+}
+
 Imu::Imu(double timestep)
 {
-    timeStep = timestep;
+   createPublisher(timestep);
+}
+
+void Imu::createPublisher(double _timeStep)
+{
+    timeStep = _timeStep;
     // Crear el publicador con una frecuencia 10 veces mayor a la respuesta de la imu
     createROSPublisher(static_cast<int>((1.0/timeStep)*20)); 
     createROSSubscriber();
-
 }
 
 void Imu::setImuData(vector <Point3d> &w_measure, vector <Point3d>  &a_measure)
@@ -219,6 +228,10 @@ void Imu::estimate()
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
+    residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
+    residualVelocity =  velocity;
+    residualPosition = position;
+
 }
 
 void Imu::estimate(vector <Point3d> gtRPY)
@@ -228,6 +241,9 @@ void Imu::estimate(vector <Point3d> gtRPY)
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
+    residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
+    residualVelocity = velocity;
+    residualPosition = position;
     /*initialVelocity.x = velocity.x;
     initialVelocity.y = velocity.y;
     initialVelocity.z = velocity.z;
