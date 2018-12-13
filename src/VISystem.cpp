@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-void VISystem::InitializeSystem(string _images_path, string _ground_truth_dataset, string _ground_truth_path, string _depth_path) {
-    // Check if depth images are available
-    if (_depth_path != "")
-        depth_available_ = true;
-=======
 #include "../include/VISystem.hpp"
 
 namespace vi
@@ -33,7 +27,6 @@ namespace vi
         delete visualizer_;
         */
     }
->>>>>>> 84cbb66b923993e288999b89010ddf5874cf420e
 
 
     void VISystem::InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw, Mat image)
@@ -169,13 +162,6 @@ namespace vi
         }
     }
 
-<<<<<<< HEAD
-void VISystem::CalculateROI() {
-    // Load first image
-    Mat distorted, undistorted;
-    distorted = imread(images_list_[0], CV_LOAD_IMAGE_GRAYSCALE);
-    remap(distorted, undistorted, map1_, map2_, INTER_LINEAR);
-=======
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
     {
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
@@ -201,76 +187,9 @@ void VISystem::CalculateROI() {
         cout << "frame List Size = "<< camera.frameList.size()<<endl;
         
         
->>>>>>> 84cbb66b923993e288999b89010ddf5874cf420e
 
     }
     
-<<<<<<< HEAD
-    // Update w_ and h_ with ROI dimentions
-    w_ = p2.x - p1.x;
-    h_ = p2.y - p1.y;
-}
-
-
-// Gauss-Newton using Foward Compositional Algorithm - Using features
-void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
-    // Gauss-Newton Optimization Options
-    float epsilon = 0.001;
-    float intial_factor = 10;
-    int max_iterations = 10;
-    float error_threshold = 0.005;
-    int first_pyramid_lvl = 0;
-    int last_pyramid_lvl = 0;
-    float z_factor = 0.002;
-
-    // Variables initialization
-    float error         = 0.0;
-    float initial_error = 0.0;    
-    float last_error    = 0.0;
-
-    // Initial pose and deltapose (assumes little movement between frames)
-    Mat deltaMat = Mat::zeros(6,1,CV_32FC1);
-    Sophus::Vector<float, SE3::DoF> deltaVector;
-    for (int i=0; i<6; i++)
-        deltaVector(i) = 0;
-
-    SE3 current_pose = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0));
-
-    // Sparse to Fine iteration
-    // Create for() WORKED WITH LVL 2
-    for (int lvl = first_pyramid_lvl; lvl>=last_pyramid_lvl; lvl--) {
-        // lvl = 0;
-        // Initialize error   
-        error = 0.0;
-        last_error = 50000.0;
-        float factor = intial_factor * (lvl + 1);
-
-        // Obtain image 1 and 2
-        Mat image1 = _previous_frame->images_[lvl].clone();
-        Mat image2 = _current_frame->images_[lvl].clone();
-
-        // Obtain points and depth of initial frame 
-        Mat candidatePoints1  = _previous_frame->candidatePoints_[lvl].clone();
-        Mat candidatePoints2  = _current_frame->candidatePoints_[lvl].clone();    
-        
-        //candidatePoints1 = AddPatchPointsFeatures(candidatePoints1, lvl);
-        // cout << candidatePoints1.rows << endl;
-        // Mat imageWarped = Mat::zeros(image1.size(), CV_8UC1);
-        // ObtainImageTransformed(image1, candidatePoints1, candidatePoints1, imageWarped);             
-        // DebugShowWarpedPerspective(image1, image2, imageWarped, lvl);
-
-        // Obtain gradients           
-        Mat gradientX1 = Mat::zeros(image1.size(), CV_16SC1);
-        Mat gradientY1 = Mat::zeros(image1.size(), CV_16SC1);
-        gradientX1 = _previous_frame->gradientX_[lvl].clone();
-        gradientY1 = _previous_frame->gradientY_[lvl].clone();
-
-        // Obtain intrinsic parameters 
-        Mat K = K_[lvl];
-
-        // Optimization iteration
-        for (int k=0; k<max_iterations; k++) {
-=======
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) 
     {
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
@@ -341,7 +260,6 @@ void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_fram
             // Obtain points and depth of initial frame 
             Mat candidatePoints1  = _previous_frame->candidatePoints_[lvl].clone();
             Mat candidatePoints2  = _current_frame->candidatePoints_[lvl].clone();    
->>>>>>> 84cbb66b923993e288999b89010ddf5874cf420e
             
             //candidatePoints1 = AddPatchPointsFeatures(candidatePoints1, lvl);
             // cout << candidatePoints1.rows << endl;
