@@ -35,13 +35,16 @@ namespace vi
         /*if (_depth_path != "")
             depth_available = true;
         */
+        Quaternion quat_init(0,0,0,1);
+        final_pose = SE3(quat_init, SE3::Point(0, -1, 0));
         Calibration(_calPath);
         
-    
+
         // Obtain parameters of camera_model
         K = camera_model->GetK();
         w_input = camera_model->GetInputWidth();
         h_input = camera_model->GetInputHeight();
+
         map1 = camera_model->GetMap1();
         map2 = camera_model->GetMap2();
         fx = camera_model->GetK().at<float>(0,0);
@@ -64,7 +67,7 @@ namespace vi
             h = h_input;
         }
             
-
+        InitializePyramid( w, h, K );
         // Initialize tracker system
         /*tracker_ = new Tracker(depth_available_);
         tracker_->InitializePyramid(w_, h_, K_);
@@ -81,8 +84,7 @@ namespace vi
 
         initialized = true;
         cout << "Initializing system ... done" << endl << endl;
-        cout << "Ouput file in : "<< _outputPath<<endl;
-        outputFile.open(_outputPath); // agregar fecha automticamente
+        //outputFile.open(_outputPath); // agregar fecha automticamente
 
         // Posicion inicial
         position = _iniPosition;
@@ -97,10 +99,10 @@ namespace vi
         num_max_keyframes = camera_model->min_features; // Solo almacenar 10 keyframes
         min_features = camera_model->min_features;
         start_index = camera_model->start_index;
-
         camera.initializate(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
 
     }
+
 
     void VISystem::CalculateROI(Mat image) {
         // Load first image
@@ -167,9 +169,40 @@ namespace vi
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
         camera.Update(_currentImage);
-        camera.addKeyframe();
+        bool key_added = camera.addKeyframe();
         num_keyframes = camera.frameList.size();
         if (camera.frameList.size()> 1) // primera imagen agregada
+        {
+            //drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            //drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            camera.printStatistics();
+            /*if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
+            {
+                //min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
+                camera.printStatistics();
+                
+            }
+            */
+            if (num_keyframes > num_max_keyframes)
+            {
+                FreeLastFrame();
+            }
+            Track();
+        }
+        
+        
+
+    }
+    
+    void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) 
+    {
+        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
+        imuCore.estimate(_gtRPY);
+        camera.Update(_currentImage);
+        camera.addKeyframe();
+        num_keyframes = camera.frameList.size();
+
+        if (camera.frameList.size()> 1) // primera imagen agregada y actual
         {
             drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
             drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
@@ -183,43 +216,17 @@ namespace vi
             {
                 FreeLastFrame();
             }
+            Track();
         }
-        cout << "frame List Size = "<< camera.frameList.size()<<endl;
+       
         
-        
-
-    }
-    
-    void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) 
-    {
-        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
-        imuCore.estimate(_gtRPY);
-        camera.Update(_currentImage);
-        camera.addKeyframe();
-        num_keyframes = camera.frameList.size();
-        if (camera.frameList.size()> 1) // primera imagen agregada
-        {
-            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
-            {
-                ///min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
-                camera.printStatistics();
-            }
-            if (num_keyframes > num_max_keyframes)
-            {
-                FreeLastFrame();
-            }
-        }
-        cout << "frame List Size = "<< camera.frameList.size()<<endl;
-        drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
     }
 
     void VISystem::FreeLastFrame()
     {
         camera.frameList.erase(camera.frameList.begin());
-        cout << "Num keyFrames = "<< camera.frameList.size()<<endl;
     }
-    /*
+    
     // Gauss-Newton using Foward Compositional Algorithm - Using features
     void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
         // Gauss-Newton Optimization Options
@@ -244,6 +251,7 @@ namespace vi
 
         SE3 current_pose = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0));
 
+
         // Sparse to Fine iteration
         // Create for() WORKED WITH LVL 2
         for (int lvl = first_pyramid_lvl; lvl>=last_pyramid_lvl; lvl--) {
@@ -254,12 +262,12 @@ namespace vi
             float factor = intial_factor * (lvl + 1);
 
             // Obtain image 1 and 2
-            Mat image1 = _previous_frame->images_[lvl].clone();
-            Mat image2 = _current_frame->images_[lvl].clone();
+            Mat image1 = _previous_frame->grayImage[lvl].clone();
+            Mat image2 = _current_frame->grayImage[lvl].clone();
 
             // Obtain points and depth of initial frame 
-            Mat candidatePoints1  = _previous_frame->candidatePoints_[lvl].clone();
-            Mat candidatePoints2  = _current_frame->candidatePoints_[lvl].clone();    
+            Mat candidatePoints1  = _previous_frame->candidatePoints[lvl].clone();
+            Mat candidatePoints2  = _current_frame->candidatePoints[lvl].clone();    
             
             //candidatePoints1 = AddPatchPointsFeatures(candidatePoints1, lvl);
             // cout << candidatePoints1.rows << endl;
@@ -270,12 +278,11 @@ namespace vi
             // Obtain gradients           
             Mat gradientX1 = Mat::zeros(image1.size(), CV_16SC1);
             Mat gradientY1 = Mat::zeros(image1.size(), CV_16SC1);
-            gradientX1 = _previous_frame->gradientX_[lvl].clone();
-            gradientY1 = _previous_frame->gradientY_[lvl].clone();
+            gradientX1 = _previous_frame->gradientX[lvl].clone();
+            gradientY1 = _previous_frame->gradientY[lvl].clone();
 
             // Obtain intrinsic parameters 
             Mat K = K_[lvl];
-
             // Optimization iteration
             for (int k=0; k<max_iterations; k++) {
                 
@@ -293,7 +300,6 @@ namespace vi
                 // Computation of Jacobian and Residuals
                 Mat Jacobians;
                 Mat Residuals;      
-
                 int num_valid = 0;
                 for (int i=0; i<candidatePoints1.rows; i++) {
                     Mat Residual = Mat(1,1,CV_32FC1);        
@@ -338,7 +344,6 @@ namespace vi
                             int intensity2 = image2.at<uchar>(round(y2),round(x2));
 
                             Residual.at<float>(0,0) = intensity2 - intensity1;
-                            
                             Jl.at<float>(0,0) = gradientX1.at<short>(y1,x1);
                             Jl.at<float>(0,1) = gradientY1.at<short>(y1,x1);
 
@@ -366,7 +371,6 @@ namespace vi
                 Mat ResidualsW = Residuals.mul(W);
                 Mat errorMat =  inv_num_residuals * Residuals.t() * ResidualsW;
                 error = errorMat.at<float>(0,0);
-    
                 if (k==0)
                     initial_error = error;
 
@@ -385,7 +389,6 @@ namespace vi
 
                     // Reset delta
                     deltaMat = Mat::zeros(6,1,CV_32FC1);
-            
                     for (int i=0; i<6; i++)
                         deltaVector(i) = 0;
 
@@ -431,7 +434,6 @@ namespace vi
                 //cout << A.inv() << endl;
                 //cout << A << endl;
                 
-
                 // Convert info from eigen to cv
                 for (int i=0; i<6; i++)
                     deltaVector(i) = deltaMat.at<float>(i,0);
@@ -461,5 +463,123 @@ namespace vi
         _previous_frame->rigid_transformation_ = current_pose;
 
     }
-    */
+
+
+    void VISystem::InitializePyramid(int _width, int _height, Mat _K) {
+        w_[0] = _width;
+        h_[0] = _height;
+        K_[0] = _K;
+        // invK_[0] = _K.inv();
+
+        fx_[0] = _K.at<float>(0,0);
+        fy_[0] = _K.at<float>(1,1);
+        cx_[0] = _K.at<float>(0,2);
+        cy_[0] = _K.at<float>(1,2);
+        
+        invfx_[0] = 1 / fx_[0]; 
+        invfy_[0] = 1 / fy_[0]; 
+        invcx_[0] = 1 / cx_[0]; 
+        invcy_[0] = 1 / cy_[0]; 
+        int lvl;
+        for (lvl = 1; lvl < 5; lvl++) {
+            w_[lvl] = _width >> lvl;
+            h_[lvl] = _height >> lvl;
+            fx_[lvl] = fx_[lvl-1] * 0.5;
+            fy_[lvl] = fy_[lvl-1] * 0.5;
+            cx_[lvl] = (cx_[0] + 0.5) / ((int)1<<lvl) - 0.5;
+            cy_[lvl] = (cy_[0] + 0.5) / ((int)1<<lvl) - 0.5;
+
+            K_[lvl] = Mat::eye(Size(3,3), CV_32FC1);
+            K_[lvl].at<float>(0,0) = fx_[lvl];
+            K_[lvl].at<float>(1,1) = fy_[lvl];
+            K_[lvl].at<float>(0,2) = cx_[lvl];  
+            K_[lvl].at<float>(1,2) = cy_[lvl];    
+
+            invfx_[lvl] = 1 / fx_[lvl];
+            invfy_[lvl] = 1 / fy_[lvl];
+            invcx_[lvl] = 1 / cx_[lvl];
+            invcy_[lvl] = 1 / cy_[lvl];
+            
+            // Needs review
+            // invK_[lvl] = K_[lvl].inv();
+            // invfx_[lvl] = invK_[lvl].at<float>(0,0); 
+            // invfy_[lvl] = invK_[lvl].at<float>(1,1);
+            // invcx_[lvl] = invK_[lvl].at<float>(0,2);
+            // invcy_[lvl] = invK_[lvl].at<float>(1,2);
+        }
+    }
+
+    Mat VISystem::WarpFunction(Mat _points2warp, SE3 _rigid_transformation, int _lvl) {
+        int lvl = _lvl;
+
+        Mat projected_points = Mat(_points2warp.size(), CV_32FC1);
+        projected_points = _points2warp.clone();
+
+        Mat44f rigidEigen = _rigid_transformation.matrix();
+        Mat rigid = Mat(4,4,CV_32FC1);
+        eigen2cv(rigidEigen, rigid);
+
+        //cout << rigid << endl;
+
+        float fx = fx_[lvl];
+        float fy = fy_[lvl];
+        float invfx = invfx_[lvl];
+        float invfy = invfy_[lvl];
+        float cx = cx_[lvl];
+        float cy = cy_[lvl];
+
+        // 2D -> 3D
+
+        // X  = (x - cx) * Z / fx 
+        projected_points.col(0) = ((projected_points.col(0) - cx) * invfx);
+        projected_points.col(0) = projected_points.col(0).mul(projected_points.col(2));
+
+        // Y  = (y - cy) * Z / fy    
+        projected_points.col(1) = ((projected_points.col(1) - cy) * invfy);
+        projected_points.col(1) = projected_points.col(1).mul(projected_points.col(2));
+        //cout << projected_points.row(projected_points.rows-1) << endl;    
+
+        // Z = Z
+
+        // Transformation of a point rigid body motion
+        projected_points = rigid * projected_points.t();
+
+        // 3D -> 2D
+        // x = (X * fx / Z) + cx
+        projected_points.row(0) *= fx;    
+        projected_points.row(0) /= projected_points.row(2);
+        projected_points.row(0) += cx;
+        
+        // x = (Y * fy / Z) + cy    
+        projected_points.row(1) *= fy;    
+        projected_points.row(1) /= projected_points.row(2);
+        projected_points.row(1) += cy;
+
+        //cout << projected_points.col(0) << endl;
+        
+        // Cleaning invalid points
+        projected_points.row(0) = projected_points.row(0).mul(projected_points.row(3));
+        projected_points.row(1) = projected_points.row(1).mul(projected_points.row(3));
+
+        // Transposing the points due transformation multiplication
+        return projected_points.t();
+    }
+
+    Mat VISystem::IdentityWeights(int _num_residuals) 
+    {
+        Mat W = Mat::ones(_num_residuals,1,CV_32FC1);    
+        return W;
+    }
+
+    void VISystem::Track()
+    {
+        EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+        Mat31f t = camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation();
+        current_pose = SE3(camera.frameList[camera.frameList.size()-2]->rigid_transformation_.unit_quaternion(), (camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation()));
+        final_pose = final_pose*current_pose;
+    }
+
 }
+
+
+

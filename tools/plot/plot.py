@@ -46,7 +46,7 @@ def main():
    
 
 
-    with open('/home/lujano/Documents/outputUWSlam.csv', newline='') as csvfile:
+    with open('/home/lujano/Documents/outputVISlam.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             estPosition = np.append( estPosition, [[float(row[0]), float(row[1]), float(row[2])]], 0)
@@ -68,22 +68,23 @@ def main():
     # Plot position
     plt.figure()
 
+    factor_scale = 10
     plt.subplot(3, 1, 1)
-    plt.plot(time, estPosition[:, 0], 'b-', linewidth=2, label='Posicion x estimada')
+    plt.plot(time, estPosition[:, 0]*factor_scale, 'b-', linewidth=2, label='Posicion x estimada')
     plt.plot(time, gtPosition[:, 0], 'r-', linewidth=2, label='Posicion x gt')
     plt.ylabel("x(m)")
     plt.xlabel("t(s)")
     plt.legend()
 
     plt.subplot(3, 1, 2)
-    plt.plot(time, estPosition[:, 1], 'b-', linewidth=2, label='Posicion y estimada')
+    plt.plot(time, estPosition[:, 1]*factor_scale, 'b-', linewidth=2, label='Posicion y estimada')
     plt.plot(time, gtPosition[:, 1], 'r-', linewidth=2, label='Posicion y gt')
     plt.ylabel("y(m)")
     plt.xlabel("t(s)")
     plt.legend()
     
     plt.subplot(3, 1, 3)
-    plt.plot(time, estPosition[:, 2], 'b-', linewidth=2, label='Posicion z estimada')
+    plt.plot(time, estPosition[:, 2]*factor_scale, 'b-', linewidth=2, label='Posicion z estimada')
     plt.plot(time, gtPosition[:, 2], 'r-', linewidth=2, label='Posicion z gt')
     plt.ylabel("z(m)")
     plt.xlabel("t(s)")
@@ -94,28 +95,27 @@ def main():
     plt.figure()
 
     plt.subplot(3, 1, 1)
-    plt.plot(time, estOrientationRPY[:, 0]*180/math.pi, 'b-', linewidth=2, label='Roll estimado')
+    plt.plot(time, estOrientationRPY[:, 0]*180/math.pi*1000000, 'b-', linewidth=2, label='Roll estimado')
     plt.plot(time, gtOrientationRPY[:, 0]*180/math.pi, 'r-', linewidth=2, label='Roll gt')
     plt.ylabel("roll(°)")
     plt.xlabel("t(s)")
     plt.legend()
 
     plt.subplot(3, 1, 2)
-    plt.plot(time, estOrientationRPY[:, 1]*180/math.pi, 'b-', linewidth=2, label='Pitch estimado')
+    plt.plot(time, estOrientationRPY[:, 1]*180/math.pi*1000000, 'b-', linewidth=2, label='Pitch estimado')
     plt.plot(time, gtOrientationRPY[:, 1]*180/math.pi, 'r-', linewidth=2, label='Pitch gt')
     plt.ylabel("pitch(°)")
     plt.xlabel("t(s)")
     plt.legend()
     
     plt.subplot(3, 1, 3)
-    plt.plot(time, estOrientationRPY[:, 2]*180/math.pi, 'b-', linewidth=2, label='Yaw estimado')
+    plt.plot(time, estOrientationRPY[:, 2]*180/math.pi*1000000, 'b-', linewidth=2, label='Yaw estimado')
     plt.plot(time, gtOrientationRPY[:, 2]*180/math.pi, 'r-', linewidth=2, label='Yaw gt')
     plt.ylabel("yaw(°)")
     plt.xlabel("t(s)")
     plt.legend()
 
 
-    print(estOrientationRPY)
 
 
     

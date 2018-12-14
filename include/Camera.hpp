@@ -7,8 +7,10 @@
  */
 
 #include "Matcher.hpp"
+#include "Options.hpp"
 #include <iostream>
 #include <opencv2/imgproc.hpp>
+
 using namespace cv;
 using namespace cv::xfeatures2d;
 
@@ -38,10 +40,10 @@ class Frame
         ~Frame();
 
         // ---------- Attributes
-        Mat grayImage;  //!< imagen en escala de grises
-        Mat gradientX;  //!< gradiente en direccion x de la imagen
-        Mat gradientY;  //!< gradiente en direccion y de la imagen
-        Mat gradient;   //!< gradiente en direccion x y y de la imagen
+        vector<Mat> grayImage =  vector<Mat>(5);  //!< imagen en escala de grises
+        vector<Mat> gradientX= vector<Mat>(5) ;  //!< gradiente en direccion x de la imagen
+        vector<Mat> gradientY= vector<Mat>(5);  //!< gradiente en direccion y de la imagen
+        vector<Mat> gradient= vector<Mat>(5);   //!< gradiente en direccion x y y de la imagen
         
         vector<KeyPoint> keypoints;        //!< keypoints de la imagen
         vector<KeyPoint>  prevGoodMatches; //!< matches con la imagen anterior
@@ -49,9 +51,11 @@ class Frame
         Mat descriptors;                   //!< keypoints de la imagen
         vector<Mat> prevPatches; //!< Parches de intensidad alrededor de los features
         vector<Mat> nextPatches; //!< Parches de intensidad alrededor de los features
+        vector<Mat> candidatePoints  = vector<Mat>(5);
 
         int idFrame;      //!< identificador del frame
         double imageTime; //!< tiempo en el que fue tomado la imagen
+        Sophus::SE3f rigid_transformation_;
 
         bool obtainedGradients;   //!< flag de obtencion del gradiente
         bool obtainedGoodMatches; //!< flag de obtencion de matches    
@@ -79,7 +83,7 @@ class Camera
         bool addKeyframe(); // Añade o no un keyframe 
         
         void saveFrame(); //(frame->framelist)
-
+        void ObtainPatchesPointsPreviousFrame();
         void computePatches(); // calcula los parches del frame actual;
         void computeResiduals(); // calculas los residuales fotometricos entre el frame actual y el anterior
         
@@ -102,7 +106,8 @@ class Camera
         Ptr<Feature2D> detector;   //!< Pointer to OpenCV feature extractor
 
         //Informacion de la imagen
-        int w_size, h_size;
+        vector<int> w_size = vector<int>(5);
+        vector<int> h_size = vector<int>(5);
         // Tamaño de parches (impar)
         int w_patch, h_patch;
 

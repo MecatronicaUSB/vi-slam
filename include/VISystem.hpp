@@ -7,6 +7,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/calib3d.hpp"
+#include "opencv2/core/eigen.hpp"
 #include <ctime>
 
 #include <ros/ros.h>
@@ -17,16 +18,10 @@
 #include <geometry_msgs/Quaternion.h>
 
 
-// Eigen library
-#include <eigen3/Eigen/Core>
-
-// Sophus
-#include "sophus/se3.hpp"
-#include "sophus/so3.hpp"
-
-
 using namespace std;
 using namespace cv;
+
+#define PYRAMID_LEVELS 5
 
 namespace vi
 {
@@ -40,6 +35,7 @@ class VISystem
         
         
         void InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw, Mat image);
+        void InitializePyramid(int _width, int _height, Mat _K);
         // Gauss-Newton using Foward Compositional Algorithm - Using features
         void Calibration(string _calibration_path);
         void EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame);
@@ -47,6 +43,9 @@ class VISystem
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) ;
         void FreeLastFrame();
+        void Track();
+        Mat IdentityWeights(int _num_residuals) ;
+        Mat WarpFunction(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
         
         bool initialized, distortion_valid , depth_available;
         int  num_keyframes;
@@ -70,8 +69,26 @@ class VISystem
         Mat K;
         Rect ROI;
 
-        std::ofstream outputFile;
         Mat outputCurrentImage, outputLastImage;
+
+        // Width and height of images for each pyramid level available
+        vector<int> w_ = vector<int>(PYRAMID_LEVELS);
+        vector<int> h_ = vector<int>(PYRAMID_LEVELS);
+
+        vector<float> fx_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> fy_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> cx_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> cy_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> invfx_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> invfy_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> invcx_ = vector<float>(PYRAMID_LEVELS);
+        vector<float> invcy_ = vector<float>(PYRAMID_LEVELS);
+
+        vector<Mat> K_ = vector<Mat>(PYRAMID_LEVELS);
+
+
+        SE3 final_pose;
+        SE3 current_pose;
 
         
     

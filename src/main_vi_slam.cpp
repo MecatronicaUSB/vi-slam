@@ -49,6 +49,7 @@ int main( int argc, char** argv ){
 
     VISystem visystem(argc, argv);
     visystem.InitializeSystem( outputFile, "", calibrationFile, Data.gtPosition[0], Data.gtLinearVelocity[0], Data.gtRPY[0].z, Data.image1);
+    cout << "Initializate System"<<endl;
 
     //VisualizerVector3 rqt_error("error", 10.0);
     
@@ -80,16 +81,21 @@ int main( int argc, char** argv ){
     vector<KeyPoint> vectorMatches;
     Quaterniond qGt_initial;
 
-    Data.UpdateDataReader(0, 1);
+
    
-    //Camera camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
-    int j = 1;
-     while(j <Data.indexLastData)
+    int j = 210;
+    std::ofstream outputFilecsv;;
+    outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
+    while(j <Data.indexLastData)
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j, j+1);
         j = j+1;
         visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
+        Mat31f t = visystem.final_pose.translation();
+        Quaternion quaternion = visystem.final_pose.unit_quaternion();
+
+        
        /*
        
         //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
@@ -124,6 +130,23 @@ int main( int argc, char** argv ){
        
         visualizer_gt.UpdateMessages(Data.gtPosition.back(), Data.gtQuaternion.back());
         cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
+
+
+        outputFilecsv <<  -t(0)<<","
+        <<-t(2)<<","
+        <<-t(1)<<","
+        <<quaternion.x() <<","
+        <<quaternion.y()<<","
+        <<quaternion.z()<<","
+        <<quaternion.w()<<","
+        <<Data.gtPosition[Data.gtPosition.size()-1].x <<","
+        << Data.gtPosition[Data.gtPosition.size()-1].y<<","
+        << Data.gtPosition[Data.gtPosition.size()-1].z<<","
+        <<Data.gtQuaternion[Data.gtQuaternion.size()-1].x<<","
+        <<Data.gtQuaternion[Data.gtQuaternion.size()-1].y<<","
+        <<Data.gtQuaternion[Data.gtQuaternion.size()-1].z<<","
+        <<Data.gtQuaternion[Data.gtQuaternion.size()-1].w
+        <<endl;
 
         //visualizer_est.UpdateMessages(position2, orientation2);
             

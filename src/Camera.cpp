@@ -29,8 +29,12 @@ Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size, int _num_c
 
 void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path)
 {
-    w_size = _w_size;
-    h_size = _h_size;
+    w_size[0] = _w_size;
+    h_size[0] = _h_size;
+    for (int lvl = 1; lvl < 5; lvl++) {
+        w_size[lvl] = _w_size >> lvl;
+        h_size[lvl] = _h_size >> lvl;
+    }
     setDetector(_detector);
     setMatcher(_matcher);
 
@@ -48,14 +52,18 @@ void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size,
 void Camera::Update (Mat _grayImage){
     currentFrame = new Frame();
     elapsed_computeGoodMatches = elapsed_computeGradient= elapsed_descriptors =elapsed_detect = 0.0;
-    _grayImage.copyTo(currentFrame->grayImage); // Copiar imagen
+    _grayImage.copyTo(currentFrame->grayImage[0]); // Copiar imagen
+    // Escalamiento de la imagen para los niveles piramidales
+    for (int i=1; i<5; i++) {
+        resize(currentFrame->grayImage[i-1], currentFrame->grayImage[i], Size(), 0.5, 0.5);
+    }
     
 }
 
 int Camera::detectFeatures(){
             
     clock_t begin = clock(); // Tiempo de inicio del codigo
-    detector -> detect( currentFrame->grayImage, currentFrame->keypoints);
+    detector -> detect( currentFrame->grayImage[0], currentFrame->keypoints);
     clock_t detect1 = clock(); 
     elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;                     
     return currentFrame-> keypoints.size();
@@ -65,7 +73,7 @@ int Camera::detectFeatures(){
 int Camera::detectAndComputeFeatures(){
             
     clock_t begin = clock(); // Tiempo de inicio del codigo
-    detector -> detectAndCompute( currentFrame->grayImage,  Mat(), currentFrame->keypoints, currentFrame->descriptors);
+    detector -> detectAndCompute( currentFrame->grayImage[0],  Mat(), currentFrame->keypoints, currentFrame->descriptors);
     clock_t detect1 = clock(); 
     elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;                     
     return currentFrame-> keypoints.size();
@@ -102,7 +110,7 @@ void Camera::setDetector(int _detector)
         }
         case USE_ORB:
         {
-            detector = ORB::create(250);
+            detector = ORB::create(600);
             cout << "Using ORB detector"<<endl;
             break;
         }
@@ -137,24 +145,25 @@ void Camera::computeGoodMatches()
 void Camera::setMatcher(int _matcher)
 {
     matcher.setMatcher(_matcher);
-    matcher.setImageDimensions(w_size, h_size);
+    matcher.setImageDimensions(w_size[0], h_size[0]);
 }
 
 // Gradiente
 
 void Camera::computeGradient()
 {
+    for (int lvl = 0; lvl<5; lvl++) {
+        Scharr(currentFrame->grayImage[lvl], currentFrame->gradientX[lvl], CV_16S, 1, 0, 3, 0, BORDER_DEFAULT);
+        Scharr(currentFrame->grayImage[lvl], currentFrame->gradientY[lvl], CV_16S, 0, 1, 3, 0, BORDER_DEFAULT);
+        
+        Mat gradientX, gradientY;
+        currentFrame->gradientX[lvl].copyTo(gradientX);
+        currentFrame->gradientY[lvl].copyTo(gradientY);
+        convertScaleAbs(gradientX, gradientX, 1.0, 0.0);
+        convertScaleAbs(gradientY, gradientY, 1.0, 0.0);
 
-    Scharr(currentFrame->grayImage, currentFrame->gradientX, CV_16S, 1, 0, 3, 0, BORDER_DEFAULT);
-    Scharr(currentFrame->grayImage, currentFrame->gradientY, CV_16S, 0, 1, 3, 0, BORDER_DEFAULT);
-    
-    Mat gradientX, gradientY;
-    currentFrame->gradientX.copyTo(gradientX);
-    currentFrame->gradientY.copyTo(gradientY);
-    convertScaleAbs(gradientX, gradientX, 1.0, 0.0);
-    convertScaleAbs(gradientY, gradientY, 1.0, 0.0);
-
-    addWeighted(gradientX, 0.5, gradientY, 0.5, 0, currentFrame->gradient);
+        addWeighted(gradientX, 0.5, gradientY, 0.5, 0, currentFrame->gradient[lvl]);
+    }
 
     currentFrame->obtainedGradients = true;
 }
@@ -187,8 +196,9 @@ bool Camera::addKeyframe()
         cgood = clock();
         computeGradient();
         cgradient = clock();
-        computePatches();
-        computeResiduals();
+        ObtainPatchesPointsPreviousFrame();
+        //computePatches();
+        //computeResiduals();
         cpatches = clock();
         saveFrame();
         nBestMatches =  matcher.goodMatches.size();
@@ -236,7 +246,7 @@ bool Camera::addKeyframe()
     }
   
 }
-
+/*
 void Camera::computePatches()  // Crear parches de la imagen anterior y la actual
 { 
     Mat patch1(w_patch, h_patch, CV_16SC1);
@@ -278,7 +288,7 @@ void Camera::computePatches()  // Crear parches de la imagen anterior y la actua
     }
 
 }
-
+*/
 void Camera::computeResiduals()
 {
     Residuals.clear(); // limpiar contenedor
@@ -326,3 +336,44 @@ void Camera::printStatistics()
     ;
 }
 
+void Camera::ObtainPatchesPointsPreviousFrame() {
+    vector<KeyPoint> goodKeypoints;
+    
+    goodKeypoints = frameList[frameList.size()-1]->nextGoodMatches;
+    int num_max_keypoints = goodKeypoints.size();
+
+    // Saves features found
+    float factor_depth = 0.0002, factor_lvl;
+    float depth_initialization = 1;    
+
+    int lvl = 0;
+    factor_lvl = 1 / pow(2, lvl);
+    int patch_size_ = 5;
+    int start_point = patch_size_ - 1 / 2;
+
+    for (int i=0; i< min(num_max_keypoints, 20); i++) {
+
+            float x = goodKeypoints[i].pt.x;
+            float y = goodKeypoints[i].pt.y;
+
+
+
+                float z = 1;
+
+                for (int i=x-start_point; i<=x+start_point; i++) {
+                    for (int j=y-start_point; j<=y+start_point; j++) {
+                        if (i>0 && i<w_size[lvl] && j>0 && j<h_size[lvl]) {
+                            Mat pointMat_patch = Mat::ones(1, 4, CV_32FC1);                
+                            pointMat_patch.at<float>(0,0) = i;
+                            pointMat_patch.at<float>(0,1) = j;
+                            pointMat_patch.at<float>(0,2) = z;
+
+                            frameList[frameList.size()-1]->candidatePoints[lvl].push_back(pointMat_patch);
+                        
+                    
+                }
+            }
+        }
+    }
+}
+ 

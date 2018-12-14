@@ -14,7 +14,7 @@ Imu::Imu(double timestep)
 void Imu::createPublisher(double _timeStep)
 {
     timeStep = _timeStep;
-    // Crear el publicador con una frecuencia 10 veces mayor a la respuesta de la imu
+    // Crear el publicador con una frecuencia 20 veces mayor a la respuesta de la imu
     createROSPublisher(static_cast<int>((1.0/timeStep)*20)); 
     createROSSubscriber();
 }
@@ -41,19 +41,7 @@ void Imu::setImuBias(Point3d acc_bias, Point3d ang_bias)
 void Imu::initializate(double gt_yaw)
 {
     initialYawGt = gt_yaw;
-    Quaterniond orientation;
-    for (int i = 0; i < n ; i++)
-    {
-        UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
-        UpdateSubscriber();
-    }
-    orientation.x = imuFusedData.orientation.x;
-    orientation.y = imuFusedData.orientation.y;
-    orientation.z = imuFusedData.orientation.z;
-    orientation.w = imuFusedData.orientation.w;
-    Point3d angle_filter_initial = toRPY(orientation);
-    
-    initialYawFilter =  angle_filter_initial.z;  // ultima estimacion angulo inicial
+    initialYawFilter = 0;
         
 
 }
