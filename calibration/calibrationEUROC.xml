@@ -27,6 +27,19 @@
   <data>
     -0.28340811 0.07395907  0.00019359  1.76187114e-05 </data></rectification>
 
+
+  <!-- body transformation to cam0 -->
+<imu2cam0Transformation type_id="opencv-matrix">
+  <rows>4</rows>
+  <cols>4</cols>
+  <dt>f</dt>
+  <data>
+     0.0148655429818 -0.999880929698 0.00414029679422 -0.0216401454975
+         0.999557249008 0.0149672133247 0.025715529948 -0.064676986768
+        -0.0257744366974 0.00375618835797 0.999660727178 0.00981073058949
+         0.0 0.0 0.0 1.0 </data></imu2cam0Transformation>
+
+
 <!-- Frecuency Rate (Hz)-->
 <camera_frecuency  type_id="float"> 20 </camera_frecuency> 
 <imu_frecuency type_id="float"> 200 </imu_frecuency>
@@ -41,12 +54,18 @@
 <num_cells type_id="integer"> 196</num_cells>
 <length_patch type_id="integer"> 3</length_patch>
 
-<detector type_id="integer">0</detector>
-<matcher type_id="integer">0</matcher>
-  <!--USE_KAZE,
-    USE_AKAZE,
-    USE_ORB,
-    USE_SIFT,
-    USE_SURF
+<detector type_id="integer">2</detector>
+<matcher type_id="integer">1</matcher>
+  <!--USE_KAZE, 0
+    USE_AKAZE, 1
+    USE_ORB, 2
+    USE_SIFT, 3
+    USE_SURF, 4
     -->
+  <!--
+    USE_BRUTE_FORCE, 0
+    USE_BRUTE_FORCE_HAMMING, 1
+    USE_FLANN, 2
+    USE_BRUTE_FORCE_GPU, 3
+    USE_BRUTE_FORCE_GPU_HAMMING, 4 -->
 </opencv_storage>

@@ -13,8 +13,8 @@
     <!-- Rviz visualize-->
     <node pkg="rviz" type="rviz" name="rviz"/>
 
-    <!-- rqt_plot visualizer-->
-    <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>
+    <!-- rqt_plot visualizer
+    <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>-->
         
     <node name="ImuFilter" pkg="imu_filter_madgwick" type="imu_filter_node"
          args="_use_mag:=false _use_magnectic_field_msg:=false 

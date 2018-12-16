@@ -28,6 +28,7 @@ void CameraModel::GetCameraModel(string _calibration_path) {
         opencv_file["out_height"] >> out_height_;
         opencv_file["calibration_values"] >> calibration_values;
         opencv_file["rectification"] >> distortion_values;
+        opencv_file["imu2cam0Transformation"]>> imu2cam0Transformation;
         opencv_file["camera_frecuency"]>> camera_frecuency;
         opencv_file["imu_frecuency"]>> imu_frecuency;
         opencv_file["min_features"]>>min_features;
@@ -39,6 +40,7 @@ void CameraModel::GetCameraModel(string _calibration_path) {
         opencv_file["length_patch"]>> length_patch;
         opencv_file["detector"]>> detector;
         opencv_file["matcher"]>> matcher;
+        
         
         opencv_file.release();
     } else {

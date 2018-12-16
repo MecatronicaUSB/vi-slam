@@ -10,6 +10,16 @@ Frame::Frame(){
     isKeyFrame = false;
 }
 
+
+Frame::~Frame()
+{
+    grayImage.clear();
+    gradientX.clear();
+    gradientY.clear();
+    gradient.clear();
+
+    candidatePoints.clear();
+}
 Camera::Camera()
 {
     elapsed_detect_sum = 0.0; 
@@ -47,6 +57,7 @@ void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size,
     elapsed_computePatches_sum = 0.0; 
     nPointsDetect_sum = 0.0;
     nBestMatches_sum = 0.0; 
+    num_images = 0;
 }
 // Deteccion
 void Camera::Update (Mat _grayImage){
@@ -191,6 +202,7 @@ bool Camera::addKeyframe()
     if ( (nPointsDetect > 1) && (frameList.size()!= 0))
     { // is a keyframe (maybe)
         //computeDescriptors();
+        num_images = num_images+1;
         cdescriptors = clock(); 
         computeGoodMatches();
         cgood = clock();
@@ -231,15 +243,15 @@ bool Camera::addKeyframe()
         nPointsDetect_sum = nPointsDetect_sum+nPointsDetect;
         nBestMatches_sum = nBestMatches_sum +nBestMatches; 
 
-        elapsed_detect_mean = (elapsed_detect_sum)/(frameList.size()-1) ; 
-        elapsed_descriptors_mean = (elapsed_descriptors_sum)/(frameList.size()-1) ; 
-        elapsed_computeGoodMatches_mean = (elapsed_computeGoodMatches_sum)/(frameList.size()-1) ; 
-        elapsed_computeGradient_mean = (elapsed_computeGradient_sum)/(frameList.size()-1) ; 
-        elapsed_computePatches_mean =(elapsed_computePatches_sum)/(frameList.size()-1) ; 
+        elapsed_detect_mean = (elapsed_detect_sum)/(num_images) ; 
+        elapsed_descriptors_mean = (elapsed_descriptors_sum)/(num_images) ; 
+        elapsed_computeGoodMatches_mean = (elapsed_computeGoodMatches_sum)/(num_images) ; 
+        elapsed_computeGradient_mean = (elapsed_computeGradient_sum)/(num_images) ; 
+        elapsed_computePatches_mean =(elapsed_computePatches_sum)/(num_images) ; 
 
                 
-        nPointsDetect_mean = nPointsDetect_sum/(frameList.size()-1);
-        nBestMatches_mean = nBestMatches_sum/(frameList.size()-1); 
+        nPointsDetect_mean = nPointsDetect_sum/(num_images);
+        nBestMatches_mean = nBestMatches_sum/(num_images); 
         
 
         //printStatistics();

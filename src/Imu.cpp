@@ -216,6 +216,9 @@ void Imu::estimate()
     computePosition();
     computeAngularVelocity();
     computeAngularPosition();
+    init_rotationMatrix = RPY2rotationMatrix(rpyAnglesWorld[0]);
+    final_rotationMatrix = RPY2rotationMatrix(rpyAnglesWorld.back());
+    residual_rotationMatrix = init_rotationMatrix.t()*final_rotationMatrix; // inverse rotation by final rotation
     residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
     residualVelocity =  velocity;
     residualPosition = position;

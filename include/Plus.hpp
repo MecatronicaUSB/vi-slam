@@ -24,4 +24,14 @@ Point3d toRPY360(Point3d angles);
 
 double computeDiff(double gt_angle, double gt_est);
 
+Mat point2MatPlusOne(Point3d point);
+Mat point2Mat(Point3d point);
+Point3d Mat2point(Mat position);
+Point3d transformationMatrix2RPY(Mat transformationMatrix);
+Point3d transformationMatrix2position(Mat transformationMatrix);
+Point3d rotationMatrix2RPY(Mat rotationMatrix);
+Mat RPY2rotationMatrix(Point3d rpy );
+Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position);
+Mat transformationMatrix2rotationMatrix(Mat transformationMatrix );
+
 #endif

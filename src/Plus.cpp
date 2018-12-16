@@ -53,6 +53,80 @@ Point3d toRPY(const Quaterniond& q)
 	return angles;
 }
 
+Point3d rotationMatrix2RPY(Mat rotationMatrix)
+{
+	// roll (x-axis rotation)
+	double roll, pitch,  yaw;
+	
+	double r11 = rotationMatrix.at<float>(0,0);
+	double r12 = rotationMatrix.at<float>(0,1);
+	double r13 = rotationMatrix.at<float>(0,2);
+
+	double r21 = rotationMatrix.at<float>(1,0);
+	double r22 = rotationMatrix.at<float>(1,1);
+	double r23 = rotationMatrix.at<float>(1,2);
+
+	double r31 = rotationMatrix.at<float>(2,0);
+	double r32 = rotationMatrix.at<float>(2,1);
+	double r33 = rotationMatrix.at<float>(2,2);
+
+	yaw = atan2(r21, r11);
+	pitch = atan2(-r31, sqrt(r32*r32+r33*r33));
+	roll = atan2(r32, r33);
+
+	Point3d angles;
+	angles.x = roll;
+	angles.y = pitch;
+	angles.z = yaw;
+
+
+	return angles;
+}
+
+
+Point3d transformationMatrix2RPY(Mat transformationMatrix)
+{
+	// roll (x-axis rotation)
+	double roll, pitch,  yaw;
+	
+	double r11 = transformationMatrix.at<float>(0,0);
+	double r12 = transformationMatrix.at<float>(0,1);
+	double r13 = transformationMatrix.at<float>(0,2);
+
+	double r21 = transformationMatrix.at<float>(1,0);
+	double r22 = transformationMatrix.at<float>(1,1);
+	double r23 = transformationMatrix.at<float>(1,2);
+
+	double r31 = transformationMatrix.at<float>(2,0);
+	double r32 = transformationMatrix.at<float>(2,1);
+	double r33 = transformationMatrix.at<float>(2,2);
+
+	roll = atan2(r21, r11);
+	pitch = atan2(-r31, sqrt(r32*r32+r33*r33));
+	yaw = atan2(r32, r33);
+
+	Point3d angles;
+	angles.x = roll;
+	angles.y = pitch;
+	angles.z = yaw;
+
+
+	return angles;
+}
+
+Point3d transformationMatrix2position(Mat transformationMatrix)
+{
+	Point3d translation;
+
+	translation.x = transformationMatrix.at<float>(0,3) ;
+	translation.y = transformationMatrix.at<float>(1,3) ;
+	translation.z = transformationMatrix.at<float>(2,3) ;
+
+	return translation;
+
+
+}
+
 double computeDiff(double angle_ref, double angle2)
 {
 	double diff;
@@ -105,3 +179,147 @@ Point3d toRPY360(Point3d angles)
 	return transform360;
 }
 
+
+Mat RPY2rotationMatrix(Point3d rpy )
+{
+	// roll (x-axis rotation)
+	double roll = rpy.x;
+    double pitch = rpy.y;
+    double yaw = rpy.z;
+
+    //cout << "roll = " << roll*180/M_PI << "pitch" << pitch*180/M_PI << "yaw" << yaw*180/M_PI <<endl;
+    double c1 = cos(roll);
+    double s1 = sin(roll);
+    double c2 = cos(pitch);
+    double s2 = sin(pitch);
+    double c3 = cos(yaw);
+    double s3 = sin(yaw);
+	
+	Mat rotationMatrix = Mat::zeros(3,3,CV_32FC1);
+
+
+	rotationMatrix.at<float>(0,0) = c3*c2;
+	rotationMatrix.at<float>(0,1) = c3*s2*s1-s3*c1;
+	rotationMatrix.at<float>(0,2) = c3*s2*c1+s3*s1;
+
+	rotationMatrix.at<float>(1,0) = s3*c2;
+	rotationMatrix.at<float>(1,1) = s3*s2*s1+c3*c1;
+	rotationMatrix.at<float>(1,2) = s3*s2*c1-c3*s1;
+
+	rotationMatrix.at<float>(2,0) = -s2;
+	rotationMatrix.at<float>(2,1) = c2*s1;
+	rotationMatrix.at<float>(2,2) = c2*c1;
+
+	/*
+	worldVector.x = c3*c2*acc.x + (c3*s2*s1-s3*c1)*acc.y+(c3*s2*c1+s3*s1)*acc.z;
+    worldVector.y = s3*c2*acc.x + (s3*s2*s1+c3*c1)*acc.y +(s3*s2*c1-c3*s1)*acc.z;
+    worldVector.z = -s2*acc.x +c2*s1*acc.y +c2*c1*acc.z;
+	*/
+
+
+	return rotationMatrix;
+}
+
+Mat transformationMatrix2rotationMatrix(Mat transformationMatrix )
+{
+	Mat rotationMatrix = Mat::zeros(3,3,CV_32FC1);
+
+	rotationMatrix.at<float>(0,0) = transformationMatrix.at<float>(0,0);
+	rotationMatrix.at<float>(0,1) = transformationMatrix.at<float>(0,1);
+	rotationMatrix.at<float>(0,2) = transformationMatrix.at<float>(0,2);
+
+	rotationMatrix.at<float>(1,0) = transformationMatrix.at<float>(1,0);
+	rotationMatrix.at<float>(1,1) = transformationMatrix.at<float>(1,1);
+	rotationMatrix.at<float>(1,2) = transformationMatrix.at<float>(1,2);
+
+	rotationMatrix.at<float>(2,0) = transformationMatrix.at<float>(2,0);
+	rotationMatrix.at<float>(2,1) = transformationMatrix.at<float>(2,1);
+	rotationMatrix.at<float>(2,2) = transformationMatrix.at<float>(2,2);
+
+	return rotationMatrix;
+
+}
+
+
+Mat point2MatPlusOne(Point3d point)
+{
+	Mat pointMat = Mat::zeros(4,1,CV_32FC1);
+
+	pointMat.at<float>(0,0) = point.x;
+	pointMat.at<float>(1,0) = point.y;
+	pointMat.at<float>(2,0) = point.z;
+	pointMat.at<float>(3,0) = 1.0;
+
+
+	return pointMat;
+
+
+}
+
+Mat point2Mat(Point3d point)
+{
+	Mat pointMat = Mat::zeros(3,1,CV_32FC1);
+
+	pointMat.at<float>(0,0) = point.x;
+	pointMat.at<float>(1,0) = point.y;
+	pointMat.at<float>(2,0) = point.z;
+
+	return pointMat;
+
+
+}
+
+Point3d Mat2point(Mat pointMat)
+{
+	Point3d point;
+	point.x = double(pointMat.at<float>(0,0));
+	point.y =double( pointMat.at<float>(1,0));
+	point.z = double(pointMat.at<float>(2,0));
+
+	return point;
+
+
+}
+
+
+Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position)
+{
+	
+	double roll = rpy.x;
+    double pitch = rpy.y;
+    double yaw = rpy.z;
+
+    //cout << "roll = " << roll*180/M_PI << "pitch" << pitch*180/M_PI << "yaw" << yaw*180/M_PI <<endl;
+    double c1 = cos(roll);
+    double s1 = sin(roll);
+    double c2 = cos(pitch);
+    double s2 = sin(pitch);
+    double c3 = cos(yaw);
+    double s3 = sin(yaw);
+	
+	Mat transformationMatrix = Mat::zeros(4,4,CV_32FC1);
+
+
+	transformationMatrix.at<float>(0,0) = c3*c2;
+	transformationMatrix.at<float>(0,1) = c3*s2*s1-s3*c1;
+	transformationMatrix.at<float>(0,2) = c3*s2*c1+s3*s1;
+
+	transformationMatrix.at<float>(1,0) = s3*c2;
+	transformationMatrix.at<float>(1,1) = s3*s2*s1+c3*c1;
+	transformationMatrix.at<float>(1,2) = s3*s2*c1-c3*s1;
+
+	transformationMatrix.at<float>(2,0) = -s2;
+	transformationMatrix.at<float>(2,1) = c2*s1;
+	transformationMatrix.at<float>(2,2) = c2*c1;
+
+
+	transformationMatrix.at<float>(0,3) = position.x;
+	transformationMatrix.at<float>(1,3) = position.y;
+	transformationMatrix.at<float>(2,3) = position.z;
+	transformationMatrix.at<float>(3,3) = 1.0;
+
+	return transformationMatrix;
+
+	
+
+}

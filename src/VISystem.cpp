@@ -29,18 +29,19 @@ namespace vi
     }
 
 
-    void VISystem::InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw, Mat image)
+    void VISystem::InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image)
     {
         // Check if depth images are available
         /*if (_depth_path != "")
             depth_available = true;
         */
-        Quaternion quat_init(0,0,0,1);
-        final_pose = SE3(quat_init, SE3::Point(0, -1, 0));
         Calibration(_calPath);
         
-
         // Obtain parameters of camera_model
+        imu2camTransformation = (camera_model->imu2cam0Transformation);
+        imu2camRotation = transformationMatrix2rotationMatrix(imu2camTransformation);
+        imu2camTranslation = transformationMatrix2position(imu2camTransformation);
+
         K = camera_model->GetK();
         w_input = camera_model->GetInputWidth();
         h_input = camera_model->GetInputHeight();
@@ -86,13 +87,28 @@ namespace vi
         cout << "Initializing system ... done" << endl << endl;
         //outputFile.open(_outputPath); // agregar fecha automticamente
 
-        // Posicion inicial
-        position = _iniPosition;
-        velocity = _iniVelocity;
-        RPYOrientation.z = _iniYaw;
+      // Posicion inicial de la imu
+        positionImu = _iniPosition;
+        velocityImu = _iniVelocity;
+        RPYOrientationImu = _iniRPY;
+        qOrientationImu = toQuaternion(_iniRPY.x, _iniRPY.y, _iniRPY.z);
+        world2imuTransformation = RPYAndPosition2transformationMatrix(RPYOrientationImu, positionImu);
+        world2imuRotation = transformationMatrix2rotationMatrix(world2imuTransformation);
+        Quaternion quat_initImu(qOrientationImu.w,qOrientationImu.x,qOrientationImu.y,qOrientationImu.z);
+        final_poseImu = SE3(quat_initImu, SE3::Point(0.0, 0.0, 0.0));
+
+
+      // Posicion inicial de la camara;
+        positionCam = Mat2point(imu2camTransformation*point2MatPlusOne(positionImu));
+        velocityCam = Mat2point(imu2camRotation*point2Mat(velocityImu));
+        RPYOrientationCam = rotationMatrix2RPY(imu2camRotation*world2imuRotation);
+        qOrientationCam = toQuaternion(RPYOrientationCam.x, RPYOrientationCam.y, RPYOrientationCam.z);
+        Quaternion quat_initCam(qOrientationCam.w,qOrientationCam.x,qOrientationCam.y,qOrientationCam.z);
+        final_poseCam = SE3(quat_initCam, SE3::Point(-positionCam.x, -positionCam.z, -positionCam.y));
+
         // IMU 
         imuCore.createPublisher(1.0/(camera_model->imu_frecuency));
-        imuCore.initializate(_iniYaw); // Poner yaw inicial del gt
+        imuCore.initializate(_iniRPY.z); // Poner yaw inicial del gt
         imuCore.setImuInitialVelocity(_iniVelocity);
      
         // Camera
@@ -100,6 +116,7 @@ namespace vi
         min_features = camera_model->min_features;
         start_index = camera_model->start_index;
         camera.initializate(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
+
 
     }
 
@@ -187,6 +204,7 @@ namespace vi
             {
                 FreeLastFrame();
             }
+            
             Track();
         }
         
@@ -215,6 +233,7 @@ namespace vi
             if (num_keyframes > num_max_keyframes)
             {
                 FreeLastFrame();
+                cout << num_keyframes<<endl;
             }
             Track();
         }
@@ -224,6 +243,7 @@ namespace vi
 
     void VISystem::FreeLastFrame()
     {
+        camera.frameList[0]->~Frame();
         camera.frameList.erase(camera.frameList.begin());
     }
     
@@ -249,8 +269,22 @@ namespace vi
         for (int i=0; i<6; i++)
             deltaVector(i) = 0;
 
-        SE3 current_pose = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0));
+     
+        Point3d residualRPYcam = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
+        Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
 
+        //Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,
+        Quaternion quat_init(1,  0, 0, 0);
+        //cout << SO3::exp(SE3::Point(0.0, 0.0, 0.0))<<endl;
+        SE3 current_pose = SE3(quat_init, SE3::Point(0.0, 0.0, 0.0));
+        
+        /*
+        cout << current_pose.unit_quaternion().x()<<endl;
+        cout << current_pose.unit_quaternion().y()<<endl;
+        cout << current_pose.unit_quaternion().z()<<endl;
+        cout << current_pose.unit_quaternion().w()<<endl;
+        */
+       
 
         // Sparse to Fine iteration
         // Create for() WORKED WITH LVL 2
@@ -461,6 +495,7 @@ namespace vi
         }
 
         _previous_frame->rigid_transformation_ = current_pose;
+        
 
     }
 
@@ -573,10 +608,50 @@ namespace vi
 
     void VISystem::Track()
     {
-        EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-        Mat31f t = camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation();
-        current_pose = SE3(camera.frameList[camera.frameList.size()-2]->rigid_transformation_.unit_quaternion(), (camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation()));
-        final_pose = final_pose*current_pose;
+        // Estimar pose de camara con solver
+        //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+
+        // Cam
+        Point3d residualRPYcam = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
+        Quaterniond residualQCam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
+        Quaternion quat_initCam(residualQCam.w,  residualQCam.x, residualQCam.y, residualQCam.z); // w, x, y,
+        current_poseCam = SE3(quat_initCam, SE3::Point(0.0, 0.0, 0.0));
+        //current_poseCam = SE3(camera.frameList[camera.frameList.size()-2]->rigid_transformation_.unit_quaternion(), (camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation()));
+        final_poseCam = final_poseCam*current_poseCam;
+
+        Mat31f t = final_poseCam.translation();
+        positionCam.x = -t(0);
+        positionCam.y = -t(2);
+        positionCam.z = -t(1);
+        qOrientationCam.x = final_poseCam.unit_quaternion().x();
+        qOrientationCam.y = final_poseCam.unit_quaternion().y();
+        qOrientationCam.z = final_poseCam.unit_quaternion().z();
+        qOrientationCam.w = final_poseCam.unit_quaternion().w();
+        RPYOrientationCam = toRPY(qOrientationCam);
+
+        // Imu
+        Point3d residualRPYImu = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
+        Quaterniond residualQImu= toQuaternion(residualRPYImu.x, residualRPYImu.y, residualRPYImu.z) ;
+        Quaternion quat_initImu(residualQImu.w,  residualQImu.x, residualQImu.y, residualQImu.z); // w, x, y,
+        current_poseImu = SE3(quat_initImu, SE3::Point(0.0, 0.0, 0.0));
+
+        final_poseImu = final_poseImu*current_poseImu;
+
+        Mat31f t2 = final_poseImu.translation();
+        positionImu.x = -t2(0);
+        positionImu.y = -t2(2);
+        positionImu.z = -t2(1);
+        qOrientationImu.x = final_poseImu.unit_quaternion().x();
+        qOrientationImu.y = final_poseImu.unit_quaternion().y();
+        qOrientationImu.z = final_poseImu.unit_quaternion().z();
+        qOrientationImu.w = final_poseImu.unit_quaternion().w();
+        RPYOrientationImu = toRPY(qOrientationImu);
+
+
+
+        
+
+        
     }
 
 }

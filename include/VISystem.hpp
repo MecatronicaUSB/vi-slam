@@ -34,7 +34,7 @@ class VISystem
         ~VISystem();
         
         
-        void InitializeSystem(string _outputPath, string _depthPath, string _calPath, Point3d _iniPosition, Point3d _iniVelocity, float _iniYaw, Mat image);
+        void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image);
         void InitializePyramid(int _width, int _height, Mat _K);
         // Gauss-Newton using Foward Compositional Algorithm - Using features
         void Calibration(string _calibration_path);
@@ -57,10 +57,26 @@ class VISystem
         int h, w, h_input, w_input;
         float fx, fy, cx, cy;
 
-        Point3d position;
-        Point3d velocity;
-        Quaterniond qOrientation;
-        Point3d RPYOrientation;
+        Point3d positionImu;
+        Point3d velocityImu;
+        Quaterniond qOrientationImu;
+        Point3d RPYOrientationImu;
+        Mat world2imuTransformation;
+        Mat world2imuRotation;
+
+        Point3d positionCam;
+        Point3d velocityCam;
+        Quaterniond qOrientationCam;
+        Point3d RPYOrientationCam;
+        Mat imu2camTransformation;
+        Mat imu2camRotation;
+        Point3d imu2camTranslation;
+
+        SE3 final_poseCam;
+        SE3 final_poseImu;
+        SE3 current_poseCam;
+        SE3 current_poseImu;
+
         CameraModel* camera_model;
         
         Camera camera;
@@ -68,6 +84,7 @@ class VISystem
         
         Mat K;
         Rect ROI;
+        
 
         Mat outputCurrentImage, outputLastImage;
 
@@ -87,8 +104,7 @@ class VISystem
         vector<Mat> K_ = vector<Mat>(PYRAMID_LEVELS);
 
 
-        SE3 final_pose;
-        SE3 current_pose;
+   
 
         
     

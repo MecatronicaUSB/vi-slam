@@ -9,6 +9,7 @@
 #include "Matcher.hpp"
 #include "Options.hpp"
 #include <iostream>
+#include <iomanip>
 #include <opencv2/imgproc.hpp>
 
 using namespace cv;
@@ -126,6 +127,7 @@ class Camera
         double elapsed_computePatches_mean;
         double nPointsDetect_mean;
         double nBestMatches_mean;
+        int num_images;
 
           // Suma total de tiempos
         double elapsed_detect_sum;

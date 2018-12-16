@@ -71,7 +71,11 @@ class ImuFilterNode{
         vector <Point3d> angularVelocityIMUFilter; // velocidad angular
         vector <Quaterniond> quaternionWorld;
         vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
-        vector <Point3d> accelerationWorld; // celeracion del robot respecto al mundo
+        vector <Point3d> accelerationWorld; // celeracion del robot respecto al mundoç
+
+        Mat init_rotationMatrix;
+        Mat final_rotationMatrix;
+        Mat residual_rotationMatrix;
 
         // Residuales
         Point3d residualRPY;
