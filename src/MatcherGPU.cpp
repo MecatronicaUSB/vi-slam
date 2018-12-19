@@ -23,13 +23,15 @@ void MatcherGPU::setGPUMatcher(int _matcher)
             matcherGPU = cuda::DescriptorMatcher::createBFMatcher();
             cout << "Using Brute Force GPU Matcher"<<endl;
             useGPU = true;  
+            break;
         }
         case USE_BRUTE_FORCE_GPU_HAMMING:
         {   
             matcherGPU = cuda::DescriptorMatcher::createBFMatcher(NORM_HAMMING);
             cout << "Using Brute Force -Hamming GPU  Matcher"<<endl;
             useGPU = true;  
-        }cout << "Using Brute Force -Hamming GPU  Matcher"<<endl;
+            break;
+        }
         default:
         {
             useGPU = false;

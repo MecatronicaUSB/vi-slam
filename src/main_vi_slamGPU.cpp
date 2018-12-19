@@ -2,7 +2,7 @@
 #include <fstream>
 #include "DataReader.hpp"
 #include "Visualizer.hpp"
-#include "VISystem.hpp"
+#include "VISystemGPU.hpp"
 #include "opencv2/cudafeatures2d.hpp"
 #include "opencv2/xfeatures2d/cuda.hpp"
 #include "opencv2/core.hpp"
@@ -23,7 +23,6 @@ using namespace vi;
 cuda::DeviceInfo device_info;
 
 int main( int argc, char** argv ){
-    
     const String keys =
         "{help h usage ? |      | print this message   }"
         "{gtFile     |       |  groundtruth file} "
@@ -58,14 +57,24 @@ int main( int argc, char** argv ){
     // Leer Dataset
     cout << "Gt file "<< imuFile<<endl;
     DataReader Data(imagesPath, imuFile, gtFile, separator);
-    Data.UpdateDataReader(0, 1);
 
-    VISystem visystem(argc, argv);
-    visystem.InitializeSystem( outputFile, "", calibrationFile, Data.gtPosition[0], Data.gtLinearVelocity[0], Data.gtRPY[0].z, Data.image1);
+       
+    int j = 1;
+    Data.UpdateDataReader(j-1, j);
+
+    VISystemGPU visystem(argc, argv);
+    visystem.InitializeSystemGPU( calibrationFile, Data.gtPosition[0], Data.gtLinearVelocity[0], Data.gtRPY[0], Data.image1);
+    cout << "Initializate System"<<endl;
+    Quaterniond qinit = toQuaternion(Data.gtRPY[0].x, Data.gtRPY[0].y, Data.gtRPY[0].z);
 
     //VisualizerVector3 rqt_error("error", 10.0);
     
-    VisualizerMarker visualizer_gt("gt_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 0.0, 1.0));
+    //
+    //VisualizerMarker visualizer_gtIMU("gtIMU_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.0, 0.0, 1.0)); //azul
+    VisualizerMarker visualizer_gtCam("gtCam_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.0, 1.0, 0.0));
+    //VisualizerMarker visualizer_estIMU("estIMU_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(1.0, 0.0, 0.0));
+    VisualizerMarker visualizer_estCam("estCam_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.5, 0.5, 0.5));
+
     //VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
     //VisualizerFrame visualizerFrame("current_frame", 90);
     //VisualizerFrame visualizerFrame2("current_frame2", 90);
@@ -88,55 +97,79 @@ int main( int argc, char** argv ){
 
     double position2[3];
     double orientation2[4];
+
    
    
     vector<KeyPoint> vectorMatches;
     Quaterniond qGt_initial;
+    
+    //Gt para camara 
+    Quaterniond qOrientationCamGT;
+    Point3d RPYOrientationCamGT;
+    Point3d positionCamGT;
 
-    Data.UpdateDataReader(0, 1);
-   
-    //Camera camera(USE_ORB, USE_BRUTE_FORCE_HAMMING, Data.image1.cols, Data.image1.rows);
-    int j = 1;
-     while(j <Data.indexLastData)
+
+
+
+    std::ofstream outputFilecsv;
+
+    Point3d zero;
+    
+    outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
+    while(j <Data.indexLastData)
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j, j+1);
         j = j+1;
-        visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
+        visystem.AddFrameGPU(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
+       
+        positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
+        RPYOrientationCamGT =rotationMatrix2RPY(visystem.imu2camRotation*RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) ));
+        qOrientationCamGT = toQuaternion(RPYOrientationCamGT.x, RPYOrientationCamGT.y, RPYOrientationCamGT.z);
+
+
+
+         //visualizer_gtIMU.UpdateMessages(zero, Data.gtQuaternion.back());
+         visualizer_gtCam.UpdateMessages(zero, qOrientationCamGT);
+         //visualizer_estIMU.UpdateMessages(zero, visystem.qOrientationImu);
+         visualizer_estCam.UpdateMessages(zero, visystem.qOrientationCam);
+         
+         cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
+        
+        outputFilecsv <<  visystem.positionCam.x<<","
+        <<visystem.positionCam.y<<","
+        <<visystem.positionCam.z<<","
+        <<visystem.qOrientationCam.x <<","
+        <<visystem.qOrientationCam.y <<","
+        <<visystem.qOrientationCam.z <<","
+        <<visystem.qOrientationCam.w <<","
+        <<  positionCamGT.x <<","
+        <<  positionCamGT.y <<","
+        <<  positionCamGT.z <<","
+        <<  qOrientationCamGT.x <<","        
+        <<  qOrientationCamGT.y <<","
+        <<  qOrientationCamGT.z <<","
+        <<  qOrientationCamGT.w
+        <<endl;
+        
        /*
-       
-        //drawKeypoints( frame1, aux, frame1, Scalar(0, 0, 255), DrawMatchesFlags::DEFAULT);
-        
-
-       visualizerFrame.UpdateMessages(finalImage);
-        }
-        //visualizerFrame2.UpdateMessages(finalImage2);
-     
-       
+        outputFilecsv <<  visystem.positionImu.x<<","
+        <<visystem.positionImu.y<<","
+        <<visystem.positionImu.z<<","
+        <<visystem.qOrientationImu.x <<","
+        <<visystem.qOrientationImu.y <<","
+        <<visystem.qOrientationImu.z <<","
+        <<visystem.qOrientationImu.w <<","
+        <<  Data.gtPosition.back().x <<","
+        <<  Data.gtPosition.back().y <<","
+        <<  Data.gtPosition.back().z <<","
+        <<  Data.gtQuaternion.back().x <<","        
+        <<  Data.gtQuaternion.back().y <<","
+        <<  Data.gtQuaternion.back().z <<","
+        <<  Data.gtQuaternion.back().w
+        <<endl;
         */
-      
-       
 
-        Point3d angle_diff;
-        Point3d angle_gt, angle_ft, gravity_imu;
-        double elapsed_f;
-
-
-        orientation[0] = Data.gtQuaternion[Data.gtQuaternion.size()-1].x;   //x
-        orientation[1] = Data.gtQuaternion[Data.gtQuaternion.size()-1].y; // y
-        orientation[2] = Data.gtQuaternion[Data.gtQuaternion.size()-1].z; // z
-        orientation[3] = Data.gtQuaternion[Data.gtQuaternion.size()-1].w; // w
-
-        position[0] = Data.gtPosition[Data.gtPosition.size()-1].x;   //x
-        position[1] = Data.gtPosition[Data.gtPosition.size()-1].y;   //x
-        position[2] = Data.gtPosition[Data.gtPosition.size()-1].z;   //x
-
-        //imuCore.printStatistics(); // imprime el tiempo de computo del filtro
-        
-        
-       
-        visualizer_gt.UpdateMessages(Data.gtPosition.back(), Data.gtQuaternion.back());
-        cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
 
         //visualizer_est.UpdateMessages(position2, orientation2);
             

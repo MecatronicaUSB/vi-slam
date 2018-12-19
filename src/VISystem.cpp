@@ -2,6 +2,14 @@
 
 namespace vi
 {
+     
+    VISystem::VISystem()
+    {
+        initialized = false;
+        distortion_valid = false;
+        depth_available = false;
+        num_keyframes = 0;
+    }
 
     VISystem::VISystem(int argc, char *argv[])
     {
@@ -115,7 +123,7 @@ namespace vi
         num_max_keyframes = camera_model->min_features; // Solo almacenar 10 keyframes
         min_features = camera_model->min_features;
         start_index = camera_model->start_index;
-        camera.initializate(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
+        InitializeCamera(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
 
 
     }
@@ -652,6 +660,11 @@ namespace vi
         
 
         
+    }
+
+    void  VISystem::InitializeCamera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path)
+    {
+        camera.initializate(_detector, _matcher, _w_size, _h_size, _num_cells, _length_path );
     }
 
 }

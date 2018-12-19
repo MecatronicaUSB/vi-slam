@@ -33,7 +33,7 @@ class VISystem
         VISystem(int argc, char *argv[]);
         ~VISystem();
         
-        
+        void InitializeCamera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
         void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image);
         void InitializePyramid(int _width, int _height, Mat _K);
         // Gauss-Newton using Foward Compositional Algorithm - Using features

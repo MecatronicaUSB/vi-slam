@@ -15,8 +15,9 @@ using namespace std;
 class CameraGPU : public Camera
 {
     public:
-        CameraGPU(int _detector, int _matcher, int _w_size, int _h_size);
-        void initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size);
+        CameraGPU();
+        CameraGPU(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_patch);
+        void initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_patch);
         void setGPUDetector(int _detector);
         void detectGPUFeatures();
         void setGPUMatcher (int _matcher);

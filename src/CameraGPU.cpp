@@ -1,22 +1,44 @@
 #include "../include/CameraGPU.hpp"
 
 
-CameraGPU::CameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
+CameraGPU::CameraGPU(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_patch)
 {
-    initializateCameraGPU(_detector, _matcher, _w_size, _h_size); 
+    initializateCameraGPU(_detector, _matcher, _w_size, _h_size, _num_cells, _length_patch); 
+}
 
-    n_cells = 144;
-    w_patch = h_patch = 3;
+
+CameraGPU::CameraGPU()
+{
+    elapsed_detect_sum = 0.0; 
+    elapsed_descriptors_sum = 0.0; 
+    elapsed_computeGoodMatches_sum = 0.0;
+    elapsed_computeGradient_sum = 0.0 ;
+    elapsed_computePatches_sum = 0.0; 
     nPointsDetect_sum = 0.0;
     nBestMatches_sum = 0.0; 
 }
 
-void CameraGPU::initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size)
+void CameraGPU::initializateCameraGPU(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path)
 {
-    w_size = _w_size;
-    h_size = _h_size;
+    w_size[0] = _w_size;
+    h_size[0] = _h_size;
+    for (int lvl = 1; lvl < 5; lvl++) {
+        w_size[lvl] = _w_size >> lvl;
+        h_size[lvl] = _h_size >> lvl;
+    }
     setGPUDetector(_detector);
     setGPUMatcher(_matcher);
+
+    n_cells = _num_cells;
+    w_patch = h_patch = _length_path;
+    elapsed_detect_sum = 0.0; 
+    elapsed_descriptors_sum = 0.0; 
+    elapsed_computeGoodMatches_sum = 0.0;
+    elapsed_computeGradient_sum = 0.0 ;
+    elapsed_computePatches_sum = 0.0; 
+    nPointsDetect_sum = 0.0;
+    nBestMatches_sum = 0.0; 
+    num_images = 0;
 }
 
 void CameraGPU::setGPUDetector(int _detector)
@@ -27,12 +49,14 @@ void CameraGPU::setGPUDetector(int _detector)
         {   
             useGPU = true;
             detectorType = _detector; 
+            cout << "Using SURF detector in GPU"<<endl;
             break;
         }
         case USE_ORB:
         {
             useGPU= true;
             detectorType = _detector;
+            cout << "Using ORB detector in GPU"<<endl;
             break;
         }
         default:
@@ -51,10 +75,10 @@ int CameraGPU::detectAndComputeGPUFeatures()
     keypointsGPU.release();
     descriptorsGPU.release();
     frameGPU.release();
-
+ 
     if (useGPU)
     {
-        frameGPU.upload(currentFrame->grayImage);
+        frameGPU.upload(currentFrame->grayImage[0]);
         if (detectorType == USE_SURF)
         {
             // Loading previous keypoints found
@@ -95,7 +119,7 @@ int CameraGPU::detectAndComputeGPUFeatures()
 void CameraGPU::setGPUMatcher (int _matcher)
 {
     matcherGPU.setGPUMatcher(_matcher);
-    matcherGPU.setImageDimensions(w_size, h_size);
+    matcherGPU.setImageDimensions(w_size[0], h_size[0]);
 }
 
 void CameraGPU::computeGPUGoodMatches()
@@ -115,24 +139,27 @@ bool CameraGPU::addGPUKeyframe()
 {
     clock_t cbegin, cdetect, cdescriptors, cgood, cgradient, cpatches;  
     cbegin = clock(); // Tiempo de inicio del codigo
+  
     nPointsDetect =  detectAndComputeGPUFeatures();
     cdetect = clock(); 
 
+
+
     
-    if ( (nPointsDetect > 350) && (frameList.size()!= 0))
+    if ( (nPointsDetect > 1) && (frameList.size()!= 0))
     { // is a keyframe (maybe)
         cdescriptors = cdetect; 
         computeGPUGoodMatches();
         cgood = clock();
         computeGradient();
         cgradient = clock();
-        computePatches();
-        computeResiduals();
+        //computePatches();
+        //computeResiduals();
         cpatches = clock();
         saveFrame();
         nBestMatches =  matcherGPU.goodMatches.size();
     }
-    else if ( (nPointsDetect > 350) && (frameList.size() == 0)) // Primer frame
+    else if ( (nPointsDetect > 1) && (frameList.size() == 0)) // Primer frame
     {
         cdescriptors = cdetect; 
         cgood = clock();
@@ -167,7 +194,7 @@ bool CameraGPU::addGPUKeyframe()
         nPointsDetect_mean = nPointsDetect_sum/(frameList.size()-1);
         nBestMatches_mean = nBestMatches_sum/(frameList.size()-1); 
         
-        printStatistics();
+        //printStatistics();
     }
   
 }

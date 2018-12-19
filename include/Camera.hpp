@@ -5,6 +5,8 @@
  * @date 10/11/2018
  * @author Luis Lujano
  */
+#ifndef CAMERA_H_
+#define CAMERA_H_
 
 #include "Matcher.hpp"
 #include "Options.hpp"
@@ -139,3 +141,5 @@ class Camera
         double nBestMatches_sum;
     
 };
+
+#endif
