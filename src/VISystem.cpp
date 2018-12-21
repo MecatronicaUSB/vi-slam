@@ -43,6 +43,7 @@ namespace vi
         /*if (_depth_path != "")
             depth_available = true;
         */
+        currentImage = image;
         Calibration(_calPath);
         
         // Obtain parameters of camera_model
@@ -124,6 +125,10 @@ namespace vi
         min_features = camera_model->min_features;
         start_index = camera_model->start_index;
         InitializeCamera(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
+        
+        camera.Update(currentImage);
+        bool key_added = camera.addKeyframe();
+        cout << "Camera Initialized"<<endl;
 
 
     }
@@ -191,6 +196,10 @@ namespace vi
 
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
     {
+        prevImage = currentImage;
+        currentImage = _currentImage.clone();
+       
+        
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
         camera.Update(_currentImage);
@@ -198,9 +207,15 @@ namespace vi
         num_keyframes = camera.frameList.size();
         if (camera.frameList.size()> 1) // primera imagen agregada
         {
-            //drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-            //drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            /*
+            drawKeypoints(prevImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , prevImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            imshow("prevImage", prevImageToShow);
+            imshow("currentImage", currentImageToShow);
+            waitKey();
+            */
             camera.printStatistics();
+
             /*if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
             {
                 //min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
@@ -222,6 +237,7 @@ namespace vi
     
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) 
     {
+        currentImage = _currentImage.clone();
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate(_gtRPY);
         camera.Update(_currentImage);
@@ -309,7 +325,8 @@ namespace vi
 
             // Obtain points and depth of initial frame 
             Mat candidatePoints1  = _previous_frame->candidatePoints[lvl].clone();
-            Mat candidatePoints2  = _current_frame->candidatePoints[lvl].clone();    
+            Mat candidatePoints2  = _current_frame->candidatePoints[lvl].clone(); 
+            Mat candidateDebugPoints1 =  _previous_frame->candidateDebugPoints[lvl].clone();
             
             //candidatePoints1 = AddPatchPointsFeatures(candidatePoints1, lvl);
             // cout << candidatePoints1.rows << endl;
@@ -331,10 +348,41 @@ namespace vi
                 // Warp points with current pose and delta pose (from previous iteration)
                 SE3 deltaSE3;
                 Mat warpedPoints = Mat(candidatePoints1.size(), CV_32FC1);
+                Mat warpedDebugPoints = Mat(candidateDebugPoints1.size(), CV_32FC1);
 
 
                 //warpedPoints = WarpFunctionOpenCV(candidatePoints1, current_pose, lvl);
                 warpedPoints = WarpFunction(candidatePoints1, current_pose, lvl);
+                warpedDebugPoints = WarpFunction(candidateDebugPoints1, current_pose, lvl);
+
+                vector<KeyPoint> warpedDebugKeyPoints ;
+                MatPoint2Keypoints(warpedDebugPoints, warpedDebugKeyPoints );
+             
+      
+                if (k == 0){ // primera iteracion
+
+        
+                drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches , currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+                putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+                imshow("currentDebugImage", currentImageDebugToShow);
+                waitKey(500);
+
+
+                }
+                else{
+
+                drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches , currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+                imshow("currentDebugImage", currentImageDebugToShow);
+                waitKey(500);
+
+
+                }
+              
+
+                
                 // Mat imageWarped = Mat::zeros(image1.size(), CV_8UC1);
                 // ObtainImageTransformed(image1, candidatePoints1, warpedPoints, imageWarped);    
                 // imshow("warped", imageWarped);
@@ -603,6 +651,7 @@ namespace vi
         // Cleaning invalid points
         projected_points.row(0) = projected_points.row(0).mul(projected_points.row(3));
         projected_points.row(1) = projected_points.row(1).mul(projected_points.row(3));
+        //
 
         // Transposing the points due transformation multiplication
         return projected_points.t();
@@ -617,7 +666,7 @@ namespace vi
     void VISystem::Track()
     {
         // Estimar pose de camara con solver
-        //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+        EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
 
         // Cam
         Point3d residualRPYcam = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
@@ -667,7 +716,19 @@ namespace vi
         camera.initializate(_detector, _matcher, _w_size, _h_size, _num_cells, _length_path );
     }
 
-}
 
+    void VISystem::MatPoint2Keypoints( Mat _MatPoints, vector<KeyPoint> &_outputKeypoints)
+    {
+        for (int i = 0; i < _MatPoints.rows ; i++)
+        {
+            KeyPoint point; // Punto final condicionado al umbral
+            point.pt.x = _MatPoints.at<float>(i, 0);
+            point.pt.y = _MatPoints.at<float>(i, 1);
+            _outputKeypoints.push_back(point);
+        }
+      
+    }
+
+}
 
 

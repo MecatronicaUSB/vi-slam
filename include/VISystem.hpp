@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <string> 
 #include "Camera.hpp"
 #include "Imu.hpp"
 #include "Plus.hpp"
@@ -42,6 +43,8 @@ class VISystem
         void CalculateROI(Mat image);
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) ;
+        void ObtainKeypointsTransformation(Mat candidates);
+        void MatPoint2Keypoints( Mat _MatPoints, vector<KeyPoint> &_outputKeypoints);
         void FreeLastFrame();
         void Track();
         Mat IdentityWeights(int _num_residuals) ;
@@ -81,6 +84,12 @@ class VISystem
         
         Camera camera;
         Imu imuCore;
+
+        Mat currentImage;
+        Mat currentImageToShow;
+        Mat currentImageDebugToShow;
+        Mat prevImage;
+        Mat prevImageToShow;
         
         Mat K;
         Rect ROI;

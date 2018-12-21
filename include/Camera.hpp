@@ -55,6 +55,8 @@ class Frame
         vector<Mat> prevPatches; //!< Parches de intensidad alrededor de los features
         vector<Mat> nextPatches; //!< Parches de intensidad alrededor de los features
         vector<Mat> candidatePoints  = vector<Mat>(5);
+        vector<KeyPoint> debugKeypoints ;// debug Points
+        vector<Mat> candidateDebugPoints  = vector<Mat>(5);
 
         int idFrame;      //!< identificador del frame
         double imageTime; //!< tiempo en el que fue tomado la imagen
@@ -86,6 +88,7 @@ class Camera
         bool addKeyframe(); // Añade o no un keyframe 
         
         void saveFrame(); //(frame->framelist)
+        void ObtainDebugPointsPreviousFrame();
         void ObtainPatchesPointsPreviousFrame();
         void computePatches(); // calcula los parches del frame actual;
         void computeResiduals(); // calculas los residuales fotometricos entre el frame actual y el anterior

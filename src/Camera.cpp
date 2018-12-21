@@ -209,6 +209,7 @@ bool Camera::addKeyframe()
         computeGradient();
         cgradient = clock();
         ObtainPatchesPointsPreviousFrame();
+        ObtainDebugPointsPreviousFrame(); // Debug
         //computePatches();
         //computeResiduals();
         cpatches = clock();
@@ -363,7 +364,7 @@ void Camera::ObtainPatchesPointsPreviousFrame() {
     int patch_size_ = 5;
     int start_point = patch_size_ - 1 / 2;
 
-    for (int i=0; i< min(num_max_keypoints, 20); i++) {
+    for (int i=0; i< min(num_max_keypoints, 200); i++) {
 
             float x = goodKeypoints[i].pt.x;
             float y = goodKeypoints[i].pt.y;
@@ -388,4 +389,42 @@ void Camera::ObtainPatchesPointsPreviousFrame() {
         }
     }
 }
+
+
+void Camera::ObtainDebugPointsPreviousFrame() {
+    vector<KeyPoint> goodKeypoints;
+    
+    goodKeypoints = frameList[frameList.size()-1]->nextGoodMatches;
+    int num_max_keypoints = goodKeypoints.size();
+
+    // Saves features found
+    float factor_depth = 0.0002, factor_lvl;
+    float depth_initialization = 1;    
+
+    int lvl = 0;
+    factor_lvl = 1 / pow(2, lvl);
+    int patch_size_ = 5;
+    int start_point = patch_size_ - 1 / 2;
+
+    for (int i=0; i< num_max_keypoints; i++) {
+
+        float x = goodKeypoints[i].pt.x;
+        float y = goodKeypoints[i].pt.y;
+
+
+        float z = 1;
+
+        Mat pointMat_patch = Mat::ones(1, 4, CV_32FC1);                
+        pointMat_patch.at<float>(0,0) = x;
+        pointMat_patch.at<float>(0,1) = y;
+        pointMat_patch.at<float>(0,2) = z;
+
+        frameList[frameList.size()-1]->candidateDebugPoints[lvl].push_back(pointMat_patch);     
+        
+        
+    }
+
+
+}
+ 
  

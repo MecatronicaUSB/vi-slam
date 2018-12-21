@@ -47,7 +47,7 @@ int main( int argc, char** argv ){
     DataReader Data(imagesPath, imuFile, gtFile, separator);
 
        
-    int j = 1;
+    int j = 210;
     Data.UpdateDataReader(j-1, j);
 
     VISystem visystem(argc, argv);
