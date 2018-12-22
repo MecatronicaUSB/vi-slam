@@ -42,6 +42,7 @@ namespace vi
         /*if (_depth_path != "")
             depth_available = true;
         */
+       currentImage = image;
         Calibration(_calPath);
         
         // Obtain parameters of camera_model
@@ -135,6 +136,9 @@ namespace vi
     
     void VISystemGPU::AddFrameGPU(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
     {
+        prevImage = currentImage;
+        currentImage = _currentImage.clone();
+       
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
         cameraGPU.Update(_currentImage);
@@ -158,7 +162,10 @@ namespace vi
             {
                 FreeLastFrameGPU();
             }
-            
+                    // Estimar pose; de camara con solver
+           
+            EstimatePoseFeatures(cameraGPU.frameList[cameraGPU.frameList.size()-2], cameraGPU.frameList[cameraGPU.frameList.size()-1]);
+          
             Track();
             
         }

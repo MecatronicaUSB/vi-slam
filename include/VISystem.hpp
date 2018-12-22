@@ -90,7 +90,6 @@ class VISystem
         Mat currentImageDebugToShow;
         Mat prevImage;
         Mat prevImageToShow;
-        
         Mat K;
         Rect ROI;
         

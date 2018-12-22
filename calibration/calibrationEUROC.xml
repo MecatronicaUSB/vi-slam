@@ -54,8 +54,8 @@
 <num_cells type_id="integer"> 196</num_cells>
 <length_patch type_id="integer"> 3</length_patch>
 
-<detector type_id="integer">2</detector>
-<matcher type_id="integer">1</matcher>
+<detector type_id="integer">4</detector>
+<matcher type_id="integer">3</matcher>
   <!--USE_KAZE, 0
     USE_AKAZE, 1
     USE_ORB, 2

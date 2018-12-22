@@ -227,7 +227,8 @@ namespace vi
             {
                 FreeLastFrame();
             }
-            
+            // Estimar pose de camara con solver
+            EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             Track();
         }
         
@@ -278,7 +279,7 @@ namespace vi
         float intial_factor = 10;
         int max_iterations = 10;
         float error_threshold = 0.005;
-        int first_pyramid_lvl = 0;
+        int first_pyramid_lvl = 4;
         int last_pyramid_lvl = 0;
         float z_factor = 0.002;
 
@@ -320,8 +321,10 @@ namespace vi
             float factor = intial_factor * (lvl + 1);
 
             // Obtain image 1 and 2
+         
             Mat image1 = _previous_frame->grayImage[lvl].clone();
             Mat image2 = _current_frame->grayImage[lvl].clone();
+
 
             // Obtain points and depth of initial frame 
             Mat candidatePoints1  = _previous_frame->candidatePoints[lvl].clone();
@@ -361,8 +364,8 @@ namespace vi
       
                 if (k == 0){ // primera iteracion
 
-        
-                drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches , currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                
+                drawKeypoints(currentImage, _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
                 drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
                 putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
                 imshow("currentDebugImage", currentImageDebugToShow);
@@ -372,7 +375,7 @@ namespace vi
                 }
                 else{
 
-                drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches , currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentImage, _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
                 drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
                 imshow("currentDebugImage", currentImageDebugToShow);
@@ -461,12 +464,14 @@ namespace vi
                 Mat ResidualsW = Residuals.mul(W);
                 Mat errorMat =  inv_num_residuals * Residuals.t() * ResidualsW;
                 error = errorMat.at<float>(0,0);
+                 cout << "lvl = "<< lvl<<"Error it "<< k<< " ="<<error
+                 << "    Last Error it "<< " ="<<last_error<<endl;
                 if (k==0)
                     initial_error = error;
 
                 // Break if error increases
                 if (error >= last_error || k == max_iterations-1 || abs(error - last_error) < epsilon) {
-                    // cout << "Pyramid level: " << lvl << endl;
+                    // lv<<cout << "Pyramid level: " << lvl << endl;
                     // cout << "Number of iterations: " << k << endl;
                     // cout << "Initial-Final Error: " << initial_error << " - " << last_error << endl << endl;
 
@@ -665,8 +670,7 @@ namespace vi
 
     void VISystem::Track()
     {
-        // Estimar pose de camara con solver
-        EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+
 
         // Cam
         Point3d residualRPYcam = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));

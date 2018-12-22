@@ -153,6 +153,8 @@ bool CameraGPU::addGPUKeyframe()
         cgood = clock();
         computeGradient();
         cgradient = clock();
+        ObtainPatchesPointsPreviousFrame();
+        ObtainDebugPointsPreviousFrame(); // Debug
         //computePatches();
         //computeResiduals();
         cpatches = clock();

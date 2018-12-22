@@ -59,9 +59,8 @@ int main( int argc, char** argv ){
     DataReader Data(imagesPath, imuFile, gtFile, separator);
 
        
-    int j = 1;
+    int j = 210;
     Data.UpdateDataReader(j-1, j);
-
     VISystemGPU visystem(argc, argv);
     visystem.InitializeSystemGPU( calibrationFile, Data.gtPosition[0], Data.gtLinearVelocity[0], Data.gtRPY[0], Data.image1);
     cout << "Initializate System"<<endl;
