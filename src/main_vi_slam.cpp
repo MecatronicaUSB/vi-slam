@@ -15,6 +15,8 @@
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Quaternion.h>
 
+#include <tf/transform_broadcaster.h>
+
 using namespace cv;
 using namespace std;
 using namespace vi;
@@ -47,11 +49,11 @@ int main( int argc, char** argv ){
     DataReader Data(imagesPath, imuFile, gtFile, separator);
 
        
-    int j = 210;
+    int j = 1;
     Data.UpdateDataReader(j-1, j);
 
     VISystem visystem(argc, argv);
-    visystem.InitializeSystem( calibrationFile, Data.gtPosition[0], Data.gtLinearVelocity[0], Data.gtRPY[0], Data.image1);
+    visystem.InitializeSystem( calibrationFile, Data.gtPosition.back(), Data.gtLinearVelocity.back(), Data.gtRPY.back(), Data.image1, Data.imuAngularVelocity, Data.imuAcceleration);
     cout << "Initializate System"<<endl;
     Quaterniond qinit = toQuaternion(Data.gtRPY[0].x, Data.gtRPY[0].y, Data.gtRPY[0].z);
 
@@ -59,9 +61,9 @@ int main( int argc, char** argv ){
     
     //
     //VisualizerMarker visualizer_gtIMU("gtIMU_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.0, 0.0, 1.0)); //azul
-    VisualizerMarker visualizer_gtCam("gtCam_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.0, 1.0, 0.0));
+    //VisualizerMarker visualizer_gtCam("gtCam_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.0, 1.0, 0.0));
     //VisualizerMarker visualizer_estIMU("estIMU_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(1.0, 0.0, 0.0));
-    VisualizerMarker visualizer_estCam("estCam_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.5, 0.5, 0.5));
+    //VisualizerMarker visualizer_estCam("estCam_poses", "/my_frame", 2000, ARROW, 0, Point3f(0.5, 0.5, 0.5),Point3f(0.5, 0.5, 0.5));
 
     //VisualizerMarker visualizer_est("est_poses", "/my_frame", 2000, ARROW, 0, Point3f(1.0, 1.0, 1.0),Point3f(0.0, 1.0, 0.0));
     //VisualizerFrame visualizerFrame("current_frame", 90);
@@ -95,6 +97,7 @@ int main( int argc, char** argv ){
     Quaterniond qOrientationCamGT;
     Point3d RPYOrientationCamGT;
     Point3d positionCamGT;
+    Point3d velocityCamGT;
 
 
 
@@ -109,24 +112,34 @@ int main( int argc, char** argv ){
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j, j+1);
         j = j+1;
-        visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
-       
+         
         positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
-        RPYOrientationCamGT =rotationMatrix2RPY(visystem.imu2camRotation*RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) ));
+        velocityCamGT  = Data.gtLinearVelocity.back();
+        RPYOrientationCamGT =rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
         qOrientationCamGT = toQuaternion(RPYOrientationCamGT.x, RPYOrientationCamGT.y, RPYOrientationCamGT.z);
+
+        visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration, Data.gtPosition.back());
+       
 
 
 
          //visualizer_gtIMU.UpdateMessages(zero, Data.gtQuaternion.back());
-         visualizer_gtCam.UpdateMessages(zero, qOrientationCamGT);
+        // visualizer_gtCam.UpdateMessages(zero, qOrientationCamGT);
          //visualizer_estIMU.UpdateMessages(zero, visystem.qOrientationImu);
-         visualizer_estCam.UpdateMessages(zero, visystem.qOrientationCam);
+         //visualizer_estCam.UpdateMessages(zero, visystem.qOrientationCam);
          
          cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
+   
         
         outputFilecsv <<  visystem.positionCam.x<<","
         <<visystem.positionCam.y<<","
         <<visystem.positionCam.z<<","
+        <<visystem.velocityCam.x<<","
+        <<visystem.velocityCam.y<<","
+        <<visystem.velocityCam.z<<","
+        <<visystem.accCam.x<<","
+        <<visystem.accCam.y<<","
+        <<visystem.accCam.z<<","
         <<visystem.qOrientationCam.x <<","
         <<visystem.qOrientationCam.y <<","
         <<visystem.qOrientationCam.z <<","
@@ -134,11 +147,62 @@ int main( int argc, char** argv ){
         <<  positionCamGT.x <<","
         <<  positionCamGT.y <<","
         <<  positionCamGT.z <<","
+        <<  velocityCamGT.x <<","
+        <<  velocityCamGT.y <<","
+        <<  velocityCamGT.z <<","
         <<  qOrientationCamGT.x <<","        
         <<  qOrientationCamGT.y <<","
         <<  qOrientationCamGT.z <<","
-        <<  qOrientationCamGT.w
+        <<  qOrientationCamGT.w <<","
+        <<visystem.imuCore.angularVelocityIMUFilter.back().x<<","
+        <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
+        <<visystem.imuCore.angularVelocityIMUFilter.back().z
         <<endl;
+
+                
+        static tf::TransformBroadcaster br;
+        tf::Transform transform;
+        transform.setOrigin( tf::Vector3(positionCamGT.x, positionCamGT.y, positionCamGT.z) );
+        tf::Quaternion q;
+        //q.setRPY(0, 0, msg->theta);
+        q[0] = qOrientationCamGT.x;
+        q[1] = qOrientationCamGT.y;
+        q[2] = qOrientationCamGT.z;
+        q[3] = qOrientationCamGT.w;
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "CamGt"));
+
+        transform.setOrigin( tf::Vector3(Data.gtPosition.back().x, Data.gtPosition.back().y, Data.gtPosition.back().z) );
+        //q.setRPY(0, 0, msg->theta);
+        q[0] = Data.gtQuaternion.back().x;
+        q[1] = Data.gtQuaternion.back().y;
+        q[2] = Data.gtQuaternion.back().z;
+        q[3] = Data.gtQuaternion.back().w;
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "ImuGt"));
+
+
+
+transform.setOrigin( tf::Vector3(positionCamGT.x, positionCamGT.y, positionCamGT.z) );
+        //transform.setOrigin( tf::Vector3(visystem.positionCam.x, visystem.positionCam.x, visystem.positionCam.z) );
+        //q.setRPY(0, 0, msg->theta);
+        
+        q[0] = visystem.qOrientationCam.x;
+        q[1] = visystem.qOrientationCam.y;
+        q[2] = visystem.qOrientationCam.z;
+        q[3] = visystem.qOrientationCam.w;
+        
+
+       /* q[0] = visystem.imuCore.quaternionWorld.back().x;
+        q[1] = visystem.imuCore.quaternionWorld.back().y;
+        q[2] = visystem.imuCore.quaternionWorld.back().z;
+        q[3] = visystem.imuCore.quaternionWorld.back().w;
+        */
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "CamEst"));
+
+        
+
         
        /*
         outputFilecsv <<  visystem.positionImu.x<<","

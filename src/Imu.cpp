@@ -38,17 +38,14 @@ void Imu::setImuBias(Point3d acc_bias, Point3d ang_bias)
 
 
 
-void Imu::initializate(double gt_yaw)
+void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_measure,vector <Point3d>  &a_measure )
 {
     initialYawGt = gt_yaw;
-    initialYawFilter = 0;
-        
+    setImuInitialVelocity( gt_velocity);
+    setImuData(w_measure, a_measure);
 
-}
+    angBias = accBias = Point3d(0.0, 0.0, 0.0); // bias 0
 
-
-void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
-{
     accelerationWorld.clear();
     rpyAnglesWorld.clear();
     quaternionWorld.clear();
@@ -56,12 +53,159 @@ void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
 
     Quaterniond orientation;
     
-    Point3d gravity_imu;
-    elapsed_filter = 0.0;
+    
+    calibrateAng(3);
+    cout<<"bias "<< angBias<<endl;
     for (int i = 0; i < n ; i++)
     {
+        UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]-accBias); //
+        UpdateSubscriber();
+        orientation.x = imuFusedData.orientation.x;
+        orientation.y = imuFusedData.orientation.y;
+        orientation.z = imuFusedData.orientation.z;
+        orientation.w = imuFusedData.orientation.w;
+        rpyAnglesWorld.push_back(toRPY(orientation));
+    
+    }
+
+
+    initialYawFilter = rpyAnglesWorld.back().z;
+
+    for (int i = 0; i < n ; i++)
+    {
+        // Alineacion del angulo yaw gt inicial
+        rpyAnglesWorld[i].z = rpyAnglesWorld[i].z - initialYawFilter+initialYawGt ;
+        orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
+        quaternionWorld.push_back(orientation);
+
+        // Guardar matrices de transformacion
+        world2imuRotation.push_back(RPY2rotationMatrix(rpyAnglesWorld[i]));
+    
+    }
+    
+    calibrateAcc();
+        
+
+}
+
+void Imu::calibrateAng(int axis)
+{
+    Point3d angSum;
+    angSum.x= 0.0;
+    angSum.y = 0.0;
+    angSum.z = 0.0;
+    for (int i = 0; i < n ; i++)
+    {
+        angSum = angSum + angularVelocityMeasure[i];
+    }
+    if(axis == 0)
+    {
+        angBias.x = angSum.x/n;
+    }
+
+    if(axis == 1)
+    {
+        angBias.y = angSum.y/n;
+    }
+
+    if(axis == 2)
+    {
+        angBias.z = angSum.z/n;
+    }
+
+    if(axis == 3)
+    {
+        angBias = angSum/n;
+    }
+    
+}
+
+
+void Imu::calibrateAcc()
+{
+    Point3d gravityinWorld ;
+    gravityinWorld.x = 0.0;
+    gravityinWorld.y = 0.0;
+    gravityinWorld.z = 9.68;
+
+    Point3d gravityInImu;
+    Point3d accSum;
+    accSum.x= 0.0;
+    accSum.y = 0.0;
+    accSum.z = 0.0;
+    for (int i = 0; i < n ; i++)
+    {
+        gravityInImu = Mat2point( world2imuRotation[i].t()*point2Mat(gravityinWorld));
+        accSum = accSum + accelerationMeasure[i] -gravityInImu;
+    }
+
+    accBias = accSum/n;
+}
+
+void Imu::detectAngBias()
+{
+    Point3d counter = Point3d(0.0, 0.0, 0.0);
+    double angThreshold = 0.01;
+    for (int i = 0; i < n ; i++)
+    {
+       if(abs(angularVelocityMeasure[i].x)<angThreshold)
+       {
+           counter.x++;
+       }
+
+       if(abs(angularVelocityMeasure[i].y)<angThreshold)
+       {
+           counter.y++;
+       }
+
+       if(abs(angularVelocityMeasure[i].z)<angThreshold)
+       {
+           counter.z++;
+       }
+
+    }
+    cout<<counter<<endl;
+    
+    if(counter.x>=9.0 && counter.y>=9.0 && counter.z >= 9.0)
+    {
+        calibrateAng(3);
+    }
+    else
+    {
+        if(counter.x>=9.0)
+        {
+            calibrateAng(0);
+        }
+
+        if(counter.y>=9.0)
+        {
+            calibrateAng(1);
+        }
+
+        if(counter.z>=9.0)
+        {
+            calibrateAng(2);
+        }
+    }
+    
+}
+
+
+
+
+void Imu::estimateOrientation()
+{
+    rpyAnglesWorld.clear();
+    quaternionWorld.clear();
+    angularVelocityIMUFilter.clear();
+    world2imuRotation.clear();
+
+    Quaterniond orientation;
+    elapsed_filter = 0.0;
+    for (int i = 0; i < n; i++)
+    {
         clock_t t1 = clock(); 
-        UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
+        UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]-accBias); //
         UpdateSubscriber();
         clock_t t2 = clock(); 
         elapsed_filter= double(t2- t1) / CLOCKS_PER_SEC +elapsed_filter;
@@ -70,86 +214,44 @@ void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
         orientation.z = imuFusedData.orientation.z;
         orientation.w = imuFusedData.orientation.w;
         rpyAnglesWorld.push_back(toRPY(orientation));
+
         // Alineacion del angulo yaw gt inicial
         rpyAnglesWorld[i].z = rpyAnglesWorld[i].z - initialYawFilter+initialYawGt ;
         orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
-        Point3d accWorld;
-        // restar bias local
-        //accelerationMeasure[i].x = accelerationMeasure[i].x; //-accBias.x;
-        //accelerationMeasure[i].y = accelerationMeasure[i].y;// -accBias.y;
-        //accelerationMeasure[i].z = accelerationMeasure[i].z;// -accBias.z;
-        // transformar acelerarion al sistema fijo (world)
-        accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
-        accWorld.z = accWorld.z - 9.68; // restar la aceleracion de gravedad
-        accelerationWorld.push_back(accWorld);
         quaternionWorld.push_back(orientation);
+
+        // Guardar matrices de transformacion
+        world2imuRotation.push_back(RPY2rotationMatrix(rpyAnglesWorld[i]));
+
         // Guardar la velocidad angular filtrada
         Point3d angularw;
         angularw.x  = imuFusedData.angular_velocity.x;
         angularw.y  = imuFusedData.angular_velocity.y;
         angularw.z  = imuFusedData.angular_velocity.z;
         angularVelocityIMUFilter.push_back(angularw);
-    
     }
+       
+        
+    
+    
     elapsed_filter = elapsed_filter/n;
-
 }
 
-
-void Imu::computeAcceleration(vector <Point3d> gtRPY) // Implementar la estimación del bias y ruido
+void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
 {
     accelerationWorld.clear();
-    rpyAnglesWorld.clear();
-    quaternionWorld.clear();
-    angularVelocityIMUFilter.clear();
-
-    Quaterniond orientation;
-    
-    Point3d gravity_imu;
-    elapsed_filter = 0.0;
-    int size = gtRPY.size();
-    if (size > 10) size = 10;
-    for (int i = 0; i < size ; i++)
+    for (int i = 0; i < n; i++)
     {
-        clock_t t1 = clock(); 
-        UpdatePublisher( angularVelocityMeasure[i], accelerationMeasure[i]); //
-        UpdateSubscriber();
-        clock_t t2 = clock(); 
-        elapsed_filter= double(t2- t1) / CLOCKS_PER_SEC +elapsed_filter;
-        orientation.x = imuFusedData.orientation.x;
-        orientation.y = imuFusedData.orientation.y;
-        orientation.z = imuFusedData.orientation.z;
-        orientation.w = imuFusedData.orientation.w;
-        Point3d angles = toRPY(orientation);
-        //angles.x = gtRPY[i].x;
-        //angles.y = gtRPY[i].y;
-        double aux_angz = angles.z;
-        angles.z = gtRPY[i].z;
-        rpyAnglesWorld.push_back(angles);
-        // Alineacion del angulo yaw gt inicial
-
-        orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
-        Point3d accWorld;
+         Point3d accWorld;
         // restar bias local
-        accelerationMeasure[i].x = accelerationMeasure[i].x ;//-accBias.x;
-        accelerationMeasure[i].y = accelerationMeasure[i].y ;//-accBias.y;
-        accelerationMeasure[i].z = accelerationMeasure[i].z ;//-accBias.z;
+        accelerationMeasure[i] = accelerationMeasure[i]-accBias;
         // transformar acelerarion al sistema fijo (world)
-        accWorld = transform2World(accelerationMeasure[i], rpyAnglesWorld[i]);
+        accWorld = Mat2point(world2imuRotation[i]*point2Mat(accelerationMeasure[i]));
         accWorld.z = accWorld.z-9.68; // restar la aceleracion de gravedad
-        rpyAnglesWorld[i].z = aux_angz;
         accelerationWorld.push_back(accWorld);
-        quaternionWorld.push_back(orientation);
-        // Guardar la velocidad angular filtrada
-        Point3d angularw;
-        angularw.x  = imuFusedData.angular_velocity.x;
-        angularw.y  = imuFusedData.angular_velocity.y;
-        angularw.z  = imuFusedData.angular_velocity.z;
-        angularVelocityIMUFilter.push_back(angularw);
-    
     }
-    elapsed_filter = elapsed_filter/n;
-
+    
+    // Guardar la velocidad angular filtrada
 }
 
 void Imu::computeVelocity()
@@ -211,6 +313,9 @@ void Imu::computeAngularPosition() // rad/s
 
 void Imu::estimate()
 {   
+    
+    estimateOrientation();
+    detectAngBias();
     computeAcceleration();
     computeVelocity();
     computePosition();
@@ -227,7 +332,10 @@ void Imu::estimate()
 
 void Imu::estimate(vector <Point3d> gtRPY)
 {   
-    computeAcceleration(gtRPY);
+    
+    estimateOrientation();
+    detectAngBias();
+    computeAcceleration();
     computeVelocity();
     computePosition();
     computeAngularVelocity();

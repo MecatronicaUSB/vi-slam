@@ -35,20 +35,21 @@ class VISystem
         ~VISystem();
         
         void InitializeCamera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
-        void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image);
+        void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image,  vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration );
         void InitializePyramid(int _width, int _height, Mat _K);
         // Gauss-Newton using Foward Compositional Algorithm - Using features
         void Calibration(string _calibration_path);
         void EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame);
+        void EstimatePoseFeaturesRansac(Frame* _previous_frame, Frame* _current_frame);
         void CalculateROI(Mat image);
         void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
-        void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) ;
+        void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition) ;
         void ObtainKeypointsTransformation(Mat candidates);
         void MatPoint2Keypoints( Mat _MatPoints, vector<KeyPoint> &_outputKeypoints);
         void FreeLastFrame();
         void Track();
         Mat IdentityWeights(int _num_residuals) ;
-        Mat WarpFunction(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
+        Mat WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
         
         bool initialized, distortion_valid , depth_available;
         int  num_keyframes;
@@ -62,6 +63,7 @@ class VISystem
 
         Point3d positionImu;
         Point3d velocityImu;
+        Point3d accImu;
         Quaterniond qOrientationImu;
         Point3d RPYOrientationImu;
         Mat world2imuTransformation;
@@ -69,8 +71,13 @@ class VISystem
 
         Point3d positionCam;
         Point3d velocityCam;
+        Point3d accCam;
         Quaterniond qOrientationCam;
         Point3d RPYOrientationCam;
+        Mat prev_world2camTransformation;
+        
+
+
         Mat imu2camTransformation;
         Mat imu2camRotation;
         Point3d imu2camTranslation;
@@ -79,6 +86,9 @@ class VISystem
         SE3 final_poseImu;
         SE3 current_poseCam;
         SE3 current_poseImu;
+        Point3d prev_gtPosition;
+        Point3d current_gtPosition;
+        Point3d current_gtTraslation;
 
         CameraModel* camera_model;
         

@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   image_transport
   cv_bridge
+  tf
   message_generation
 )
 find_package(OpenCV REQUIRED

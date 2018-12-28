@@ -37,12 +37,13 @@ namespace vi
     }
 
 
-    void VISystem::InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image)
+    void VISystem::InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration )
     {
         // Check if depth images are available
         /*if (_depth_path != "")
             depth_available = true;
         */
+       
         currentImage = image;
         Calibration(_calPath);
         
@@ -50,6 +51,10 @@ namespace vi
         imu2camTransformation = (camera_model->imu2cam0Transformation);
         imu2camRotation = transformationMatrix2rotationMatrix(imu2camTransformation);
         imu2camTranslation = transformationMatrix2position(imu2camTransformation);
+
+        
+         
+        current_gtPosition = _iniPosition+imu2camTranslation ;
 
         K = camera_model->GetK();
         w_input = camera_model->GetInputWidth();
@@ -78,6 +83,11 @@ namespace vi
         }
             
         InitializePyramid( w, h, K );
+
+          // IMU 
+        imuCore.createPublisher(1.0/(camera_model->imu_frecuency));
+        imuCore.initializate(_iniRPY.z, _iniVelocity,  _imuAngularVelocity, _imuAcceleration); // Poner yaw inicial del gt
+       
         // Initialize tracker system
         /*tracker_ = new Tracker(depth_available_);
         tracker_->InitializePyramid(w_, h_, K_);
@@ -92,8 +102,7 @@ namespace vi
 
         // Cheking if the number of depth images are greater or lower than the actual number of images
 
-        initialized = true;
-        cout << "Initializing system ... done" << endl << endl;
+
         //outputFile.open(_outputPath); // agregar fecha automticamente
 
       // Posicion inicial de la imu
@@ -108,17 +117,24 @@ namespace vi
 
 
       // Posicion inicial de la camara;
-        positionCam = Mat2point(imu2camTransformation*point2MatPlusOne(positionImu));
-        velocityCam = Mat2point(imu2camRotation*point2Mat(velocityImu));
-        RPYOrientationCam = rotationMatrix2RPY(imu2camRotation*world2imuRotation);
+        positionCam = positionImu+imu2camTranslation;
+        velocityCam = velocityImu;
+        RPYOrientationCam = rotationMatrix2RPY(world2imuRotation*imu2camRotation);
         qOrientationCam = toQuaternion(RPYOrientationCam.x, RPYOrientationCam.y, RPYOrientationCam.z);
-        Quaternion quat_initCam(qOrientationCam.w,qOrientationCam.x,qOrientationCam.y,qOrientationCam.z);
-        final_poseCam = SE3(quat_initCam, SE3::Point(-positionCam.x, -positionCam.z, -positionCam.y));
+        Mat33f rotationEigen ;
+        cv2eigen(world2imuRotation*imu2camRotation, rotationEigen);
+        final_poseCam = SE3(rotationEigen, SE3::Point(positionCam.x, positionCam.y, positionCam.z));
+        Mat44f rigidEigen = final_poseCam.matrix();
+        Mat rigid = Mat(4,4,CV_32FC1);
+        eigen2cv(rigidEigen, rigid);
+       
 
-        // IMU 
-        imuCore.createPublisher(1.0/(camera_model->imu_frecuency));
-        imuCore.initializate(_iniRPY.z); // Poner yaw inicial del gt
-        imuCore.setImuInitialVelocity(_iniVelocity);
+        //cout << rigid << endl;
+        //cout << positionCam<<endl;
+
+        prev_world2camTransformation = RPYAndPosition2transformationMatrix(RPYOrientationCam, positionCam);;
+        //cout << prev_world2camTransformation <<endl;
+      
      
         // Camera
         num_max_keyframes = camera_model->min_features; // Solo almacenar 10 keyframes
@@ -129,6 +145,9 @@ namespace vi
         camera.Update(currentImage);
         bool key_added = camera.addKeyframe();
         cout << "Camera Initialized"<<endl;
+
+        initialized = true;
+        cout << "Initializing system ... done" << endl << endl;
 
 
     }
@@ -202,6 +221,8 @@ namespace vi
         
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
+        velocityCam = velocityCam+imuCore.residualVelocity; // velocidad igual a la de la imu
+        accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
         camera.Update(_currentImage);
         bool key_added = camera.addKeyframe();
         num_keyframes = camera.frameList.size();
@@ -228,7 +249,57 @@ namespace vi
                 FreeLastFrame();
             }
             // Estimar pose de camara con solver
-            EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            //EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            Track();
+        }
+        
+        
+
+    }
+
+    void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition)
+    {
+        prev_gtPosition = current_gtPosition;
+        current_gtPosition = _gtPosition+imu2camTranslation ;
+        current_gtTraslation = current_gtPosition-prev_gtPosition ; // Traslation entre frames
+        prevImage = currentImage;
+        currentImage = _currentImage.clone();
+       
+        
+        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
+        imuCore.estimate();
+        velocityCam = velocityCam+imuCore.residualVelocity; // velocidad igual a la de la imu
+        accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
+     
+        //camera.Update(_currentImage);
+        //bool key_added = camera.addKeyframe();
+        //num_keyframes = camera.frameList.size();
+        if (camera.frameList.size()>= 1) // primera imagen agregada
+        {
+            /*
+            drawKeypoints(prevImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , prevImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+            imshow("prevImage", prevImageToShow);
+            imshow("currentImage", currentImageToShow);
+            waitKey();
+            */
+            //camera.printStatistics();
+
+            /*if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
+            {
+                //min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
+                camera.printStatistics();
+                
+            }
+            */
+            if (num_keyframes > num_max_keyframes)
+            {
+                FreeLastFrame();
+            }
+            // Estimar pose de camara con solver
+            //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            //EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             Track();
         }
         
@@ -236,35 +307,7 @@ namespace vi
 
     }
     
-    void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, vector <Point3d> _gtRPY) 
-    {
-        currentImage = _currentImage.clone();
-        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
-        imuCore.estimate(_gtRPY);
-        camera.Update(_currentImage);
-        camera.addKeyframe();
-        num_keyframes = camera.frameList.size();
-
-        if (camera.frameList.size()> 1) // primera imagen agregada y actual
-        {
-            drawKeypoints(camera.frameList[camera.frameList.size()-2]->grayImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , outputLastImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-            drawKeypoints(camera.frameList[camera.frameList.size()-1]->grayImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, outputCurrentImage, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-            if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
-            {
-                //min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
-                camera.printStatistics();
-                
-            }
-            if (num_keyframes > num_max_keyframes)
-            {
-                FreeLastFrame();
-                cout << num_keyframes<<endl;
-            }
-            Track();
-        }
-       
-        
-    }
+ 
 
     void VISystem::FreeLastFrame()
     {
@@ -277,11 +320,11 @@ namespace vi
         // Gauss-Newton Optimization Options
         float epsilon = 0.001;
         float intial_factor = 10;
-        int max_iterations = 10;
+        int max_iterations = 10; // 10
         float error_threshold = 0.005;
-        int first_pyramid_lvl = 4;
+        int first_pyramid_lvl = 0;
         int last_pyramid_lvl = 0;
-        float z_factor = 0.002;
+        float z_factor = 0.002; // 0.002
 
         // Variables initialization
         float error         = 0.0;
@@ -294,14 +337,30 @@ namespace vi
         for (int i=0; i<6; i++)
             deltaVector(i) = 0;
 
-     
-        Point3d residualRPYcam = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
+   
+        Point3d residualRPYcam = rotationMatrix2RPY(imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
+        
+        Point3d rpy;
+        rpy.x = -residualRPYcam.x;
+        rpy.y = -residualRPYcam.y;
+        rpy.z = -residualRPYcam.z;
+        
+        Mat residualRotation = RPY2rotationMatrix(rpy);
+
+        Mat33f rotationEigen ;
+        cv2eigen(residualRotation, rotationEigen);
+        //cv2eigen(imuCore.residual_rotationMatrix, rotationEigen);
+       
         Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
 
         //Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,
         Quaternion quat_init(1,  0, 0, 0);
         //cout << SO3::exp(SE3::Point(0.0, 0.0, 0.0))<<endl;
-        SE3 current_pose = SE3(quat_init, SE3::Point(0.0, 0.0, 0.0));
+        Point3d t_btw = Mat2point (prev_world2camTransformation.inv()*point2MatPlusOne(current_gtPosition+imu2camTranslation)); // traslacion entre frame pasado y actual respecto al frame pasado
+        //SE3 current_pose = SE3(rotationEigen, SE3::Point(-t_btw.x, -t_btw.y, -t_btw.z)); //x, z, y
+        SE3 current_pose = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
+        SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
+        //SE3 current_pose = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0)); //x, z, y
         
         /*
         cout << current_pose.unit_quaternion().x()<<endl;
@@ -352,37 +411,56 @@ namespace vi
                 SE3 deltaSE3;
                 Mat warpedPoints = Mat(candidatePoints1.size(), CV_32FC1);
                 Mat warpedDebugPoints = Mat(candidateDebugPoints1.size(), CV_32FC1);
+                Mat warpedDebugPoints2 = Mat(candidateDebugPoints1.size(), CV_32FC1);
 
 
-                //warpedPoints = WarpFunctionOpenCV(candidatePoints1, current_pose, lvl);
-                warpedPoints = WarpFunction(candidatePoints1, current_pose, lvl);
-                warpedDebugPoints = WarpFunction(candidateDebugPoints1, current_pose, lvl);
+                //warpedPoints = WarpFunctionSE3OpenCV(candidatePoints1, current_pose, lvl);
+                warpedPoints = WarpFunctionSE3(candidatePoints1, current_pose, lvl);
+                warpedDebugPoints = WarpFunctionSE3(candidateDebugPoints1, current_pose, lvl);
 
                 vector<KeyPoint> warpedDebugKeyPoints ;
                 MatPoint2Keypoints(warpedDebugPoints, warpedDebugKeyPoints );
+
+
+                warpedDebugPoints2 = WarpFunctionSE3(candidateDebugPoints1, current_poseDebug, lvl);
+
+                vector<KeyPoint> warpedDebugKeyPoints2 ;
+                MatPoint2Keypoints(warpedDebugPoints2, warpedDebugKeyPoints2 );
              
-      
-                if (k == 0){ // primera iteracion
-
                 
-                drawKeypoints(currentImage, _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
-                putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
-                imshow("currentDebugImage", currentImageDebugToShow);
-                waitKey(500);
+                if (k == 0){ // primera iteracion   
+                    //drawKeypoints(_current_frame->grayImage[lvl], _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
+                    //drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                    //drawKeypoints(currentImageDebugToShow, _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+                    
+                    drawKeypoints(_current_frame->grayImage[lvl], warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                    drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints2, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+                    resize(currentImageDebugToShow, currentImageDebugToShow, Size(), pow(2, lvl),pow(2, lvl) );
+                    drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches , currentImageDebugToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
 
-
-                }
+               }
                 else{
 
-                drawKeypoints(currentImage, _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-                putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
-                imshow("currentDebugImage", currentImageDebugToShow);
-                waitKey(500);
+                   // drawKeypoints(_current_frame->grayImage[0], _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
+                   // drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
 
+                   
+                    drawKeypoints(_current_frame->grayImage[lvl], warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                    drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints2, currentImageDebugToShow, Scalar(255, 0, 0), DrawMatchesFlags::DEFAULT);
+                    resize(currentImageDebugToShow, currentImageDebugToShow, Size(), pow(2, lvl),pow(2, lvl) );
+                    drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches , currentImageDebugToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
 
                 }
+                putText(currentImageDebugToShow,"lvl =" +to_string(lvl)+" iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+                putText(currentImageDebugToShow,"tx="+ to_string(t_btw.x*100) +" ty="+ to_string(t_btw.y*100)+" tz="+ to_string(t_btw.z*100), Point2d(10,50), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+                imshow("currentDebugImage", currentImageDebugToShow);
+                char c_input = (char) waitKey(25);
+                if( c_input == 'q' | c_input == ((char)27) )  {
+                        exit(0);
+                }
+
+                
+        
               
 
                 
@@ -471,7 +549,7 @@ namespace vi
 
                 // Break if error increases
                 if (error >= last_error || k == max_iterations-1 || abs(error - last_error) < epsilon) {
-                    // lv<<cout << "Pyramid level: " << lvl << endl;
+                    //cout << "Pyramid level: " << lvl << endl;
                     // cout << "Number of iterations: " << k << endl;
                     // cout << "Initial-Final Error: " << initial_error << " - " << last_error << endl << endl;
 
@@ -605,7 +683,7 @@ namespace vi
         }
     }
 
-    Mat VISystem::WarpFunction(Mat _points2warp, SE3 _rigid_transformation, int _lvl) {
+    Mat VISystem::WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl) {
         int lvl = _lvl;
 
         Mat projected_points = Mat(_points2warp.size(), CV_32FC1);
@@ -614,6 +692,7 @@ namespace vi
         Mat44f rigidEigen = _rigid_transformation.matrix();
         Mat rigid = Mat(4,4,CV_32FC1);
         eigen2cv(rigidEigen, rigid);
+       
 
         //cout << rigid << endl;
 
@@ -633,11 +712,17 @@ namespace vi
         // Y  = (y - cy) * Z / fy    
         projected_points.col(1) = ((projected_points.col(1) - cy) * invfy);
         projected_points.col(1) = projected_points.col(1).mul(projected_points.col(2));
+
+
+        //cout << projected_points.col(0) << endl;
+        //cout << projected_points.col(2) << endl;
         //cout << projected_points.row(projected_points.rows-1) << endl;    
 
         // Z = Z
 
         // Transformation of a point rigid body motion
+        //cout << "trans"<<endl;
+        //cout << projected_points.t()<<endl;
         projected_points = rigid * projected_points.t();
 
         // 3D -> 2D
@@ -651,7 +736,7 @@ namespace vi
         projected_points.row(1) /= projected_points.row(2);
         projected_points.row(1) += cy;
 
-        //cout << projected_points.col(0) << endl;
+  
         
         // Cleaning invalid points
         projected_points.row(0) = projected_points.row(0).mul(projected_points.row(3));
@@ -661,6 +746,7 @@ namespace vi
         // Transposing the points due transformation multiplication
         return projected_points.t();
     }
+
 
     Mat VISystem::IdentityWeights(int _num_residuals) 
     {
@@ -672,29 +758,42 @@ namespace vi
     {
 
 
-        // Cam
-        Point3d residualRPYcam = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
-        Quaterniond residualQCam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
-        Quaternion quat_initCam(residualQCam.w,  residualQCam.x, residualQCam.y, residualQCam.z); // w, x, y,
-        current_poseCam = SE3(quat_initCam, SE3::Point(0.0, 0.0, 0.0));
+        Mat33f rotationCamEigen ;
+        cv2eigen(imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation, rotationCamEigen);
+        current_poseCam = SE3(rotationCamEigen, SE3::Point(0.0, 0.0, 0.0));
+        
         //current_poseCam = SE3(camera.frameList[camera.frameList.size()-2]->rigid_transformation_.unit_quaternion(), (camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation()));
+        Mat44f rigidEigen = current_poseCam.matrix();
+        
+        Mat rigid = Mat(4,4,CV_32FC1);
+        eigen2cv(rigidEigen, rigid);
+       
+        
+        Point3d rpyCAM = rotationMatrix2RPY( transformationMatrix2rotationMatrix(rigid));
+        Mat residualRotation = RPY2rotationMatrix(rpyCAM);
+        Mat33f rotationEigen ;
+        cv2eigen(residualRotation, rotationEigen);
+        current_poseCam.translation() = current_poseCam.translation();
+        current_poseCam = SE3( rotationCamEigen, -current_poseCam.translation() );
+        
+
+
         final_poseCam = final_poseCam*current_poseCam;
 
         Mat31f t = final_poseCam.translation();
-        positionCam.x = -t(0);
-        positionCam.y = -t(2);
-        positionCam.z = -t(1);
+        positionCam.x = t(0);
+        positionCam.y = t(1);
+        positionCam.z = t(2);
         qOrientationCam.x = final_poseCam.unit_quaternion().x();
         qOrientationCam.y = final_poseCam.unit_quaternion().y();
         qOrientationCam.z = final_poseCam.unit_quaternion().z();
         qOrientationCam.w = final_poseCam.unit_quaternion().w();
         RPYOrientationCam = toRPY(qOrientationCam);
+        prev_world2camTransformation = RPYAndPosition2transformationMatrix(RPYOrientationCam, positionCam);
 
-        // Imu
-        Point3d residualRPYImu = rotationMatrix2RPY(imuCore.residual_rotationMatrix);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
-        Quaterniond residualQImu= toQuaternion(residualRPYImu.x, residualRPYImu.y, residualRPYImu.z) ;
-        Quaternion quat_initImu(residualQImu.w,  residualQImu.x, residualQImu.y, residualQImu.z); // w, x, y,
-        current_poseImu = SE3(quat_initImu, SE3::Point(0.0, 0.0, 0.0));
+        Mat33f rotationImuEigen ;
+        cv2eigen(imuCore.residual_rotationMatrix, rotationImuEigen);
+        current_poseImu = SE3(rotationImuEigen, SE3::Point(0.0, 0.0, 0.0));
 
         final_poseImu = final_poseImu*current_poseImu;
 
@@ -707,6 +806,10 @@ namespace vi
         qOrientationImu.z = final_poseImu.unit_quaternion().z();
         qOrientationImu.w = final_poseImu.unit_quaternion().w();
         RPYOrientationImu = toRPY(qOrientationImu);
+      
+
+
+        
 
 
 
@@ -733,6 +836,69 @@ namespace vi
       
     }
 
+    void VISystem::EstimatePoseFeaturesRansac(Frame* _previous_frame, Frame* _current_frame)
+    {
+        
+        Mat cameraMatrix = Mat::zeros(3,3,CV_64F);
+        cameraMatrix.at<double>(0, 0) = fx_[0];
+        cameraMatrix.at<double>(0, 2) = cx_[0];
+        cameraMatrix.at<double>(1, 1) = fy_[0];
+        cameraMatrix.at<double>(1, 2) = cy_[0];
+        cameraMatrix.at<double>(2, 2) = 1.0;
+
+        std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+        vector<int> point_indexs;
+
+        cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
+        cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
+        cv::KeyPoint::convert(_previous_frame->nextGoodMatches, points1_OK,point_indexs);
+        cv::KeyPoint::convert(_current_frame->prevGoodMatches, points2_OK,point_indexs);
+
+
+
+        Mat E; // essential matrix
+        E = findEssentialMat(points1_OK, points2_OK, cameraMatrix, RANSAC, 0.999, 1.0, noArray());
+        // Calcular la matriz de rotación y traslación de puntos entre imagenes 
+        Mat R_out, t_out;
+
+        recoverPose(E, points1_OK, points2_OK, cameraMatrix, R_out, t_out, noArray());
+   
+        Point3d residualRPYcam = rotationMatrix2RPY(R_out);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
+        cout << R_out<<endl;
+        cout << points1_OK.size()<< " " << points2_OK.size()<<endl;
+        cout << "ResidualRPY"<<residualRPYcam<<endl;
+        cout << "Residualtrans"<< t_out<<endl;
+        Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
+        Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,
+
+        Mat33f rotationEigen ;
+        cv2eigen(R_out, rotationEigen);
+        current_poseCam = SE3(rotationEigen, SE3::Point(t_out.at<double>(0,0)*0.04, t_out.at<double>(0,1)*0.04, t_out.at<double>(0,2)*0.04)); //x, z, y 0.0, 0.0));
+        //current_poseCam = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y 0.0, 0.0));
+
+
+        // Show points for debug
+        Mat candidateDebugPoints1 =  _previous_frame->candidateDebugPoints[0].clone();
+        Mat warpedDebugPoints = WarpFunctionSE3(candidateDebugPoints1, current_poseCam, 0);
+
+        vector<KeyPoint> warpedDebugKeyPoints ;
+        MatPoint2Keypoints(warpedDebugPoints, warpedDebugKeyPoints );
+        drawKeypoints(currentImage, _current_frame->prevGoodMatches , currentImageToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(currentImageToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+        //putText(currentImageDebugToShow,"iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+        imshow("currentDebugImage", currentImageDebugToShow);
+        char c_input = (char) waitKey(25);
+        if( c_input == 'q' | c_input == ((char)27) )  {
+                exit(0);
+                
+        }
+    
+        waitKey(30);
+
+
+    }
+
 }
+
 
 

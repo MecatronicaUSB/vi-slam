@@ -51,11 +51,11 @@
 <use_gt type_id="integer">1</use_gt>
 <use_ros type_id="integer">1</use_ros>
 
-<num_cells type_id="integer"> 196</num_cells>
+<num_cells type_id="integer"> 144</num_cells>
 <length_patch type_id="integer"> 3</length_patch>
 
-<detector type_id="integer">4</detector>
-<matcher type_id="integer">3</matcher>
+<detector type_id="integer">2</detector>
+<matcher type_id="integer">0</matcher>
   <!--USE_KAZE, 0
     USE_AKAZE, 1
     USE_ORB, 2

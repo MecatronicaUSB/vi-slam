@@ -46,16 +46,21 @@ class ImuFilterNode{
         void setImuBias(Point3d acc_Bias, Point3d ang_Bias);
         void setImuInitialVelocity(Point3d initial_velocity);
         void setImuInitialPosition();
-        void initializate(double gt_yaw);
+        void initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_measure,vector <Point3d>  &a_measure );
         void estimate();
         void estimate(vector <Point3d> gtRPY);
+        void estimateOrientation();
         void computeGravity();
         void computePosition();
         void computeVelocity();
         void computeAcceleration();
-        void computeAcceleration(vector <Point3d> gtRPY);
+        //void computeAcceleration(vector <Point3d> gtRPY);
         void computeAngularVelocity();
         void computeAngularPosition();
+
+        void calibrateAng(int axis); // calibración angular considerando velocidad 0
+        void calibrateAcc(); // calibración acelaracion considerando velocidad 0
+        void detectAngBias(); // Detectar medidas para la calibración ang
         void printStatistics();
         Point3d transform2World(Point3d acc, Point3d localAngles);
         Point3d angularPosition;
@@ -71,11 +76,13 @@ class ImuFilterNode{
         vector <Point3d> angularVelocityIMUFilter; // velocidad angular
         vector <Quaterniond> quaternionWorld;
         vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
-        vector <Point3d> accelerationWorld; // celeracion del robot respecto al mundoç
+        vector <Point3d> accelerationWorld; // aceleracion del robot respecto al mundo
 
         Mat init_rotationMatrix;
         Mat final_rotationMatrix;
         Mat residual_rotationMatrix;
+
+        vector <Mat> world2imuRotation;
 
         // Residuales
         Point3d residualRPY;
