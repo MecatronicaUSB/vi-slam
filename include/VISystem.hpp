@@ -35,7 +35,7 @@ class VISystem
         ~VISystem();
         
         void InitializeCamera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
-        void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image,  vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration );
+        void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, double _iniYaw, Mat image,  vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration );
         void InitializePyramid(int _width, int _height, Mat _K);
         // Gauss-Newton using Foward Compositional Algorithm - Using features
         void Calibration(string _calibration_path);
@@ -49,7 +49,10 @@ class VISystem
         void FreeLastFrame();
         void Track();
         Mat IdentityWeights(int _num_residuals) ;
+        Mat TukeyFunctionWeights(Mat _input) ;
         Mat WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
+        float MedianAbsoluteDeviation(Mat _input);
+        float MedianMat(Mat _input) ;
         
         bool initialized, distortion_valid , depth_available;
         int  num_keyframes;

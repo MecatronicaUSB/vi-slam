@@ -323,3 +323,33 @@ Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position)
 	
 
 }
+
+Mat RPYWorld2ResidualAngImu(Point3d rpy)
+{
+ 	double roll = rpy.x;
+    double pitch = rpy.y;
+    double yaw = rpy.z;
+
+    //cout << "roll = " << roll*180/M_PI << "pitch" << pitch*180/M_PI << "yaw" << yaw*180/M_PI <<endl;
+    double c1 = cos(roll);
+    double s1 = sin(roll);
+    double c2 = cos(pitch);
+    double s2 = sin(pitch);
+	
+	Mat rotationMatrix = Mat::zeros(3,3,CV_32FC1);
+
+
+	rotationMatrix.at<float>(0,0) = 1.0;
+	rotationMatrix.at<float>(0,1) = s2*s1/c1;
+	rotationMatrix.at<float>(0,2) = c2*s1/c1;
+
+	rotationMatrix.at<float>(1,0) = 0.0;
+	rotationMatrix.at<float>(1,1) = c2;
+	rotationMatrix.at<float>(1,2) = -s2;
+
+	rotationMatrix.at<float>(2,0) = 0.0;
+	rotationMatrix.at<float>(2,1) = s2/c1;
+	rotationMatrix.at<float>(2,2) = c2/c1;
+
+	return rotationMatrix;
+}

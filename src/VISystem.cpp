@@ -37,7 +37,7 @@ namespace vi
     }
 
 
-    void VISystem::InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, Point3d _iniRPY, Mat image, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration )
+    void VISystem::InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, double _iniYaw, Mat image, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration )
     {
         // Check if depth images are available
         /*if (_depth_path != "")
@@ -86,7 +86,7 @@ namespace vi
 
           // IMU 
         imuCore.createPublisher(1.0/(camera_model->imu_frecuency));
-        imuCore.initializate(_iniRPY.z, _iniVelocity,  _imuAngularVelocity, _imuAcceleration); // Poner yaw inicial del gt
+        imuCore.initializate(_iniYaw, _iniVelocity,  _imuAngularVelocity, _imuAcceleration); // Poner yaw inicial del gt
        
         // Initialize tracker system
         /*tracker_ = new Tracker(depth_available_);
@@ -108,8 +108,10 @@ namespace vi
       // Posicion inicial de la imu
         positionImu = _iniPosition;
         velocityImu = _iniVelocity;
-        RPYOrientationImu = _iniRPY;
-        qOrientationImu = toQuaternion(_iniRPY.x, _iniRPY.y, _iniRPY.z);
+        RPYOrientationImu = imuCore.rpyAnglesWorld.back();
+        cout << "RPYOrientationImu"<< RPYOrientationImu<< endl;
+        cout << _iniYaw<<endl;
+        qOrientationImu = imuCore.quaternionWorld.back();
         world2imuTransformation = RPYAndPosition2transformationMatrix(RPYOrientationImu, positionImu);
         world2imuRotation = transformationMatrix2rotationMatrix(world2imuTransformation);
         Quaternion quat_initImu(qOrientationImu.w,qOrientationImu.x,qOrientationImu.y,qOrientationImu.z);
@@ -249,7 +251,7 @@ namespace vi
                 FreeLastFrame();
             }
             // Estimar pose de camara con solver
-            //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             //EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             Track();
         }
@@ -284,7 +286,7 @@ namespace vi
             imshow("currentImage", currentImageToShow);
             waitKey();
             */
-            //camera.printStatistics();
+            camera.printStatistics();
 
             /*if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
             {
@@ -319,12 +321,12 @@ namespace vi
     void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
         // Gauss-Newton Optimization Options
         float epsilon = 0.001;
-        float intial_factor = 10;
-        int max_iterations = 10; // 10
+        //float intial_factor = 10;
+        int max_iterations = 40; // 10
         float error_threshold = 0.005;
-        int first_pyramid_lvl = 0;
+        int first_pyramid_lvl = 3;
         int last_pyramid_lvl = 0;
-        float z_factor = 0.002; // 0.002
+        float z_factor = 0.02; // 0.002
 
         // Variables initialization
         float error         = 0.0;
@@ -337,30 +339,35 @@ namespace vi
         for (int i=0; i<6; i++)
             deltaVector(i) = 0;
 
-   
+        
         Point3d residualRPYcam = rotationMatrix2RPY(imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
         
-        Point3d rpy;
-        rpy.x = -residualRPYcam.x;
-        rpy.y = -residualRPYcam.y;
-        rpy.z = -residualRPYcam.z;
+        Mat world2imuRotation = imuCore.final_rotationMatrix;
+        Point3d currentRPYCam = rotationMatrix2RPY(world2imuRotation*imu2camRotation);
+
+        Point3d currentPositionCam = positionCam;
+        currentPositionCam.z = currentPositionCam.z+imuCore.residualPosition.z;
+        Mat currentTransformationCam = RPYAndPosition2transformationMatrix(currentRPYCam, currentPositionCam );
+         
+ 
         
-        Mat residualRotation = RPY2rotationMatrix(rpy);
+        Mat residualRotation = RPY2rotationMatrix(-residualRPYcam);
+        cout << "dale"<<residualRotation<<endl;
 
         Mat33f rotationEigen ;
         cv2eigen(residualRotation, rotationEigen);
         //cv2eigen(imuCore.residual_rotationMatrix, rotationEigen);
        
-        Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
-
+        //Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
         //Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,
-        Quaternion quat_init(1,  0, 0, 0);
+        //Quaternion quat_init(1,  0, 0, 0);
         //cout << SO3::exp(SE3::Point(0.0, 0.0, 0.0))<<endl;
-        Point3d t_btw = Mat2point (prev_world2camTransformation.inv()*point2MatPlusOne(current_gtPosition+imu2camTranslation)); // traslacion entre frame pasado y actual respecto al frame pasado
+        Point3d t_btw = transformationMatrix2position(prev_world2camTransformation.inv()*currentTransformationCam); // traslacion entre frame pasado y actual respecto al frame pasado
         //SE3 current_pose = SE3(rotationEigen, SE3::Point(-t_btw.x, -t_btw.y, -t_btw.z)); //x, z, y
         SE3 current_pose = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
-        SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
-        //SE3 current_pose = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0)); //x, z, y
+        //SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
+        //SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(-t_btw.x, -t_btw.y, -t_btw.z)); //x, z, y
+        SE3 current_poseDebug = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0)); //x, z, y
         
         /*
         cout << current_pose.unit_quaternion().x()<<endl;
@@ -377,7 +384,7 @@ namespace vi
             // Initialize error   
             error = 0.0;
             last_error = 50000.0;
-            float factor = intial_factor * (lvl + 1);
+            //float factor = intial_factor * (lvl + 1);
 
             // Obtain image 1 and 2
          
@@ -452,7 +459,7 @@ namespace vi
 
                 }
                 putText(currentImageDebugToShow,"lvl =" +to_string(lvl)+" iter ="+to_string(k), Point2d(10,20), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
-                putText(currentImageDebugToShow,"tx="+ to_string(t_btw.x*100) +" ty="+ to_string(t_btw.y*100)+" tz="+ to_string(t_btw.z*100), Point2d(10,50), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+                //putText(currentImageDebugToShow,"tx="+ to_string(t_btw.x*100) +" ty="+ to_string(t_btw.y*100)+" tz="+ to_string(t_btw.z*100), Point2d(10,50), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
                 imshow("currentDebugImage", currentImageDebugToShow);
                 char c_input = (char) waitKey(25);
                 if( c_input == 'q' | c_input == ((char)27) )  {
@@ -507,7 +514,7 @@ namespace vi
                             Jw.at<float>(1,2) = -(fy_[lvl] * y2 * inv_z2 * inv_z2) * z_factor;
                             Jw.at<float>(1,3) = -(fy_[lvl] * (1 + y2 * y2 * inv_z2 * inv_z2));
                             Jw.at<float>(1,4) = fy_[lvl] * x2 * y2 * inv_z2 * inv_z2;
-                            Jw.at<float>(1,5) = fy_[lvl] * x2 * inv_z2;
+                            Jw.at<float>(1,5) = -fy_[lvl] * x2 * inv_z2; // signo menos
 
                         
                             // Intensities
@@ -618,6 +625,7 @@ namespace vi
             }
 
             // Scale current_pose estimation to next lvl
+            /*
             if (lvl !=0) {
                 Mat31f t = 2 * current_pose.translation();
 
@@ -629,7 +637,7 @@ namespace vi
                 
                 current_pose = SE3(quaternion, t);
             }
-            
+            */
             //current_pose = SE3(current_pose.unit_quaternion() * 2, current_pose.translation() * 2);
         }
 
@@ -694,7 +702,7 @@ namespace vi
         eigen2cv(rigidEigen, rigid);
        
 
-        //cout << rigid << endl;
+        cout << rigid << endl;
 
         float fx = fx_[lvl];
         float fy = fy_[lvl];
@@ -770,11 +778,12 @@ namespace vi
        
         
         Point3d rpyCAM = rotationMatrix2RPY( transformationMatrix2rotationMatrix(rigid));
-        Mat residualRotation = RPY2rotationMatrix(rpyCAM);
+        Mat residualRotation = RPY2rotationMatrix(-rpyCAM);
+        //Mat residualRotation = RPY2rotationMatrix(rpyCAM);
         Mat33f rotationEigen ;
         cv2eigen(residualRotation, rotationEigen);
         current_poseCam.translation() = current_poseCam.translation();
-        current_poseCam = SE3( rotationCamEigen, -current_poseCam.translation() );
+        current_poseCam = SE3( rotationEigen, -current_poseCam.translation() );
         
 
 
@@ -807,7 +816,7 @@ namespace vi
         qOrientationImu.w = final_poseImu.unit_quaternion().w();
         RPYOrientationImu = toRPY(qOrientationImu);
       
-
+        //waitKey(30);
 
         
 
@@ -896,6 +905,82 @@ namespace vi
         waitKey(30);
 
 
+    }
+
+
+    Mat VISystem::TukeyFunctionWeights(Mat _input) 
+    {
+        int num_residuals = _input.rows;
+        float b = 4.6851; // Achieve 95% efficiency if assumed Gaussian distribution for outliers
+        Mat W = Mat(num_residuals,1,CV_32FC1);    
+
+        // Computation of scale (Median Absolute Deviation)
+        float MAD = MedianAbsoluteDeviation(_input);       
+
+        if (MAD == 0) {
+            cout << "Warning: MAD = 0." << endl;
+            MAD = 1;
+        }
+        float inv_MAD = 1.0 / MAD;
+        float inv_b2 = 1.0 / (b * b);
+
+        for (int i=0; i<num_residuals; i++) {
+            float prueba = _input.at<float>(i,0);
+            float x = _input.at<float>(i,0) * inv_MAD;
+
+            if (abs(x) <= b) {
+                float tukey = (1.0 - (x * x) * inv_b2);
+                W.at<float>(i,0) = tukey * tukey;
+            } else {
+                W.at<float>(i,0) = 0.0;
+            }
+        }
+
+        return W;
+    }
+
+
+    float VISystem::MedianAbsoluteDeviation(Mat _input)
+    {
+        float c = 1.4826;
+
+        Mat deviation = Mat(_input.rows, _input.cols, CV_32FC1);
+        float median = MedianMat(_input);
+        // Absolute Deviation from the _input's median
+        deviation = abs(_input - median);
+
+        // Median of deviation
+        float MAD = MedianMat(deviation);
+
+        return c * MAD;
+    }
+
+
+
+    float VISystem::MedianMat(Mat _input) 
+    {
+        Mat channel = Mat(_input.rows, _input.cols, CV_8UC1);
+        _input.convertTo(channel, CV_8UC1);
+
+        float m = (channel.rows*channel.cols) / 2;
+        int bin = 0;
+        float med = -1.0;
+
+        int histSize = 256;
+        float range[] = { 0, 256 };
+        const float* histRange = { range };
+        bool uniform = true;
+        bool accumulate = false;
+        Mat hist;
+        calcHist(&channel, 1, 0, Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
+
+        for (int i = 0; i < histSize && med < 0.0; ++i) {
+            bin += cvRound(hist.at<float>(i));
+            if (bin > m && med < 0.0)
+                med = i;
+        }
+
+        return med;
     }
 
 }

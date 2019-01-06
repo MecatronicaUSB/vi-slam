@@ -54,11 +54,11 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
     Quaterniond orientation;
     
     
-    calibrateAng(3);
-    cout<<"bias "<< angBias<<endl;
+    //calibrateAng(3);
+    //cout<<"bias "<< angBias<<endl;
     for (int i = 0; i < n ; i++)
     {
-        UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]-accBias); //
+        UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]); //
         UpdateSubscriber();
         orientation.x = imuFusedData.orientation.x;
         orientation.y = imuFusedData.orientation.y;
@@ -74,7 +74,7 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
     for (int i = 0; i < n ; i++)
     {
         // Alineacion del angulo yaw gt inicial
-        rpyAnglesWorld[i].z = rpyAnglesWorld[i].z - initialYawFilter+initialYawGt ;
+        rpyAnglesWorld[i].z = initialYawGt ;
         orientation = toQuaternion(rpyAnglesWorld[i].x, rpyAnglesWorld[i].y, rpyAnglesWorld[i].z );
         quaternionWorld.push_back(orientation);
 
@@ -83,7 +83,7 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
     
     }
     
-    calibrateAcc();
+    //calibrateAcc(3);
         
 
 }
@@ -121,7 +121,7 @@ void Imu::calibrateAng(int axis)
 }
 
 
-void Imu::calibrateAcc()
+void Imu::calibrateAcc(int axis)
 {
     Point3d gravityinWorld ;
     gravityinWorld.x = 0.0;
@@ -139,32 +139,51 @@ void Imu::calibrateAcc()
         accSum = accSum + accelerationMeasure[i] -gravityInImu;
     }
 
-    accBias = accSum/n;
+    if(axis == 0)
+    {
+        accBias.x = accSum.x/n;
+    }
+
+    if(axis == 1)
+    {
+        accBias.y = accSum.y/n;
+    }
+
+    if(axis == 2)
+    {
+        accBias.z = accSum.z/n;
+    }
+
+    if(axis == 3)
+    {
+        accBias = accSum/n;
+    }
+    cout<<"accBias = "<<accBias<<endl;
 }
 
 void Imu::detectAngBias()
 {
     Point3d counter = Point3d(0.0, 0.0, 0.0);
-    double angThreshold = 0.01;
+    Point3d angThreshold =  Point3d(0.01, 0.01, 0.01);
     for (int i = 0; i < n ; i++)
     {
-       if(abs(angularVelocityMeasure[i].x)<angThreshold)
+       if(abs(angularVelocityMeasure[i].x)<angThreshold.x)
        {
            counter.x++;
        }
 
-       if(abs(angularVelocityMeasure[i].y)<angThreshold)
+       if(abs(angularVelocityMeasure[i].y)<angThreshold.y)
        {
            counter.y++;
        }
 
-       if(abs(angularVelocityMeasure[i].z)<angThreshold)
+       if(abs(angularVelocityMeasure[i].z)<angThreshold.z)
        {
            counter.z++;
        }
 
     }
-    cout<<counter<<endl;
+
     
     if(counter.x>=9.0 && counter.y>=9.0 && counter.z >= 9.0)
     {
@@ -185,6 +204,67 @@ void Imu::detectAngBias()
         if(counter.z>=9.0)
         {
             calibrateAng(2);
+        }
+    }
+    
+}
+
+void Imu::detectAccBias()
+{
+    Point3d counter = Point3d(0.0, 0.0, 0.0);
+    Point3d accThreshold =  Point3d(0.3, 0.3, 0.1);
+    
+    Point3d gravityinWorld ;
+    gravityinWorld.x = 0.0;
+    gravityinWorld.y = 0.0;
+    gravityinWorld.z = 9.68;
+
+    Point3d gravityInImu;
+    Point3d accMed;
+    for (int i = 0; i < n ; i++)
+    {
+        gravityInImu = Mat2point( world2imuRotation[i].t()*point2Mat(gravityinWorld));
+        accMed = accelerationMeasure[i] -gravityInImu;
+       if(abs(accMed.x)<accThreshold.x)
+       {
+           counter.x++;
+       }
+
+       if(abs(accMed.y)<accThreshold.y)
+       {
+           counter.y++;
+       }
+
+       if(abs(accMed.z)<accThreshold.z)
+       {
+           counter.z++;
+       }
+
+    }
+    
+    if(counter.x>=9.0 && counter.y>=9.0 && counter.z >= 9.0)
+    {
+        cout << "cal acc x y z"<<endl;
+        calibrateAcc(3);
+    }
+    else
+    {
+        if(counter.x>=9.0)
+        {
+            cout << "cal acc x"<<endl;
+            calibrateAcc(0);
+        }
+
+        if(counter.y>=9.0)
+        {
+            cout << "cal acc y"<<endl;
+            calibrateAcc(1);
+        }
+
+        if(counter.z>=9.0)
+        {
+            cout << "cal acc z"<<endl;
+            calibrateAcc(2);
         }
     }
     
@@ -315,7 +395,8 @@ void Imu::estimate()
 {   
     
     estimateOrientation();
-    detectAngBias();
+    //detectAngBias();
+    //detectAccBias();
     computeAcceleration();
     computeVelocity();
     computePosition();
@@ -324,29 +405,12 @@ void Imu::estimate()
     init_rotationMatrix = RPY2rotationMatrix(rpyAnglesWorld[0]);
     final_rotationMatrix = RPY2rotationMatrix(rpyAnglesWorld.back());
     residual_rotationMatrix = init_rotationMatrix.t()*final_rotationMatrix; // inverse rotation by final rotation
-    residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
+    residualRPY = rotationMatrix2RPY(residual_rotationMatrix);
     residualVelocity =  velocity;
     residualPosition = position;
-
-}
-
-void Imu::estimate(vector <Point3d> gtRPY)
-{   
+    initialVelocity = initialVelocity + residualVelocity;
     
-    estimateOrientation();
-    detectAngBias();
-    computeAcceleration();
-    computeVelocity();
-    computePosition();
-    computeAngularVelocity();
-    computeAngularPosition();
-    residualRPY = rpyAnglesWorld[quaternionWorld.size()-1]-rpyAnglesWorld[0];
-    residualVelocity = velocity;
-    residualPosition = position;
-    /*initialVelocity.x = velocity.x;
-    initialVelocity.y = velocity.y;
-    initialVelocity.z = velocity.z;
-    */
+
 }
 
 void Imu::setImuInitialPosition()

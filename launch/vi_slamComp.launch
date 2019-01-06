@@ -1,7 +1,7 @@
 <!-- DATASET -->
 <launch>
     <!-- VI-SLAM main thread-->
-  <node pkg="vi_slam" type="vi_slam" name="main"  
+    <node pkg="vi_slam" type="vi_slam" name="main"  
         args="-gtFile=/home/lujano/Documents/V1_02_medium/mav0/state_groundtruth_estimate0/data.csv 
               -imuFile=/home/lujano/Documents/V1_02_medium/mav0/imu0/data.csv 
               -imagesPath=/home/lujano/Documents/V1_02_medium/mav0/cam0/data/
@@ -16,11 +16,10 @@
     <!-- rqt_plot visualizer
     <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>-->
         
-    <node name="ImuFilter" pkg="imu_filter_madgwick" type="imu_filter_node"
-         args="_use_mag:=false _use_magnectic_field_msg:=false 
-         _gain:=0.6 _world_frame:=nwu _stateless:=false 
-         _publish_debug_topics:=true _constant_dt:=0.005"
-
+    <node name="ImuFilter" pkg="imu_complementary_filter" type="complementary_filter_node"
+         args="_use_mag:=false 
+         _gain_acc:=0.01 _gain_mag:=0.01  _do_bias_estimation:=true
+         _do_adaptive_gain:= true _publish_debug_topics:=true _constant_dt:=0.005"
     />
 </launch>
 

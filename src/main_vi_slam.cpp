@@ -53,7 +53,7 @@ int main( int argc, char** argv ){
     Data.UpdateDataReader(j-1, j);
 
     VISystem visystem(argc, argv);
-    visystem.InitializeSystem( calibrationFile, Data.gtPosition.back(), Data.gtLinearVelocity.back(), Data.gtRPY.back(), Data.image1, Data.imuAngularVelocity, Data.imuAcceleration);
+    visystem.InitializeSystem( calibrationFile, Data.gtPosition.back(), Data.gtLinearVelocity.back(), Data.gtRPY.back().z, Data.image1, Data.imuAngularVelocity, Data.imuAcceleration);
     cout << "Initializate System"<<endl;
     Quaterniond qinit = toQuaternion(Data.gtRPY[0].x, Data.gtRPY[0].y, Data.gtRPY[0].z);
 
@@ -130,7 +130,33 @@ int main( int argc, char** argv ){
          
          cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
    
+
         
+        outputFilecsv <<  visystem.positionImu.x<<","
+        <<visystem.positionImu.y<<","
+        <<visystem.positionImu.z<<","
+        <<visystem.velocityImu.x<<","
+        <<visystem.velocityImu.y<<","
+        <<visystem.velocityImu.z<<","
+        <<visystem.accImu.x<<","
+        <<visystem.accImu.y<<","
+        <<visystem.accImu.z<<","
+        <<visystem.qOrientationImu.x <<","
+        <<visystem.qOrientationImu.y <<","
+        <<visystem.qOrientationImu.z <<","
+        <<visystem.qOrientationImu.w <<","
+        <<  Data.gtPosition.back().x <<","
+        <<  Data.gtPosition.back().y <<","
+        <<  Data.gtPosition.back().z <<","
+        <<  Data.gtLinearVelocity.back().x <<","
+        <<  Data.gtLinearVelocity.back().y <<","
+        << Data.gtLinearVelocity.back().z<<","
+        <<  Data.gtQuaternion.back().x <<","        
+        <<  Data.gtQuaternion.back().y <<","
+        <<  Data.gtQuaternion.back().z<<","
+        <<  Data.gtQuaternion.back().w <<","
+        <<endl;
+        /*
         outputFilecsv <<  visystem.positionCam.x<<","
         <<visystem.positionCam.y<<","
         <<visystem.positionCam.z<<","
@@ -158,6 +184,7 @@ int main( int argc, char** argv ){
         <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
         <<visystem.imuCore.angularVelocityIMUFilter.back().z
         <<endl;
+        */
 
                 
         static tf::TransformBroadcaster br;

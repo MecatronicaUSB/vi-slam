@@ -3,6 +3,57 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+
+def error(error):
+    remap_matrix = np.array([])
+    for x in np.arange(error.size):
+        error_value = error[x]
+        if error[x]>180:
+            error_value=error[x]-360
+        if error[x]<-180:
+            error_value=error[x]+360
+        remap_matrix = np.append( remap_matrix, [error_value], 0)
+    return remap_matrix 
+
+
+
+       
+def remap(angle):
+    remap_matrix = np.array([])
+    for x in np.arange(angle.size):
+        angle_value  = angle[x] 
+
+        if angle_value <0:
+            angle_value = angle_value+360
+
+        remap_matrix = np.append( remap_matrix, [angle_value], 0)
+    return remap_matrix 
+
+
+
+def remap3(angle):
+    remap_matrix = np.array([])
+    for x in np.arange(angle.size):
+        angle_value  = angle[x] 
+
+        angle_value = angle_value-360
+
+        remap_matrix = np.append( remap_matrix, [angle_value], 0)
+    return remap_matrix 
+def remap2(angle):
+    remap_matrix = np.array([])
+    last_value = angle[0]
+    for x in np.arange(angle.size):
+        angle_value  = angle[x] 
+
+        if abs(last_value-angle_value)>180:
+            angle_value = angle_value+360
+
+        remap_matrix = np.append( remap_matrix, [angle_value], 0)
+
+        last_value = angle_value
+    return remap_matrix 
+        
 def residual3(acc):
     residual_matrix = np.zeros([1, 3])
     rx = 0.0
@@ -20,6 +71,18 @@ def residual3(acc):
 
         
     return residual_matrix
+
+def residualAlterado(velocidad, tInicial, dt):
+    residualesVelocidad = residual(velocidad)
+    residual_matrix = np.array([])
+    lastTraslation = tInicial
+    for x in np.arange(velocidad.size):
+        rx = lastTraslation+residualesVelocidad[x]*dt
+        residual_matrix = np.append(residual_matrix, [rx])
+        lastTraslation = rx
+    return residual_matrix
+
+
 
 def residual(acc):
     residual_matrix = np.array([])
@@ -44,6 +107,15 @@ def fd(acc, dt): # funcion para derivar una matriz
         last_x = x
         
     return derivate_matrix
+
+def fi(acc, dt):
+    integral_matrix = np.array([])
+    acc_sum = 0.0
+    for x in acc:
+        acc_sum = x*dt+acc_sum
+        integral_matrix = np.append(integral_matrix, [acc_sum])
+        
+    return integral_matrix
     
 def quaternion2RPY(quaternion):
     rpy = np.zeros([1, 3])
@@ -76,7 +148,10 @@ def quaternion2RPY(quaternion):
 
 def main():
 
-    plot = [0, 1, 0, 1, 0, 1, 0, 1, 0, 0 ,0 ,0, 0] #pos, vel, acc, res, orientation, error
+    plot_est = [0, 0, 0, 1] # estimacion: pos, velocidad, aceleracion, orientacion
+    plot_res = [0, 0, 0, 1] # residuales: pos, velocidad, aceleracion, orientacion
+    plot_error = [0, 0, 0, 1]  #errores: pos, velocidad, aceleracion, orientacion
+    plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
 
     estPosition = np.zeros([0, 3])
@@ -96,6 +171,8 @@ def main():
     #debug
     estAngVelocity= np.zeros([0, 3])
 
+    maxTime = 50.0
+
     with open('/home/lujano/Documents/outputVISlam.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
@@ -106,7 +183,7 @@ def main():
             gtPosition = np.append( gtPosition, [[float(row[13]), float(row[14]), float(row[15])]], 0)
             gtVelocity = np.append( gtVelocity, [[float(row[16]), float(row[17]), float(row[18])]], 0)
             gtOrientationQ = np.append( gtOrientationQ, [[float(row[19]), float(row[20]), float(row[21]), float(row[22])]], 0)
-            estAngVelocity = np.append( estAngVelocity, [[float(row[23]), float(row[24]), float(row[25])]], 0)
+            #estAngVelocity = np.append( estAngVelocity, [[float(row[23]), float(row[24]), float(row[25])]], 0)
 
         
     for quaternion in  estOrientationQ :
@@ -120,9 +197,9 @@ def main():
     estPosition[:, 1] = estPosition[:, 1] - estPosition[0, 1]*rest 
     estPosition[:, 2] = estPosition[:, 2] - estPosition[0, 2]*rest 
 
-    estPosition[:, 0] = estPosition[:, 0]*10 + gtPosition[0, 0]*rest 
-    estPosition[:, 1] = estPosition[:, 1]*10 + gtPosition[0, 1]*rest 
-    estPosition[:, 2] = estPosition[:, 2]*10 + gtPosition[0, 2]*rest 
+    estPosition[:, 0] = estPosition[:, 0]*5.0 + gtPosition[0, 0]*rest 
+    estPosition[:, 1] = estPosition[:, 1]*5.0 + gtPosition[0, 1]*rest 
+    estPosition[:, 2] = estPosition[:, 2]*5.0 + gtPosition[0, 2]*rest 
     
     gtAccx= fd(gtVelocity[:, 0], 1/20.0)
     gtAccy = fd(gtVelocity[:, 1], 1/20.0)
@@ -132,7 +209,7 @@ def main():
 
 
     
-    if plot[0] == 1:
+    if plot_est[0] == 1:
         # Plot position
         plt.figure()
 
@@ -142,6 +219,7 @@ def main():
         plt.ylabel("x(m)")
         plt.xlabel("t(s)")
         plt.legend()
+        
 
         plt.subplot(3, 1, 2)
         plt.plot(time, estPosition[:, 1], 'b-', linewidth=2, label='Posicion y estimada')
@@ -157,7 +235,7 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[1] == 1:
+    if plot_est[1] == 1:
         # Plot velocity
         plt.figure()
 
@@ -182,7 +260,7 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[2] == 1:
+    if plot_est[2] == 1:
         # Plot acceleration
         plt.figure()
 
@@ -207,23 +285,30 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[3] == 1:
+    if plot_est[3] == 1:
         # Plot orientation (RPY)
         plt.figure()
 
         plt.subplot(3, 1, 1)
-        plt.plot(time, estOrientationRPY[:, 0]*180/math.pi, 'b-', linewidth=2, label='Roll estimado')
-        plt.plot(time, gtOrientationRPY[:, 0]*180/math.pi, 'r-', linewidth=2, label='Roll gt')
+        plt.plot(time, remap(estOrientationRPY[:, 0]*180/math.pi), 'b-', linewidth=2, label='Roll estimado')
+        plt.plot(time,  remap(gtOrientationRPY[:, 0]*180/math.pi), 'r-', linewidth=2, label='Roll gt')
         plt.ylabel("roll(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
 
         plt.subplot(3, 1, 2)
-        plt.plot(time, estOrientationRPY[:, 1]*180/math.pi, 'b-', linewidth=2, label='Pitch estimado')
-        plt.plot(time, gtOrientationRPY[:, 1]*180/math.pi, 'r-', linewidth=2, label='Pitch gt')
+        plt.plot(time, estOrientationRPY[:, 2]*180/math.pi, 'b-', linewidth=2, label='Pitch estimado')
+        plt.plot(time, gtOrientationRPY[:, 2]*180/math.pi, 'r-', linewidth=2, label='Pitch gt')
         plt.ylabel("pitch(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
         
         plt.subplot(3, 1, 3)
         plt.plot(time, estOrientationRPY[:, 2]*180/math.pi, 'b-', linewidth=2, label='Yaw estimado')
@@ -231,9 +316,13 @@ def main():
         plt.ylabel("yaw(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
 
        
-    if plot[4] == 1:
+    if plot_res[0] == 1:
          # Plot residual position
         plt.figure()
 
@@ -258,7 +347,7 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[5] == 1:
+    if plot_res[1] == 1:
         # Plot residual velocity
         plt.figure()
 
@@ -283,7 +372,7 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[6] == 1:
+    if plot_res[2] == 1:
         # Plot residual acceleration
         plt.figure()
 
@@ -308,33 +397,49 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[7] == 1:
+    if plot_res[3] == 1:
         # Plot residual orientation (RPY)
         plt.figure()
 
         plt.subplot(3, 1, 1)
-        plt.plot(time, residual(estOrientationRPY[:, 0]*180/math.pi), 'b-', linewidth=2, label='Residual Roll estimado')
-        plt.plot(time, residual(gtOrientationRPY[:, 0]*180/math.pi), 'r-', linewidth=2, label='Residual Roll gt')
+        plt.plot(time, error(residual(estOrientationRPY[:, 0]*180/math.pi)), 'b-', linewidth=2, label='Residual Roll estimado')
+        plt.plot(time, error(residual(gtOrientationRPY[:, 0]*180/math.pi)), 'r-', linewidth=2, label='Residual Roll gt')
         plt.ylabel("Rroll(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.xlim([0, maxTime])
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
 
         plt.subplot(3, 1, 2)
         plt.plot(time, residual(estOrientationRPY[:, 1]*180/math.pi), 'b-', linewidth=2, label='Residual Pitch estimado')
         plt.plot(time, residual(gtOrientationRPY[:, 1]*180/math.pi), 'r-', linewidth=2, label='Residual Pitch gt')
         plt.ylabel("Rpitch(°)")
         plt.xlabel("t(s)")
+        plt.xlim([0, maxTime])
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
         
         plt.subplot(3, 1, 3)
-        plt.plot(time, residual(estOrientationRPY[:, 2]*180/math.pi), 'b-', linewidth=2, label='Residual Yaw estimado')
-        plt.plot(time, residual(gtOrientationRPY[:, 2]*180/math.pi), 'r-', linewidth=2, label='Residual Yaw gt')
+        plt.plot(time, error(residual(estOrientationRPY[:, 2]*180/math.pi)), 'b-', linewidth=2, label='Residual Yaw estimado')
+        plt.plot(time, error(residual(gtOrientationRPY[:, 2]*180/math.pi)), 'r-', linewidth=2, label='Residual Yaw gt')
         plt.ylabel("Ryaw(°)")
         plt.xlabel("t(s)")
-        plt.legend()
+        plt.xlim([0, maxTime])
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
+        plt.subplots_adjust(left=0.05, bottom=0.05, right=0.98, top=0.98, wspace=0.2, hspace=0.2)
+
 
     # plot errors
-    if plot[8] == 1:
+    if plot_error[0] == 1:
         # Plot position
         plt.figure()
 
@@ -356,7 +461,7 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[9] == 1:
+    if plot_error[1] == 1:
         # Plot velocity
         plt.figure()
 
@@ -378,7 +483,7 @@ def main():
         plt.xlabel("t(s)")
         plt.legend()
 
-    if plot[10] == 1:
+    if plot_error[2] == 1:
         # Plot acceleration
         plt.figure()
 
@@ -401,40 +506,45 @@ def main():
         plt.legend()
 
 
-    if plot[11] == 1:
+    if plot_error[3] == 1:
         # Plot error orientation (RPY)
         plt.figure()
 
+
         plt.subplot(3, 1, 1)
-        plt.plot(time, (gtOrientationRPY[:, 0]-estOrientationRPY[:, 0])*180/math.pi, 'b-', linewidth=2, label='Error Roll estimado')
+        plt.plot(time,error((gtOrientationRPY[:, 0]-estOrientationRPY[:, 0])*180/math.pi), 'b-', linewidth=2, label='Error Roll estimado')
         plt.ylabel("Eroll(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
 
         plt.subplot(3, 1, 2)
-        plt.plot(time, (gtOrientationRPY[:, 1]-estOrientationRPY[:, 1])*180/math.pi, 'b-', linewidth=2, label='Error Pitch estimado')
+        plt.plot(time, error((gtOrientationRPY[:, 1]-estOrientationRPY[:, 1])*180/math.pi), 'b-', linewidth=2, label='Error Pitch estimado')
         plt.ylabel("Epitch(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
         
         plt.subplot(3, 1, 3)
-        errorYaw = (gtOrientationRPY[:, 2]-estOrientationRPY[:, 2])*180/math.pi
-        
-        for x in np.arange(errorYaw.size):
-            if errorYaw[x]>180:
-                errorYaw[x]=errorYaw[x]-360
-            if errorYaw[x]<-180:
-                errorYaw[x]=errorYaw[x]+360
-                
+    
        
-                 
-
-        plt.plot(time, errorYaw, 'b-', linewidth=2, label='Error Yaw estimado')
+        plt.plot(time, error((gtOrientationRPY[:, 2]-estOrientationRPY[:, 2])*180/math.pi), 'b-', linewidth=2, label='Error Yaw estimado')
         plt.ylabel("Eyaw(°)")
         plt.xlabel("t(s)")
         plt.legend()
+        plt.minorticks_on()
+        plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+        plt.grid(b=True, which='minor', color=[0.6, 0.3, 0.3], linestyle='--')
+
     
-    if plot[12] == 1:
+    """
+    if plot_error[3] == 1:
         # Plot velocidad angular
         plt.figure()
 
@@ -453,6 +563,69 @@ def main():
         plt.subplot(3, 1, 3)
         plt.plot(time, estAngVelocity[:, 2], 'b-', linewidth=2, label='Velocidad angular z estimada ')
         plt.ylabel("wz(m)")
+        plt.xlabel("t(s)")
+        plt.legend()
+    """
+
+
+
+    if plot_debug[0] == 1:
+        # Plot residual de posicion proveniente de la integracion de la velocidad de la imu
+        plt.figure()
+
+        plt.subplot(3, 1, 1)
+        plt.plot(time, residual(fi(estVelocity[:, 0], 0.05)), 'b-', linewidth=2, label=' Residual de Pose en x estimada')
+        plt.plot(time, residual(gtPosition[:,0]), 'r-', linewidth=2, label='Residual de Pose en x gt')
+        plt.ylabel("Rx(m/s²)")
+        plt.xlabel("t(s)")
+        plt.legend()
+
+        plt.subplot(3, 1, 2)
+        plt.plot(time, residual(fi(estVelocity[:, 1], 0.05)), 'b-', linewidth=2, label=' Residual de Pose en y estimada')
+        plt.plot(time, residual(gtPosition[:,1]), 'r-', linewidth=2, label='Residual de Pose en y gt')
+        plt.ylabel("Ry(m/s²)")
+        plt.xlabel("t(s)")
+        plt.legend()
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(time, residual(fi(estVelocity[:, 2], 0.05)), 'b-', linewidth=2, label=' Residual de Pose en z estimada')
+        plt.plot(time, residual(gtPosition[:,2]), 'r-', linewidth=2, label='Residual de Pose en z gt')
+        plt.ylabel("Rz(m/s²)")
+        plt.xlabel("t(s)")
+        plt.legend()
+
+
+    if plot_debug[1] == 1:
+        # Plot residual de posicion proveniente de la integracion de la velocidad de la imu
+        plt.figure()
+
+        positionx = fi(estVelocity[:, 0], 0.05)
+        positiony = fi(estVelocity[:, 1], 0.05)
+        positionz = fi(estVelocity[:, 2], 0.05)
+
+        
+        positionx = positionx - positionx[0]*rest +gtPosition[0,0]*rest
+        positiony = positiony - positiony[0]*rest +gtPosition[0,1]*rest
+        positionz = positionz - positionz[0]*rest +gtPosition[0,2]*rest
+
+        plt.subplot(3, 1, 1)
+        plt.plot(time, positionx , 'b-', linewidth=2, label='Pose integrada x estimada')
+        plt.plot(time, gtPosition[:,0], 'r-', linewidth=2, label='Pose en x gt')
+        plt.ylabel("Rx(m/s²)")
+        plt.xlabel("t(s)")
+        plt.legend()
+
+        plt.subplot(3, 1, 2)
+        plt.plot(time, positiony, 'b-', linewidth=2, label=' Pose integrada y estimada')
+        plt.plot(time, gtPosition[:,1], 'r-', linewidth=2, label='Pose en y gt')
+        plt.ylabel("Ry(m/s²)")
+        plt.xlabel("t(s)")
+        plt.legend()
+        
+        plt.subplot(3, 1, 3)
+        plt.plot(time, positionz, 'b-', linewidth=2, label=' Pose integrada z estimada')
+        plt.plot(time, gtPosition[:,2], 'r-', linewidth=2, label='Pose en z gt')
+        plt.ylabel("Rz(m/s²)")
         plt.xlabel("t(s)")
         plt.legend()
 

@@ -48,7 +48,6 @@ class ImuFilterNode{
         void setImuInitialPosition();
         void initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_measure,vector <Point3d>  &a_measure );
         void estimate();
-        void estimate(vector <Point3d> gtRPY);
         void estimateOrientation();
         void computeGravity();
         void computePosition();
@@ -59,8 +58,9 @@ class ImuFilterNode{
         void computeAngularPosition();
 
         void calibrateAng(int axis); // calibración angular considerando velocidad 0
-        void calibrateAcc(); // calibración acelaracion considerando velocidad 0
+        void calibrateAcc(int axis); // calibración acelaracion considerando velocidad 0
         void detectAngBias(); // Detectar medidas para la calibración ang
+        void detectAccBias(); // Detectar medidas para la calibración acc
         void printStatistics();
         Point3d transform2World(Point3d acc, Point3d localAngles);
         Point3d angularPosition;

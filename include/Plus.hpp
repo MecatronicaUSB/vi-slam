@@ -34,4 +34,6 @@ Mat RPY2rotationMatrix(Point3d rpy );
 Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position);
 Mat transformationMatrix2rotationMatrix(Mat transformationMatrix );
 
+Mat RPYWorld2ResidualAngImu(Point3d rpy ); //Sobrante
+
 #endif
