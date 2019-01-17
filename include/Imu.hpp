@@ -94,6 +94,8 @@ class ImuFilterNode{
         vector <Point3d> angularVelocityMeasure; // Imu measurements x, y, z
         vector <Point3d> accelerationMeasure;    // Imu measurements x, y, z
         int n; // numero de mediciones
+        int n_total; // numero total de mediciones
+        double currentTimeMs; // tiempo actual en ms
        
         
 

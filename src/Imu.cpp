@@ -54,8 +54,8 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
     Quaterniond orientation;
     
     
-    //calibrateAng(3);
-    //cout<<"bias "<< angBias<<endl;
+    calibrateAng(3);
+    cout<<"bias "<< angBias<<endl;
     for (int i = 0; i < n ; i++)
     {
         UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]); //
@@ -83,9 +83,10 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
     
     }
     
+    n_total = n;
+    currentTimeMs = n_total*timeStep*1000; // tiempo actual en Ms
     //calibrateAcc(3);
-        
-
+    
 }
 
 void Imu::calibrateAng(int axis)
@@ -164,7 +165,8 @@ void Imu::calibrateAcc(int axis)
 void Imu::detectAngBias()
 {
     Point3d counter = Point3d(0.0, 0.0, 0.0);
-    Point3d angThreshold =  Point3d(0.01, 0.01, 0.01);
+    //Point3d angThreshold =  Point3d(0.01, 0.01, 0.01);
+    Point3d angThreshold =  Point3d(abs(angBias.x)*(1+0.2), abs(angBias.y)*(1+0.2), abs(angBias.z)*(1+0.2));
     for (int i = 0; i < n ; i++)
     {
        if(abs(angularVelocityMeasure[i].x)<angThreshold.x)
@@ -213,6 +215,7 @@ void Imu::detectAccBias()
 {
     Point3d counter = Point3d(0.0, 0.0, 0.0);
     Point3d accThreshold =  Point3d(0.3, 0.3, 0.1);
+    
     
     Point3d gravityinWorld ;
     gravityinWorld.x = 0.0;
@@ -285,7 +288,7 @@ void Imu::estimateOrientation()
     for (int i = 0; i < n; i++)
     {
         clock_t t1 = clock(); 
-        UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]-accBias); //
+        UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]); //
         UpdateSubscriber();
         clock_t t2 = clock(); 
         elapsed_filter= double(t2- t1) / CLOCKS_PER_SEC +elapsed_filter;
@@ -310,8 +313,7 @@ void Imu::estimateOrientation()
         angularw.z  = imuFusedData.angular_velocity.z;
         angularVelocityIMUFilter.push_back(angularw);
     }
-       
-        
+
     
     
     elapsed_filter = elapsed_filter/n;
@@ -324,7 +326,7 @@ void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
     {
          Point3d accWorld;
         // restar bias local
-        accelerationMeasure[i] = accelerationMeasure[i]-accBias;
+        accelerationMeasure[i] = accelerationMeasure[i]+accBias;
         // transformar acelerarion al sistema fijo (world)
         accWorld = Mat2point(world2imuRotation[i]*point2Mat(accelerationMeasure[i]));
         accWorld.z = accWorld.z-9.68; // restar la aceleracion de gravedad
@@ -409,6 +411,18 @@ void Imu::estimate()
     residualVelocity =  velocity;
     residualPosition = position;
     initialVelocity = initialVelocity + residualVelocity;
+
+    n_total = n_total+n; // numero de medidas procesadas
+    currentTimeMs = n_total*timeStep*1000; // tiempo en ms
+
+    if (currentTimeMs < 2500)
+    {
+        calibrateAng(3);
+        //calibrateAcc(3);
+        cout <<currentTimeMs<<endl;
+    }
+
+
     
 
 }

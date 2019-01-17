@@ -6,9 +6,9 @@ import math
 
 def main():
 
-    plot_est = [0, 0, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
-    plot_res = [0,0,0,0] # residuales: pos, velocidad, aceleracion, orientacion
-    plot_error = [1, 1, 1, 1]  #errores: pos, velocidad, aceleracion, orientacion
+    plot_est = [0, 1, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
+    plot_res = [0,1,0,1] # residuales: pos, velocidad, aceleracion, orientacion
+    plot_error = [0, 0, 0, 1]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
 
@@ -29,8 +29,8 @@ def main():
     #debug
     estAngVelocity= np.zeros([0, 3])
 
-    maxTime = 50.0
-
+    maxTime = 60.0
+    
     with open('/home/lujano/Documents/outputVISlam.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
@@ -72,7 +72,6 @@ def main():
         label1 = ["Posicion x estimada", "x(m)", "Posicion x groundtruth"]
         label2 = ["Posicion y estimada", "y(m)", "Posicion y groundtruth"]
         label3 = ["Posicion z estimada", "z(m)", "Posicion z groundtruth"]
-        maxTime = 50.0 #s
         plotTriple(estPosition, gtPosition, time, label1, label2, label3, maxTime)
 
 
@@ -81,7 +80,6 @@ def main():
         label1 = ["Velocidad x estimada", "Vx(m/s)", "Velocidad x groundtruth"]
         label2 = ["Velocidad y estimada", "Vy(m/s)", "Velocidad y groundtruth"]
         label3 = ["Velocidad z estimada", "Vz(m/s)", "Velocidad z groundtruth"]
-        maxTime = 50.0 #s
         plotTriple(estVelocity, gtVelocity, time, label1, label2, label3, maxTime)
 
     if plot_est[3] == 1:
@@ -89,7 +87,6 @@ def main():
         label1 = ["Roll estimado", "Roll(°)", "Roll groundtruth"]
         label2 = ["Pitch estimado", "Pitch(°)", "Pitch groundtruth"]
         label3 = ["Yaw estimado", "Yaw(°)", "Yaw groundtruth"]
-        maxTime = 50.0 #s
         plotTripleSeparado(remap(estOrientationRPY[:, 0]*180/math.pi), estOrientationRPY[:, 1]*180/math.pi, estOrientationRPY[:, 2]*180/math.pi,
             remap(gtOrientationRPY[:, 0]*180/math.pi), gtOrientationRPY[:, 1]*180/math.pi, gtOrientationRPY[:, 2]*180/math.pi, time, label1, label2, label3, maxTime)
 
@@ -99,7 +96,6 @@ def main():
         label1 = ["Residual Posicion x estimado", "Rx(m)", "Residual Posicion x groundtruth"]
         label2 = ["Residual Posicion y estimado", "Ry(m)", "Residual Posicion y groundtruth"]
         label3 = ["Residual Posicion z estimado", "Rz(m)", "Residual Posicion z groundtruth"]
-        maxTime = 50.0 #s
         plotTripleSeparado(residual(estPosition[:,0]), residual(estPosition[:,1]), residual(estPosition[:,2]),
             residual(gtPosition[:, 0]), residual(gtPosition[:, 1]), residual(gtPosition[:, 2]), time, label1, label2, label3, maxTime)
 
@@ -107,7 +103,6 @@ def main():
         label1 = ["Residual Velocidad x estimado", "RVx(m)", "Residual Velocidad x groundtruth"]
         label2 = ["Residual Velocidad y estimado", "RVy(m)", "Residual Velocidad y groundtruth"]
         label3 = ["Residual Velocidad z estimado", "RVz(m)", "Residual Velocidad z groundtruth"]
-        maxTime = 50.0 #s
         plotTripleSeparado(residual(estVelocity[:,0]), residual(estVelocity[:,1]), residual(estVelocity[:,2]),
             residual(gtVelocity[:, 0]), residual(gtVelocity[:, 1]), residual(gtVelocity[:, 2]), time, label1, label2, label3, maxTime)
 
@@ -117,9 +112,8 @@ def main():
         label1 = ["Residual Roll estimado", "Rroll(°)", "Residual Roll groundtruth"]
         label2 = ["Residual Pitch estimado", "Rpitch(°)", "Residual Pitch groundtruth"]
         label3 = ["Residual Yaw estimado", "Ryaw(°)", "Residual Yaw groundtruth"]
-        maxTime = 50.0 #s
         plotTripleSeparado(error(residual(estOrientationRPY[:, 0]*180/math.pi)), error(residual(estOrientationRPY[:, 1]*180/math.pi)), error(residual(estOrientationRPY[:, 2]*180/math.pi)),
-            error(residual(gtOrientationRPY[:, 0]*180/math.pi)), error(residual(gtOrientationRPY[:, 1]*180/math.pi)), error(residual(estOrientationRPY[:, 2]*180/math.pi)), time, label1, label2, label3, maxTime)
+            error(residual(gtOrientationRPY[:, 0]*180/math.pi)), error(residual(gtOrientationRPY[:, 1]*180/math.pi)), error(residual(gtOrientationRPY[:, 2]*180/math.pi)), time, label1, label2, label3, maxTime)
     
     # plot errors
 
@@ -128,7 +122,6 @@ def main():
         label1 = ["Error Posicion x", "Ex(m)", ""]
         label2 = ["Error Posicion y", "Ey(m)", ""]
         label3 = ["Error Posicion z", "Ez(m)", ""]
-        maxTime = 50.0 #s
         plot(estPosition[:, 0]-gtPosition[:, 0], estPosition[:, 1]-gtPosition[:, 1], estPosition[:, 2]-gtPosition[:, 2],
             time, label1, label2, label3, maxTime)
 
@@ -137,7 +130,6 @@ def main():
         label1 = ["Error Velocidad x", "EVx(m/s)", ""]
         label2 = ["Error Velocidad y", "EVy(m/s)", ""]
         label3 = ["Error Velocidad z", "EVz(m/s)", ""]
-        maxTime = 50.0 #s
         plot(estVelocity[:, 0]-gtVelocity[:, 0], estVelocity[:, 1]-gtVelocity[:, 1], estVelocity[:, 2]-gtVelocity[:, 2],
             time, label1, label2, label3, maxTime)
 
@@ -146,9 +138,13 @@ def main():
         label1 = ["Error Roll", "Eroll(°)", ""]
         label2 = ["Error Pitch", "Epitch(°)", ""]
         label3 = ["Error Yaw", "Eyaw(°)", ""]
-        maxTime = 50.0 #s
-        plot(error((estOrientationRPY[:, 0]-gtOrientationRPY[:, 0])*180/np.pi),error( (estOrientationRPY[:, 1]-gtOrientationRPY[:, 1])*180/np.pi), error( (estOrientationRPY[:, 2]-gtOrientationRPY[:, 2])*180/np.pi),
+        plotAndHist(error((estOrientationRPY[:, 0]-gtOrientationRPY[:, 0])*180/np.pi),error( (estOrientationRPY[:, 1]-gtOrientationRPY[:, 1])*180/np.pi), error( (estOrientationRPY[:, 2]-gtOrientationRPY[:, 2])*180/np.pi),
             time, label1, label2, label3, maxTime)
+        
+        #plotHist(error((estOrientationRPY[:, 0]-gtOrientationRPY[:, 0])*180/np.pi),error( (estOrientationRPY[:, 1]-gtOrientationRPY[:, 1])*180/np.pi), error( (estOrientationRPY[:, 2]-gtOrientationRPY[:, 2])*180/np.pi),
+        #   time, label1, label2, label3, maxTime)
+
+
 
     if plot_debug[0] == 1:
         # Plot residual de posicion proveniente de la integracion de la velocidad de la imu
@@ -359,10 +355,11 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
 
     # Plot residual orientation (RPY)
     plt.figure()
+    Ts = 0.05
 
     plt.subplot(3, 1, 1)
-    plt.plot(time, estData[:,0], 'b-', linewidth=2, label=label1[0])
-    plt.plot(time, gtData[:, 0], 'r-', linewidth=2, label=label1[2])
+    plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1,0], 'b-', linewidth=2, label=label1[0])
+    plt.plot(time[0:int(maxTime/Ts)+1], gtData[0:int(maxTime/Ts)+1, 0], 'r-', linewidth=2, label=label1[2])
     plt.ylabel(label1[1])
     plt.legend()
     plt.xlim([0, maxTime])
@@ -372,8 +369,8 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
 
 
     plt.subplot(3, 1, 2)
-    plt.plot(time, estData[:,1], 'b-', linewidth=2, label=label2[0])
-    plt.plot(time, gtData[:,1], 'r-', linewidth=2, label=label2[2])
+    plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1,1], 'b-', linewidth=2, label=label2[0])
+    plt.plot(time[0:int(maxTime/Ts)+1], gtData[0:int(maxTime/Ts)+1,1], 'r-', linewidth=2, label=label2[2])
     plt.ylabel(label2[1])
     plt.xlim([0, maxTime])
     plt.legend()
@@ -383,8 +380,8 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
 
     
     plt.subplot(3, 1, 3)
-    plt.plot(time, estData[:, 2], 'b-', linewidth=2, label=label3[0])
-    plt.plot(time, gtData[:, 2], 'r-', linewidth=2, label=label3[2])
+    plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1, 2], 'b-', linewidth=2, label=label3[0])
+    plt.plot(time[0:int(maxTime/Ts)+1], gtData[0:int(maxTime/Ts)+1, 2], 'r-', linewidth=2, label=label3[2])
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.xlim([0, maxTime])
@@ -401,10 +398,10 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 
     # Plot residual orientation (RPY)
     plt.figure()
-
+    Ts = 0.05
     plt.subplot(3, 1, 1)
-    plt.plot(time, estData1, 'b-', linewidth=2, label=label1[0])
-    plt.plot(time, gtData1, 'r-', linewidth=2, label=label1[2])
+    plt.plot(time[0:int(maxTime/Ts)+1], estData1[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label1[0])
+    plt.plot(time[0:int(maxTime/Ts)+1], gtData1[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label1[2])
     plt.ylabel(label1[1])
     plt.xlabel("t(s)")
     plt.legend()
@@ -415,8 +412,8 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 
 
     plt.subplot(3, 1, 2)
-    plt.plot(time, estData2, 'b-', linewidth=2, label=label2[0])
-    plt.plot(time, gtData2, 'r-', linewidth=2, label=label2[2])
+    plt.plot(time[0:int(maxTime/Ts)+1], estData2[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label2[0])
+    plt.plot(time[0:int(maxTime/Ts)+1], gtData2[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label2[2])
     plt.ylabel(label2[1])
     plt.xlabel("t(s)")
     plt.xlim([0, maxTime])
@@ -427,8 +424,8 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 
     
     plt.subplot(3, 1, 3)
-    plt.plot(time, estData3, 'b-', linewidth=2, label=label3[0])
-    plt.plot(time, gtData3, 'r-', linewidth=2, label=label3[2])
+    plt.plot(time[0:int(maxTime/Ts)+1], estData3[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label3[0])
+    plt.plot(time[0:int(maxTime/Ts)+1], gtData3[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label3[2])
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.xlim([0, maxTime])
@@ -440,6 +437,9 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
     plt.subplots_adjust(left=0.07, bottom=0.07, right=0.7, top=0.98, wspace=0.2, hspace=0.12)
 
     return
+
+
+
 
 def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
@@ -492,6 +492,126 @@ def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     return
 
+
+def plotHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
+
+    # Plot residual orientation (RPY)
+    Ts= 0.05
+    plt.figure()
+
+    plt.subplot(3, 1, 1)
+    plt.hist(Data1[0:int(maxTime/Ts)], bins = 30, density=True)
+    plt.ylabel("Frecuencia")
+    plt.xlabel(label1[1])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+
+    plt.subplot(3, 1, 2)
+    plt.hist( Data2[0:int(maxTime/Ts)],  bins =30, density=True )
+    plt.ylabel("Frecuencia")
+    plt.xlabel(label2[1])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+    
+    plt.subplot(3, 1, 3)
+    plt.hist(Data3[0:int(maxTime/Ts)], bins=30, density=True)
+    plt.ylabel("Frecuencia")
+    plt.xlabel(label3[1])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+    plt.subplots_adjust(left=0.07, bottom=0.07, right=0.7, top=0.98, wspace=0.2, hspace=0.26)
+
+    return
+
+
+
+def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
+
+    # Plot residual orientation (RPY)
+    Ts= 0.05
+    plt.figure()
+
+    plt.subplot2grid( (3, 4), (0, 3))
+    plt.hist(Data1[0:int(maxTime/Ts)], bins = 30, density=True, orientation="horizontal")
+    plt.xlabel("Frecuencia")
+    plt.ylabel(label1[1])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+
+    plt.subplot2grid( (3, 4), (1, 3))
+    plt.hist( Data2[0:int(maxTime/Ts)],  bins =30, density=True, orientation="horizontal" )
+    plt.xlabel("Frecuencia")
+    plt.ylabel(label2[1])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+    
+    plt.subplot2grid( (3, 4), (2, 3))
+    plt.hist(Data3[0:int(maxTime/Ts)], bins=30, density=True, orientation="horizontal")
+    plt.xlabel("Frecuencia")
+    plt.ylabel(label3[1])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+
+
+
+    plt.subplot2grid( (3, 4), (0, 0), colspan=3)
+    plt.plot(time, Data1, 'b-', linewidth=2, label=label1[0])
+    plt.ylabel(label1[1])
+    plt.xlabel("t(s)")
+    plt.legend()
+    plt.xlim([0, maxTime])
+    ymax = np.max(Data1[0:int(maxTime/Ts)])
+    ymin = np.min(Data1[0:int(maxTime/Ts)])
+    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+
+    plt.subplot2grid( (3, 4), (1, 0), colspan=3)
+    plt.plot(time, Data2, 'b-', linewidth=2, label=label2[0])
+    plt.ylabel(label2[1])
+    plt.xlabel("t(s)")
+    plt.legend()
+    ymax = np.max(Data2[0:int(maxTime/Ts)])
+    ymin = np.min(Data2[0:int(maxTime/Ts)])
+    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
+    plt.xlim([0, maxTime])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+    
+    plt.subplot2grid( (3, 4), (2, 0), colspan=3)
+    plt.plot(time, Data3, 'b-', linewidth=2, label=label3[0])
+    plt.ylabel(label3[1])
+    plt.xlabel("t(s)")
+    plt.legend()
+    ymax = np.max(Data3[0:int(maxTime/Ts)])
+    ymin = np.min(Data3[0:int(maxTime/Ts)])
+    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
+    plt.xlim([0, maxTime])
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
+    plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
+
+   
+    plt.subplots_adjust(left=0.07, bottom=0.07, right=0.7, top=0.98, wspace=0.5, hspace=0.26)
+
+
+    return
 
 def quit_figure(event):
     if event.key == 'q':

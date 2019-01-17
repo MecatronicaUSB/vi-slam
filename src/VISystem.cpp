@@ -224,6 +224,7 @@ namespace vi
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
         velocityCam = velocityCam+imuCore.residualVelocity; // velocidad igual a la de la imu
+        velocityImu = velocityCam;
         accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
         camera.Update(_currentImage);
         bool key_added = camera.addKeyframe();
@@ -272,6 +273,7 @@ namespace vi
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
         imuCore.estimate();
         velocityCam = velocityCam+imuCore.residualVelocity; // velocidad igual a la de la imu
+        velocityImu = velocityCam;
         accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
      
         //camera.Update(_currentImage);
@@ -816,7 +818,7 @@ namespace vi
         qOrientationImu.w = final_poseImu.unit_quaternion().w();
         RPYOrientationImu = toRPY(qOrientationImu);
       
-        //waitKey(30);
+        waitKey(30);
 
         
 

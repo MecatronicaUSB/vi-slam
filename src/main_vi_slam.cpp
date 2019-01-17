@@ -107,7 +107,7 @@ int main( int argc, char** argv ){
     Point3d zero;
     
     outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
-    while(j <Data.indexLastData)
+    while(Data.currentTimeMs<61000) // j <data.lastindex
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
         Data.UpdateDataReader(j, j+1);
@@ -210,7 +210,7 @@ int main( int argc, char** argv ){
 
 
 
-transform.setOrigin( tf::Vector3(positionCamGT.x, positionCamGT.y, positionCamGT.z) );
+        transform.setOrigin( tf::Vector3(positionCamGT.x, positionCamGT.y, positionCamGT.z) );
         //transform.setOrigin( tf::Vector3(visystem.positionCam.x, visystem.positionCam.x, visystem.positionCam.z) );
         //q.setRPY(0, 0, msg->theta);
         
@@ -227,6 +227,25 @@ transform.setOrigin( tf::Vector3(positionCamGT.x, positionCamGT.y, positionCamGT
         */
         transform.setRotation(q);
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "CamEst"));
+
+
+        transform.setOrigin( tf::Vector3(Data.gtPosition.back().x, Data.gtPosition.back().y, Data.gtPosition.back().z) );
+        //transform.setOrigin( tf::Vector3(visystem.positionCam.x, visystem.positionCam.x, visystem.positionCam.z) );
+        //q.setRPY(0, 0, msg->theta);
+        
+        q[0] = visystem.qOrientationImu.x;
+        q[1] = visystem.qOrientationImu.y;
+        q[2] = visystem.qOrientationImu.z;
+        q[3] = visystem.qOrientationImu.w;
+        
+
+       /* q[0] = visystem.imuCore.quaternionWorld.back().x;
+        q[1] = visystem.imuCore.quaternionWorld.back().y;
+        q[2] = visystem.imuCore.quaternionWorld.back().z;
+        q[3] = visystem.imuCore.quaternionWorld.back().w;
+        */
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "ImuEst"));
 
         
 
