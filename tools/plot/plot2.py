@@ -3,12 +3,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+Ts = 0.05*1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def main():
 
-    plot_est = [0, 1, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
-    plot_res = [0,1,0,1] # residuales: pos, velocidad, aceleracion, orientacion
-    plot_error = [0, 0, 0, 1]  #errores: pos, velocidad, aceleracion, orientacion
+    plot_est = [0, 0, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
+    plot_res = [0,0,0, 1] # residuales: pos, velocidad, aceleracion, orientacion
+    plot_error = [0, 0, 0, 0]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
 
@@ -24,7 +41,7 @@ def main():
     gtOrientationRPY = np.zeros([0, 3])
     Fs = 20 # Frecuencia de la camara
     #Fs = 0.5*10**-3
-    Ts = 1.0/Fs # intervalo de tiempo
+   
    
     #debug
     estAngVelocity= np.zeros([0, 3])
@@ -112,9 +129,21 @@ def main():
         label1 = ["Residual Roll estimado", "Rroll(°)", "Residual Roll groundtruth"]
         label2 = ["Residual Pitch estimado", "Rpitch(°)", "Residual Pitch groundtruth"]
         label3 = ["Residual Yaw estimado", "Ryaw(°)", "Residual Yaw groundtruth"]
-        plotTripleSeparado(error(residual(estOrientationRPY[:, 0]*180/math.pi)), error(residual(estOrientationRPY[:, 1]*180/math.pi)), error(residual(estOrientationRPY[:, 2]*180/math.pi)),
-            error(residual(gtOrientationRPY[:, 0]*180/math.pi)), error(residual(gtOrientationRPY[:, 1]*180/math.pi)), error(residual(gtOrientationRPY[:, 2]*180/math.pi)), time, label1, label2, label3, maxTime)
-    
+        residualRotationEst = 180.0/math.pi *residualRotation(estOrientationRPY[:, 0],  estOrientationRPY[:, 1], estOrientationRPY[:, 2])
+        residualRotationGt = 180.0/math.pi *residualRotation(gtOrientationRPY[:, 0],  gtOrientationRPY[:, 1], gtOrientationRPY[:, 2])
+        plotTriple(residualRotationEst, residualRotationGt, time, label1, label2, label3, maxTime)
+        plotAndHist(residualRotationEst[1:, 0],residualRotationEst[1:, 1], residualRotationEst[1:, 2],
+            time, label1, label2, label3, maxTime)
+        
+        label1 = ["Error Residual Roll", "ERroll(°)", ""]
+        label2 = ["Error Residual Pitch", "ERpitch(°)", ""]
+        label3 = ["Error Residual Yaw", "ERyaw(°)", ""]
+        #print(errorP(residualRotationEst[1:, 0]-residualRotationGt[1:, 0], residualRotationGt[1:, 0]))
+        #print(errorP(residualRotationEst[1:, 1]-residualRotationGt[1:, 1], residualRotationGt[1:, 1]))
+        #print(errorP(residualRotationEst[1:, 2]-residualRotationGt[1:, 2], residualRotationGt[1:, 2]))
+        plotAndHist(residualRotationEst[1:, 0]-residualRotationGt[1:, 0],residualRotationEst[1:, 1]-residualRotationGt[1:, 1], residualRotationEst[1:, 2]-residualRotationGt[1:, 2],
+            time, label1, label2, label3, maxTime)
+        
     # plot errors
 
     if plot_error[0] == 1:
@@ -210,6 +239,17 @@ def main():
     plt.gcf().canvas.mpl_connect('key_press_event', quit_figure)
     plt.show()
 
+def errorP(error, div):
+    remap_matrix = np.array([])
+    for x in np.arange(error.size):
+        error_value = 0.0
+        if div[x]!= 0.0:
+            error_value = error[x]/div[x]
+
+
+        remap_matrix = np.append( remap_matrix, [error_value], 0)
+    return np.sum(remap_matrix)/ error.size  
+
 def error(error):
     remap_matrix = np.array([])
     for x in np.arange(error.size):
@@ -304,6 +344,30 @@ def residual(acc):
         
     return residual_matrix
 
+
+def residualRotation(Roll, Pitch, Yaw):
+    residual_matrix = np.zeros([1, 3])
+    rRoll = 0.0
+    rPitch = 0.0
+    rYaw = 0.0
+    for x in np.arange(Roll.size):
+        if  x != 0 :
+            init_rotationMatrix = RPY2rotationMatrix(Roll[x-1], Pitch[x-1], Yaw[x-1])
+            final_rotationMatrix = RPY2rotationMatrix(Roll[x], Pitch[x], Yaw[x])
+            residual_rotationMatrix = np.dot(init_rotationMatrix.transpose() , final_rotationMatrix) # inverse rotation by final rotation
+            residualRPY = rotationMatrix2RPY(residual_rotationMatrix)
+            rRoll = residualRPY[0][0]
+            rPitch = residualRPY[0][1]
+            rYaw = residualRPY[0][2]
+            residual_matrix = np.append( residual_matrix, [[rRoll, rPitch, rYaw]], 0)
+        else:
+            residual_matrix = np.append( residual_matrix, [[rRoll, rPitch, rYaw]], 0)
+
+
+
+        
+    return residual_matrix
+
 def fd(acc, dt): # funcion para derivar una matriz
     derivate_matrix = np.array([])
     last_x = 0
@@ -315,11 +379,11 @@ def fd(acc, dt): # funcion para derivar una matriz
     return derivate_matrix
 
 def fi(acc, dt):
-    integral_matrix = np.array([])
-    acc_sum = 0.0
+    integral_matrix =  np.array([])
+    acc_sum = 0
     for x in acc:
         acc_sum = x*dt+acc_sum
-        integral_matrix = np.append(integral_matrix, [acc_sum])
+        integrl_matrix = np.append(integral_matrix, [acc_sum])
         
     return integral_matrix
     
@@ -355,7 +419,7 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
 
     # Plot residual orientation (RPY)
     plt.figure()
-    Ts = 0.05
+    
 
     plt.subplot(3, 1, 1)
     plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1,0], 'b-', linewidth=2, label=label1[0])
@@ -398,7 +462,7 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 
     # Plot residual orientation (RPY)
     plt.figure()
-    Ts = 0.05
+  
     plt.subplot(3, 1, 1)
     plt.plot(time[0:int(maxTime/Ts)+1], estData1[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label1[0])
     plt.plot(time[0:int(maxTime/Ts)+1], gtData1[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label1[2])
@@ -444,7 +508,7 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     # Plot residual orientation (RPY)
-    Ts= 0.05
+ 
     plt.figure()
 
     plt.subplot(3, 1, 1)
@@ -496,7 +560,7 @@ def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 def plotHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     # Plot residual orientation (RPY)
-    Ts= 0.05
+
     plt.figure()
 
     plt.subplot(3, 1, 1)
@@ -534,11 +598,11 @@ def plotHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     # Plot residual orientation (RPY)
-    Ts= 0.05
+
     plt.figure()
 
     plt.subplot2grid( (3, 4), (0, 3))
-    plt.hist(Data1[0:int(maxTime/Ts)], bins = 30, density=True, orientation="horizontal")
+    plt.hist(Data1[0:int(maxTime/Ts)], 30, density=True, orientation="horizontal")
     plt.xlabel("Frecuencia")
     plt.ylabel(label1[1])
     plt.minorticks_on()
@@ -616,6 +680,66 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 def quit_figure(event):
     if event.key == 'q':
         plt.close('all')
+
+
+def RPY2rotationMatrix(roll, pitch, yaw ):
+
+
+    c1 = np.cos(roll)
+    s1 = np.sin(roll)
+    c2 = np.cos(pitch)
+    s2 = np.sin(pitch)
+    c3 = np.cos(yaw)
+    s3 = np.sin(yaw)
+    
+    rotationMatrix = np.zeros([3, 3])
+
+
+    rotationMatrix[0, 0] = c3*c2
+    rotationMatrix[0, 1] = c3*s2*s1-s3*c1
+    rotationMatrix[0, 2] = c3*s2*c1+s3*s1
+
+    rotationMatrix[1, 0] = s3*c2
+    rotationMatrix[1, 1] = s3*s2*s1+c3*c1
+    rotationMatrix[1, 2] = s3*s2*c1-c3*s1
+
+    rotationMatrix[2, 0] = -s2
+    rotationMatrix[2, 1] = c2*s1
+    rotationMatrix[2, 2] = c2*c1
+
+
+
+    return rotationMatrix
+
+
+
+def rotationMatrix2RPY(rotationMatrix):
+
+    
+    
+    r11 = rotationMatrix[0, 0] 
+    r12 = rotationMatrix[0, 1] 
+    r13 = rotationMatrix[0, 2] 
+
+    r21 = rotationMatrix[1, 0] 
+    r22 = rotationMatrix[1, 1] 
+    r23 = rotationMatrix[1, 2] 
+
+    r31 = rotationMatrix[2, 0] 
+    r32 = rotationMatrix[2, 1] 
+    r33 = rotationMatrix[2, 2] 
+
+    yaw = np.arctan2(r21, r11)
+    pitch = np.arctan2(-r31, np.sqrt(r32*r32+r33*r33))
+    roll = np.arctan2(r32, r33)
+
+    angles = np.zeros([1, 3])
+
+    angles[0][0] = roll
+    angles[0][1] = pitch
+    angles[0][2] = yaw
+
+    return angles
 
 
 if __name__ == "__main__": main()

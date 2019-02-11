@@ -1,5 +1,6 @@
 #include "../include/VISystem.hpp"
 
+
 namespace vi
 {
      
@@ -59,7 +60,7 @@ namespace vi
         K = camera_model->GetK();
         w_input = camera_model->GetInputWidth();
         h_input = camera_model->GetInputHeight();
-
+        
         map1 = camera_model->GetMap1();
         map2 = camera_model->GetMap2();
         fx = camera_model->GetK().at<float>(0,0);
@@ -252,7 +253,7 @@ namespace vi
                 FreeLastFrame();
             }
             // Estimar pose de camara con solver
-            EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             //EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             Track();
         }
@@ -276,9 +277,9 @@ namespace vi
         velocityImu = velocityCam;
         accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
      
-        //camera.Update(_currentImage);
-        //bool key_added = camera.addKeyframe();
-        //num_keyframes = camera.frameList.size();
+        camera.Update(_currentImage);
+        bool key_added = camera.addKeyframe();
+        num_keyframes = camera.frameList.size();
         if (camera.frameList.size()>= 1) // primera imagen agregada
         {
             /*
@@ -288,7 +289,7 @@ namespace vi
             imshow("currentImage", currentImageToShow);
             waitKey();
             */
-            camera.printStatistics();
+            //camera.printStatistics();
 
             /*if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
             {
@@ -302,8 +303,10 @@ namespace vi
                 FreeLastFrame();
             }
             // Estimar pose de camara con solver
+            //EstimatePoseFeaturesIter(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-            //EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            //EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+            EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
             Track();
         }
         
@@ -319,16 +322,229 @@ namespace vi
         camera.frameList.erase(camera.frameList.begin());
     }
     
+    // Lujano Algorithm
+    void VISystem::setGtRes(Mat TraslationResGT, Mat RotationResGT )
+    {
+        TraslationResidual = TraslationResGT;
+        RotationResidual = RotationResGT;
+    }
+
+
+  void VISystem::EstimatePoseFeaturesDebug(Frame* _previous_frame, Frame* _current_frame)
+    {
+           
+        Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
+
+    Point3d  translationGt;
+
+    Point3d rotationGt = rotationMatrix2RPY(RotationResidual)*180/M_PI;
+        Point3d rotationEst = rotationMatrix2RPY(Rotation_ResCam)*180/M_PI;
+    translationGt.x = TraslationResidual.at<float>(0,0);
+        translationGt.y = TraslationResidual.at<float>(1,0);
+         translationGt.z = TraslationResidual.at<float>(2,0);
+
+        
+        cout << "TransGT" << " sx "<< translationGt.x<< " sy " << translationGt.y<< " sz " << translationGt.z <<endl;
+        cout << "RotaGt" << " rx "<< rotationGt.x<< " sy " << rotationGt.y<< " sz " << rotationGt.z <<endl;
+        cout << "RotaEst" << " rx "<< rotationEst.x<< " sy " << rotationEst.y<< " sz " << rotationEst.z <<endl;
+        
+    }
+
+    void VISystem::EstimatePoseFeaturesIter(Frame* _previous_frame, Frame* _current_frame)
+    {
+        Prof.clear();
+        Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
+        
+
+        vector<KeyPoint> goodKeypoints1, goodKeypoints2;
+        
+        goodKeypoints1 = _previous_frame->nextGoodMatches;
+        goodKeypoints2 = _current_frame->prevGoodMatches;
+
+        int numkeypoints = goodKeypoints1.size();
+
+        
+        
+    
+       
+        int lvl = 0;
+        float fx = fx_[lvl];
+        float fy = fy_[lvl];
+        float cx = cx_[lvl];
+        float cy = cy_[lvl];
+
+        Mat rotationMatrix = Rotation_ResCam;
+
+        double r11 = rotationMatrix.at<float>(0,0);
+        double r12 = rotationMatrix.at<float>(0,1);
+        double r13 = rotationMatrix.at<float>(0,2);
+
+        double r21 = rotationMatrix.at<float>(1,0);
+        double r22 = rotationMatrix.at<float>(1,1);
+        double r23 = rotationMatrix.at<float>(1,2);
+
+        double r31 = rotationMatrix.at<float>(2,0);
+        double r32 = rotationMatrix.at<float>(2,1);
+        double r33 = rotationMatrix.at<float>(2,2);
+
+
+        double coeffz;
+        double coeffy;
+
+        float sx = TraslationResidual.at<float>(0,0);
+        float sy = TraslationResidual.at<float>(1,0);
+        float sz = TraslationResidual.at<float>(2,0);
+
+         //cout << "TransGT" << " sx " << sx<< " sy " << sy<< " sz " << sz <<endl;
+
+        
+
+        array<vector<Point2f>,2> points;
+        KeyPoint::convert( goodKeypoints1 , points[0], vector<int>());
+        KeyPoint::convert( goodKeypoints2 , points[1], vector<int>());
+        
+        
+        
+        // Compute current Rotation and Translation
+       
+
+        // Obtain projection matrices for the two perspectives
+        Mat cameraMat = Mat::eye(3, 3, CV_32FC1);
+        cameraMat.at<float>(0,0) = fx;
+        cameraMat.at<float>(0,2) = cx;
+        cameraMat.at<float>(1,1) = fy;
+        cameraMat.at<float>(1,2) = cy;
+        cameraMat.at<float>(2,2) = 1.0;
+        
+        Mat P1 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
+        Mat P2 = getProjectionMat(cameraMat, rotationMatrix, TraslationResidual);
+        
+        // Compute depth of 3D points using triangulation
+        Mat mapPoints;
+        triangulatePoints(P1, P2, points[0], points[1], mapPoints);
+
+        Mat pt_3d; convertPointsFromHomogeneous(Mat(mapPoints.t()).reshape(4, 1),pt_3d);
+        Vec3d rvec(0,0,0); //Rodrigues(R ,rvec);
+        Vec3d tvec(0,0,0); // = P.col(3);
+        vector<Point2f> reprojected_pt_set1;
+        projectPoints(pt_3d,rvec,tvec,cameraMat, Mat(),reprojected_pt_set1);
+
+        
+
+       
+
+
+        drawKeypoints(currentImage, _current_frame->prevGoodMatches , currentImageDebugToShow, Scalar(50,50, 255), DrawMatchesFlags::DEFAULT);
+        cout<< "GTz " << sz<<endl;
+        for (int i = 0; i <(10); i++)
+        {
+            //Mat Traslation_ResCam = Mat::ones(3, 1, CV_32FC1);  
+            int index = rand()%(numkeypoints-1); // Tomar un feature aleatorio
+            
+            //int index = i;
+            float u1 = goodKeypoints1[index].pt.x;
+            float v1 = goodKeypoints1[index].pt.y;
+            float u2 = goodKeypoints2[index].pt.x;
+            float v2 = goodKeypoints2[index].pt.y;
+
+            double a = (u1-cx)/fx;
+            double b = (v1-cy)/fy;
+      
+            double c = (u2-cx)/fx;
+            double d = (v2-cy)/fy;
+
+
+            double B1 = r11*c+r12*d+r13;
+            double B2 = r21*c+r22*d+r23;
+            double B3 = r31*c+r32*d+r33;
+
+            double sigma = (B3*a-B1)/(B3*b-B2);
+
+            coeffz = (b*sigma-a);
+            coeffy = (-sigma);
+            
+            double error = -(sx+sy*coeffy)/coeffz;
+            double z2__ = (sx-sz*a)/(B3*a-B1);
+            double z2_ = (sy-sz*b)/(B3*b-B2);
+
+            double z2 = 0.0;
+            if (z2__> 0.00) z2 = z2__;
+            if (z2_> 0.00) z2 = z2_;
+            
+
+
+            cout << " feature " << i << " error " <<  error <<endl;
+            //            Prof.push_back(profundidad);
+            /*
+            z2 = pt_3d.at<float>(2,i);
+            std::ostringstream strs;
+            strs << fixed<< setprecision(2)<<z2;
+            std::string str = strs.str();
+            float errorx = (points[0])[index].x - reprojected_pt_set1[index].x;
+            float errory = (points[0])[index].y - reprojected_pt_set1[index].y;
+            float errorf = sqrt( errorx*errorx+errory*errory );
+            if (errorf <5)
+            {
+                
+                putText(currentImageDebugToShow,str , Point2d(u2,v2 ), FONT_HERSHEY_SIMPLEX, 0.32,Scalar(50,255,50),0.9, LINE_AA);
+            }
+            */
+            
+
+            //cout << "feature " << index << " Coeffz = " << coeffz << " Coeffy = " << coeffy <<endl;
+
+            //Traslation_ResCam = (k1-Rotation_ResCam*k2);
+            //cout << Traslation_ResCam <<endl;
+            //Traslations_ResCam.push_back(Traslation_ResCam);
+        }
+
+
+        putText(currentImageDebugToShow,"tx="+ to_string(sx*100) +" ty="+ to_string(sy*100)+" tz="+ to_string(sz*100), Point2d(10,50), FONT_HERSHEY_SIMPLEX, 1,Scalar(0,255,0),2, LINE_AA);
+        imshow("currentDebugImage", currentImageDebugToShow);
+        char c_input = (char) waitKey(30);
+        if( c_input == 'q' | c_input == ((char)27) )  {
+                exit(0);
+        }
+     
+        // Metodo iterativo
+        /*
+        double xSol, ySol, zSol, x, y, z;
+
+
+        int num_iterarions = 10;
+        cout << " cy1 " << coeffy1 << " cy2 " << coeffy2  << " cy3 " << coeffy3 <<endl;
+        cout << " cz1 " << coeffz1 << " cz2 " << coeffz2  << " cz3 " << coeffz3 <<endl;
+        for (int i = 0; i< num_iterarions; i++)
+        {
+            x = -zSol*coeffz1-ySol*coeffy1;
+            y = (zSol*coeffz2+xSol)/(-coeffy2);
+            z = (xSol+ySol*coeffy3)/(-coeffz3);
+
+            xSol = x;
+            ySol = y;
+            zSol = z;
+
+            cout << "iteration " << i << " xSol " << xSol << " ySol "<< ySol << " zSol "<< zSol <<endl;
+        }
+        */
+        
+        
+
+
+    
+
+
+    }
     // Gauss-Newton using Foward Compositional Algorithm - Using features
     void VISystem::EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame) {
         // Gauss-Newton Optimization Options
         float epsilon = 0.001;
         //float intial_factor = 10;
-        int max_iterations = 40; // 10
+        int max_iterations = 10; // 10
         float error_threshold = 0.005;
         int first_pyramid_lvl = 3;
         int last_pyramid_lvl = 0;
-        float z_factor = 0.02; // 0.002
+        float z_factor = 0.002; // 0.002
 
         // Variables initialization
         float error         = 0.0;
@@ -356,6 +572,13 @@ namespace vi
         Mat residualRotation = RPY2rotationMatrix(-residualRPYcam);
         cout << "dale"<<residualRotation<<endl;
 
+       
+        float sx = TraslationResidual.at<float>(0,0);
+        float sy = TraslationResidual.at<float>(1,0);
+        float sz = TraslationResidual.at<float>(2,0);
+
+        cout << "TransGT" << " sx " << sx<< " sy " << sy<< " sz " << sz <<endl;
+
         Mat33f rotationEigen ;
         cv2eigen(residualRotation, rotationEigen);
         //cv2eigen(imuCore.residual_rotationMatrix, rotationEigen);
@@ -364,12 +587,12 @@ namespace vi
         //Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,
         //Quaternion quat_init(1,  0, 0, 0);
         //cout << SO3::exp(SE3::Point(0.0, 0.0, 0.0))<<endl;
-        Point3d t_btw = transformationMatrix2position(prev_world2camTransformation.inv()*currentTransformationCam); // traslacion entre frame pasado y actual respecto al frame pasado
-        //SE3 current_pose = SE3(rotationEigen, SE3::Point(-t_btw.x, -t_btw.y, -t_btw.z)); //x, z, y
-        SE3 current_pose = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
+        //Point3d t_btw = transformationMatrix2position(prev_world2camTransformation.inv()*currentTransformationCam); // traslacion entre frame pasado y actual respecto al frame pasado
+        SE3 current_pose = SE3(rotationEigen, SE3::Point(-sx ,-sy, -sz)); //x, z, y
+        //SE3 current_pose = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
         //SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(0.0, 0.0, 0.0)); //x, z, y
-        //SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(-t_btw.x, -t_btw.y, -t_btw.z)); //x, z, y
-        SE3 current_poseDebug = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0)); //x, z, y
+        SE3 current_poseDebug = SE3(rotationEigen, SE3::Point(-sx, -sy, -sz)); //x, z, y
+        //SE3 current_poseDebug = SE3(SO3::exp(SE3::Point(0.0, 0.0, 0.0)), SE3::Point(0.0, 0.0, 0.0)); //x, z, y
         
         /*
         cout << current_pose.unit_quaternion().x()<<endl;
@@ -377,7 +600,7 @@ namespace vi
         cout << current_pose.unit_quaternion().z()<<endl;
         cout << current_pose.unit_quaternion().w()<<endl;
         */
-       
+
 
         // Sparse to Fine iteration
         // Create for() WORKED WITH LVL 2
@@ -622,6 +845,8 @@ namespace vi
 
                 // Update new pose with computed delta
                 current_pose = current_pose * SE3::exp(deltaVector);
+                Mat31f t = 2 * current_pose.translation();
+                //cout << "t "<< t <<endl;
                 //cout << current_pose.matrix() << endl;
                 
             }
@@ -704,9 +929,10 @@ namespace vi
         eigen2cv(rigidEigen, rigid);
        
 
-        cout << rigid << endl;
+        //cout << rigid << endl;
 
         float fx = fx_[lvl];
+
         float fy = fy_[lvl];
         float invfx = invfx_[lvl];
         float invfy = invfy_[lvl];
@@ -780,7 +1006,7 @@ namespace vi
        
         
         Point3d rpyCAM = rotationMatrix2RPY( transformationMatrix2rotationMatrix(rigid));
-        Mat residualRotation = RPY2rotationMatrix(-rpyCAM);
+        Mat residualRotation = RPY2rotationMatrix(rpyCAM);
         //Mat residualRotation = RPY2rotationMatrix(rpyCAM);
         Mat33f rotationEigen ;
         cv2eigen(residualRotation, rotationEigen);
@@ -818,8 +1044,6 @@ namespace vi
         qOrientationImu.w = final_poseImu.unit_quaternion().w();
         RPYOrientationImu = toRPY(qOrientationImu);
       
-        waitKey(30);
-
         
 
 
@@ -851,34 +1075,76 @@ namespace vi
     {
         
         Mat cameraMatrix = Mat::zeros(3,3,CV_64F);
-        cameraMatrix.at<double>(0, 0) = fx_[0];
-        cameraMatrix.at<double>(0, 2) = cx_[0];
-        cameraMatrix.at<double>(1, 1) = fy_[0];
-        cameraMatrix.at<double>(1, 2) = cy_[0];
+        cameraMatrix.at<double>(0, 0) = 458.654; //fx_[0];
+        cameraMatrix.at<double>(0, 2) = 367.215; //cx_[0];
+        cameraMatrix.at<double>(1, 1) = 457.296; //fy_[0];
+        cameraMatrix.at<double>(1, 2) = 248.375 ;//cy_[0];
         cameraMatrix.at<double>(2, 2) = 1.0;
+
+
+        cout << cameraMatrix << endl;
 
         std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
         vector<int> point_indexs;
 
-        cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
-        cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
+        //cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
+        //cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
         cv::KeyPoint::convert(_previous_frame->nextGoodMatches, points1_OK,point_indexs);
         cv::KeyPoint::convert(_current_frame->prevGoodMatches, points2_OK,point_indexs);
 
 
 
         Mat E; // essential matrix
-        E = findEssentialMat(points1_OK, points2_OK, cameraMatrix, RANSAC, 0.999, 1.0, noArray());
+        double focal = fx;
+        E = findEssentialMat(points1_OK, points2_OK,  focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
+
+   
+
+        float sx = TraslationResidual.at<float>(0,0);
+        float sy = TraslationResidual.at<float>(1,0);
+        float sz = TraslationResidual.at<float>(2,0);
+        Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
+        Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
+        Mat trans_skew =  E*Rotation_ResCam.t();
+
+
+        
+
+        
+       
         // Calcular la matriz de rotación y traslación de puntos entre imagenes 
         Mat R_out, t_out;
+        
+        //recoverPose(E, points1_OK, points1_OK, cameraMatrix, R_out, t_out, noArray());
+        int p;
+         p = recoverPose(E, points1_OK, points2_OK, R_out, t_out, focal, Point2d(cx, cy), noArray()   );
 
-        recoverPose(E, points1_OK, points2_OK, cameraMatrix, R_out, t_out, noArray());
-   
         Point3d residualRPYcam = rotationMatrix2RPY(R_out);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
-        cout << R_out<<endl;
-        cout << points1_OK.size()<< " " << points2_OK.size()<<endl;
-        cout << "ResidualRPY"<<residualRPYcam<<endl;
-        cout << "Residualtrans"<< t_out<<endl;
+        //cout << R_out<<endl;
+        //cout << points1_OK.size()<< " " << points2_OK.size()<<endl;
+        //cout << "ResidualRPY "<<residualRPYcam<<endl;
+        //cout << "Residualtrans "<< t_out<<endl;
+            float scale = sqrt(sx*sx+sy*sy+sz*sz);
+
+
+        float sx1 = t_out.at<double>(0,0)*scale;
+        float sy1 = t_out.at<double>(1,0)*scale;
+        float sz1 = t_out.at<double>(2,0)*scale;
+        float sx2 = -trans_skew.at<double>(1,2);
+        float sy2 = -trans_skew.at<double>(2,0);
+        float sz2 = -trans_skew.at<double>(0,1);
+
+        
+
+
+        //cout << trans_skew <<endl;
+
+        cout << "TransGT" << " sx " << sx<< " sy " << sy<< " sz " << sz <<endl;
+
+        cout << "TransE1" << " sx1 " << sx1<< " sy1 " << sy1<< " sz1 " << sz1 <<endl;
+
+        //cout << "TransE2" << " sx2 " << sx2<< " sy2 " << sy2<< " sz2 " << sz2 <<endl;
+         /*
         Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
         Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,
 
@@ -905,7 +1171,7 @@ namespace vi
         }
     
         waitKey(30);
-
+        */
 
     }
 
@@ -985,7 +1251,19 @@ namespace vi
         return med;
     }
 
+    Mat VISystem::getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat){
+    // ProjectionMat = cameraMat * [Rotation | translation]
+    Mat projectionMat;
+    hconcat(rotationMat, translationMat, projectionMat);
+ 
+    projectionMat = cameraMat * projectionMat;
+
+    return projectionMat;
 }
+
+}
+
+
 
 
 

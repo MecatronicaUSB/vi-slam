@@ -19,6 +19,7 @@
 #include <geometry_msgs/Quaternion.h>
 
 
+
 using namespace std;
 using namespace cv;
 
@@ -39,6 +40,8 @@ class VISystem
         void InitializePyramid(int _width, int _height, Mat _K);
         // Gauss-Newton using Foward Compositional Algorithm - Using features
         void Calibration(string _calibration_path);
+        void EstimatePoseFeaturesIter(Frame* _previous_frame, Frame* _current_frame);
+        void EstimatePoseFeaturesDebug(Frame* _previous_frame, Frame* _current_frame);
         void EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame);
         void EstimatePoseFeaturesRansac(Frame* _previous_frame, Frame* _current_frame);
         void CalculateROI(Mat image);
@@ -53,6 +56,9 @@ class VISystem
         Mat WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
         float MedianAbsoluteDeviation(Mat _input);
         float MedianMat(Mat _input) ;
+
+        void setGtRes(Mat TraslationResGT , Mat RotationGT);
+        Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
         
         bool initialized, distortion_valid , depth_available;
         int  num_keyframes;
@@ -123,6 +129,9 @@ class VISystem
         vector<float> invcy_ = vector<float>(PYRAMID_LEVELS);
 
         vector<Mat> K_ = vector<Mat>(PYRAMID_LEVELS);
+        vector<double> Prof;
+        Mat TraslationResidual;
+        Mat RotationResidual;
 
 
    

@@ -95,8 +95,8 @@ int main( int argc, char** argv ){
     
     //Gt para camara 
     Quaterniond qOrientationCamGT;
-    Point3d RPYOrientationCamGT;
-    Point3d positionCamGT;
+    Point3d RPYOrientationCamGT, RPYOrientationCamGTprev;
+    Point3d positionCamGT, positionCamGTprev;
     Point3d velocityCamGT;
 
 
@@ -105,18 +105,34 @@ int main( int argc, char** argv ){
     std::ofstream outputFilecsv;
 
     Point3d zero;
-    
+    positionCamGTprev = Data.gtPosition.back()+visystem.imu2camTranslation;
+    RPYOrientationCamGTprev = rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
     outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
     while(Data.currentTimeMs<61000) // j <data.lastindex
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j, j+1);
-        j = j+1;
+        Data.UpdateDataReader(j, j+10);
+        j = j+10;
          
         positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
+        
         velocityCamGT  = Data.gtLinearVelocity.back();
         RPYOrientationCamGT =rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
+        
         qOrientationCamGT = toQuaternion(RPYOrientationCamGT.x, RPYOrientationCamGT.y, RPYOrientationCamGT.z);
+        Mat transformationResidual = RPYAndPosition2transformationMatrix(RPYOrientationCamGTprev, positionCamGTprev).inv()*RPYAndPosition2transformationMatrix(RPYOrientationCamGT, positionCamGT);
+        Mat Traslation_ResCamGT = Mat::ones(3, 1, CV_32FC1);  
+        Mat Rotation_ResCamGt = transformationMatrix2rotationMatrix(transformationResidual);
+        Traslation_ResCamGT.at<float>(0,0) = transformationResidual.at<float>(0,3);
+        Traslation_ResCamGT.at<float>(1,0) = transformationResidual.at<float>(1,3);
+        Traslation_ResCamGT.at<float>(2,0) = transformationResidual.at<float>(2,3);
+        
+        positionCamGTprev =  positionCamGT;
+        RPYOrientationCamGTprev = RPYOrientationCamGT;
+        
+        
+        visystem.setGtRes(Traslation_ResCamGT, Rotation_ResCamGt);
+        
 
         visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration, Data.gtPosition.back());
        
@@ -131,7 +147,7 @@ int main( int argc, char** argv ){
          cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
    
 
-        
+        /*
         outputFilecsv <<  visystem.positionImu.x<<","
         <<visystem.positionImu.y<<","
         <<visystem.positionImu.z<<","
@@ -156,7 +172,7 @@ int main( int argc, char** argv ){
         <<  Data.gtQuaternion.back().z<<","
         <<  Data.gtQuaternion.back().w <<","
         <<endl;
-        /*
+        */
         outputFilecsv <<  visystem.positionCam.x<<","
         <<visystem.positionCam.y<<","
         <<visystem.positionCam.z<<","
@@ -184,7 +200,7 @@ int main( int argc, char** argv ){
         <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
         <<visystem.imuCore.angularVelocityIMUFilter.back().z
         <<endl;
-        */
+        
 
                 
         static tf::TransformBroadcaster br;
@@ -246,6 +262,53 @@ int main( int argc, char** argv ){
         */
         transform.setRotation(q);
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "ImuEst"));
+        /*
+        cout << "Estimation Lujano"<<endl;
+        float errorxy = 10000;
+        float erroryz = 10000;
+        float errorzx = 10000;
+        int magic = 0;
+        float sxM, syM, szM;
+
+
+      
+
+
+  
+
+        for (int index = 0; index <visystem.Traslations_ResCam.size(); index++)
+        {
+      
+            float x = visystem.Traslations_ResCam[index].at<float>(0,0);
+            float y = visystem.Traslations_ResCam[index].at<float>(1,0);
+            float z = visystem.Traslations_ResCam[index].at<float>(2,0);
+            float sx = Traslation_ResCamGT.at<float>(0,0)/x;
+            float sy = Traslation_ResCamGT.at<float>(1,0)/y;
+            float sz = Traslation_ResCamGT.at<float>(2,0)/z;
+
+            float exy = abs( (sx-sy)/sx );
+            float eyz = abs( (sy-sz)/sy ) ;
+            float ezx = abs( (sz-sx)/sz );
+
+            if (exy < errorxy && eyz < erroryz && ezx < errorzx )
+            {
+                errorxy = exy;
+                erroryz = eyz;
+                errorzx = ezx;
+                magic = index;
+                sxM = sx;
+                syM = sy;
+                szM = sz;
+            }
+            
+            
+            //cout << "feature " << index << " x " << x<< " y " << y << " z " << z <<endl;
+        }
+
+        */
+
+       
+
 
         
 
