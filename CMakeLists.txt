@@ -94,7 +94,7 @@ include_directories(
 
 #add_library(cuda_prof_lib ${cuda_PROFILER})
 
-if(CUDA_FOUND)
+if(!CUDA_FOUND)
   set(vi_slam_GPU_SOURCE_FILES
       ${PROJECT_SOURCE_DIR}/src/MatcherGPU.cpp 
       ${PROJECT_SOURCE_DIR}/src/CameraGPU.cpp 
@@ -103,7 +103,7 @@ if(CUDA_FOUND)
   add_library(vi_slam_libs ${vi_slam_SOURCE_FILES} ${vi_slam_GPU_SOURCE_FILES}) # comentado hasta que se cree librerias
   add_executable(vi_slam ${PROJECT_SOURCE_DIR}/src/main_vi_slamGPU.cpp)
   target_link_libraries(vi_slam vi_slam_libs ${OpenCV_LIBS} ${catkin_LIBRARIES} ${CUDA_LIBRARIES})
-  else(CUDA_FOUND)
+  else(!CUDA_FOUND)
     message("******************")
     message("CUDA not found")
     message("vi_slam CPU version will be compiled")

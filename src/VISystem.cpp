@@ -327,7 +327,7 @@ namespace vi
     void VISystem::setGtRes(Mat TraslationResGT, Mat RotationResGT )
     {
         TraslationResidual = TraslationResGT;
-        RotationResidual = RotationResGT;
+        RotationResidual =  RPY2rotationMatrix (rotationMatrix2RPY(RotationResGT)) ;
     }
 
 
@@ -354,23 +354,24 @@ namespace vi
 
         
         vector<KeyPoint> warpedDebugKeyPoints;
-        vector<KeyPoint> warpedDebugKeyPoints2;
-        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints, 1.0);
-        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints2, 10.0);
-        //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints);
+         Mat trakity = Mat::zeros(3, 1, CV_32FC1);
+         trakity.at<float>(2,0)= 2.0;
+
+        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints);
+        //WarpFunctionRT(_previous_frame->nextGoodMatches, Mat::eye(3, 3, CV_32FC1), trakity, warpedDebugKeyPoints);
 
          // WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints, 1.0);
          //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints2, 10);
         
         float u1 = warpedDebugKeyPoints[0].pt.x;
-        float    v1 = warpedDebugKeyPoints[0].pt.y;
-                float u2 = warpedDebugKeyPoints2[0].pt.x;
-        float    v2 = warpedDebugKeyPoints2[0].pt.y;
+        float v1 = warpedDebugKeyPoints[0].pt.y;
+        float u2 = _previous_frame->nextGoodMatches[0].pt.x;
+        float v2 = _previous_frame->nextGoodMatches[0].pt.y;
         cout << "u1 " << u1 << " v1 " <<  v1 << " u2 " << u2<< " v2 " << v2 <<endl;
         
         drawKeypoints(_previous_frame->grayImage[lvl], warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints2, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(currentImageDebugToShow, _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(_current_frame->grayImage[lvl], _current_frame->prevGoodMatches, currentImageToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
 
         imshow("currentDebugImage1", currentImageDebugToShow);
@@ -384,7 +385,7 @@ namespace vi
     }
 
 
-    void VISystem::WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints, float z)
+    void VISystem::WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints)
     {
         Mat cameraMatrix = Mat::zeros(3,3,CV_32F);
         cameraMatrix.at<float>(0, 0) = fx_[0];
@@ -399,45 +400,56 @@ namespace vi
         float fy = fy_[lvl];
         float cx = cx_[lvl];
         float cy = cy_[lvl];
-
-        Mat projectionMat;
-        hconcat(rotationMat, translationMat, projectionMat);
-        cout << projectionMat <<endl;
+        Mat projectionMat, transformationMat ;
+        hconcat(rotationMat, translationMat, transformationMat);
+        //cout << transformationMat<<endl;
  
-        projectionMat = cameraMatrix * projectionMat;
+        //projectionMat = cameraMatrix * transformationMat;
 
-        cout << projectionMat <<endl;
+        //cout << projectionMat <<endl;
 
           
         int numkeypoints = inPoints.size();
 
         float u1, v1, u2, v2, a, b;
-        Mat inPoint3dHomo = Mat::ones(4, 1, CV_32FC1); 
+        Mat inPoint3dHomo = Mat::ones(3, 1, CV_32FC1); 
         Mat outPoint3dHomo = Mat::ones(3, 1, CV_32FC1); 
 
-        for (int index = 0; index< numkeypoints; index++)
+        for (int index = 0; index< numkeypoints ; index++)
         {
             u1 = inPoints[index].pt.x;
             v1 = inPoints[index].pt.y;
-            a = z*(u1-cx)/fx;
-            b = z*(v1-cy)/fy;
+            a = (u1-cx)/fx;
+            b = (v1-cy)/fy;
             inPoint3dHomo.at<float>(0, 0) = a;
             inPoint3dHomo.at<float>(1, 0) = b;
-            inPoint3dHomo.at<float>(2, 0) = z;
+          
+            //inPoint3dHomo.at<float>(2, 0) = 1.0; // z = 1.0
 
-            outPoint3dHomo = projectionMat*inPoint3dHomo;
+            //cout << "transf "<<  " i " << index << " "<< transformationMat*inPoint3dHomo <<endl;
+            //cout << "transf "<<  " i " << index << " "<< transformationMat*inPoint3dHomo*z <<endl;
+            outPoint3dHomo = rotationMat*inPoint3dHomo +translationMat;
+
 
             KeyPoint outKeypoint;
-            float z2 = outPoint3dHomo.at<float>(2, 0)/z;
             //cout << a << "fdas " << b <<  " z " << endl;
-            outKeypoint.pt.x = outPoint3dHomo.at<float>(0, 0)/(z);
-            outKeypoint.pt.y = outPoint3dHomo.at<float>(1, 0)/(z);
+            outKeypoint.pt.x = (fx*outPoint3dHomo.at<float>(0, 0))/outPoint3dHomo.at<float>(2, 0) +cx;
+            outKeypoint.pt.y =  (fy*outPoint3dHomo.at<float>(1, 0))/outPoint3dHomo.at<float>(2, 0)+cy;
             //cout <<  outPoint3dHomo.at<float>(2, 0) <<  " " << outPoint3dHomo.at<float>(3, 0) <<endl;
             //cout << "u1 " << u1 << " v1 " <<  v1 << " u2 " << outKeypoint.pt.x << " v2 " << outKeypoint.pt.y <<endl;
 
             outPoints.push_back(outKeypoint);
 
         }
+
+        /*
+        Vec3d rvec(0,0,0); //Rodrigues(R ,rvec);
+        Vec3d tvec(0,0,0); // = P.col(3);
+        vector <Point2d> reprojected_pt_set1;
+        inPoint3dHomo2.convertTo(inPoint3dHomo2, CV_64FC1);
+        cameraMatrix.convertTo(cameraMatrix, CV_64FC1);
+        projectPoints(inPoint3dHomo2,rvec,tvec,cameraMatrix, Mat(),reprojected_pt_set1);
+        */
         
 
 
@@ -1189,7 +1201,7 @@ namespace vi
         cv::KeyPoint::convert(_current_frame->prevGoodMatches, points2_OK,point_indexs);
 
 
-
+        int lvl= 0;
         Mat E; // essential matrix
         double focal = fx;
         E = findEssentialMat(points1_OK, points2_OK,  focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
@@ -1200,8 +1212,8 @@ namespace vi
         float sy = TraslationResidual.at<float>(1,0);
         float sz = TraslationResidual.at<float>(2,0);
         Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
-        Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
-        Mat trans_skew =  E*Rotation_ResCam.t();
+        //Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
+        //Mat trans_skew =  E*Rotation_ResCam.t();
 
 
         
@@ -1214,14 +1226,50 @@ namespace vi
         //recoverPose(E, points1_OK, points1_OK, cameraMatrix, R_out, t_out, noArray());
         int p;
          p = recoverPose(E, points1_OK, points2_OK, R_out, t_out, focal, Point2d(cx, cy), noArray()   );
+                R_out.convertTo(R_out, CV_32FC1);
+                    t_out.convertTo(t_out, CV_32FC1);
+
+                         float scale = sqrt(sx*sx+sy*sy+sz*sz);
+
+
+        t_out = t_out*scale;
+
+
+        vector<KeyPoint> warpedDebugKeyPoints;
+        cout << "here"<<endl;
+        WarpFunctionRT(_current_frame->prevGoodMatches,  R_out, t_out, warpedDebugKeyPoints);
+        //WarpFunctionRT(_previous_frame->nextGoodMatches, Mat::eye(3, 3, CV_32FC1), trakity, warpedDebugKeyPoints);
+
+         // WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints, 1.0);
+         //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints2, 10);
+        
+        float u1 = warpedDebugKeyPoints[0].pt.x;
+        float v1 = warpedDebugKeyPoints[0].pt.y;
+        float u2 = _previous_frame->nextGoodMatches[0].pt.x;
+        float v2 = _previous_frame->nextGoodMatches[0].pt.y;
+        cout << "u1 " << u1 << " v1 " <<  v1 << " u2 " << u2<< " v2 " << v2 <<endl;
+        
+        drawKeypoints(_previous_frame->grayImage[lvl], warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(currentImageDebugToShow, _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(_current_frame->grayImage[lvl], _current_frame->prevGoodMatches, currentImageToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+
+        imshow("currentDebugImage1", currentImageDebugToShow);
+        imshow("currentDebugImage2", currentImageToShow);
+        char c_input = (char) waitKey(-1);
+        if( c_input == 'q' | c_input == ((char)27) )  {
+                exit(0);
+        }
+        
+        
 
         Point3d residualRPYcam = rotationMatrix2RPY(R_out);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
         //cout << R_out<<endl;
         //cout << points1_OK.size()<< " " << points2_OK.size()<<endl;
         //cout << "ResidualRPY "<<residualRPYcam<<endl;
         //cout << "Residualtrans "<< t_out<<endl;
-            float scale = sqrt(sx*sx+sy*sy+sz*sz);
-
+       
+        /*
 
         float sx1 = t_out.at<double>(0,0)*scale;
         float sy1 = t_out.at<double>(1,0)*scale;
@@ -1240,6 +1288,7 @@ namespace vi
         cout << "TransE1" << " sx1 " << sx1<< " sy1 " << sy1<< " sz1 " << sz1 <<endl;
 
         //cout << "TransE2" << " sx2 " << sx2<< " sy2 " << sy2<< " sz2 " << sz2 <<endl;
+        */
          /*
         Quaterniond residualQcam = toQuaternion(residualRPYcam.x, residualRPYcam.y, residualRPYcam.z) ;
         Quaternion quat_init(residualQcam.w, residualQcam.x, residualQcam.y, residualQcam.z); // w, x, y,

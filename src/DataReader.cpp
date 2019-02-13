@@ -82,6 +82,9 @@ void DataReader::setProperties(string image_path, string imu_path, string gt_pat
     cout<<"index camera = "<<imageIndex0<<endl;
     cout<<"index imu = "<<imuIndex0<<endl;
     cout<<"index get ="<<gtIndex0<<endl;
+    cout<< "Time first image = " << timeFirstImage<<endl;
+    cout<< "Time first gt = " << timeFirstLineGt<<endl;
+    cout<< "Time dif = " << timeFirstLineGt-timeFirstImage<<endl;
 
 
 
@@ -116,6 +119,8 @@ void DataReader::UpdateDataReader(int index, int index2){
     double timeImage = imageReader.getImageTime(imageIndex0+index); // poner en clase
     double timeLineImu = imuReader.getGroundTruthData(indexImuReader, 0);
     double timeLineGt= gtReader.getGroundTruthData(indexGtReader, 0);
+    cout << "time dif " << timeImage -timeLineGt <<endl;
+    
     double delta1;
     double delta2;
     // Encontrar el indice del dato de gt mas cercano a la imagen
@@ -126,6 +131,7 @@ void DataReader::UpdateDataReader(int index, int index2){
         timeLineGt= gtReader.getGroundTruthData(indexGtReader, 0);
         delta1 = timeLineGt-timeImage;
     }
+    cout << "time dif " << timeImage -timeLineGt <<endl;
      // Encontrar el indice del dato de imu posterior a la imagen1    
     
     delta2 = timeLineImu-timeImage;
@@ -154,6 +160,9 @@ void DataReader::UpdateDataReader(int index, int index2){
      gtRPY.clear();
      accBias.clear();
     // Obtener todos los datos entre las dos imagenes
+    timeImuReader = imuReader.getGroundTruthData(indexImuReader, 0);
+    cout << "time image 2 = " << imageReader.getImageTime(imageIndex0 +index2) - imageReader.getImageTime(imageIndex0 +index)<<endl;
+        cout << "time imu reader" << imageReader.getImageTime(imageIndex0 +index)-timeImuReader<<endl;
     while(timeImuReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index2)))
     {
         angularVelocity.x =  imuReader.getGroundTruthData(indexImuReader, 1);
@@ -170,7 +179,7 @@ void DataReader::UpdateDataReader(int index, int index2){
         indexImuReader++;
         timeImuReader = imuReader.getGroundTruthData(indexImuReader, 0);
     }
-
+    //cout << "time imu reader2" << imageReader.getImageTime(imageIndex0 +index2)-timeImuReader<<endl;
     // Tomar los datos del primer bias acc y ang
     angBias.x = gtReader.getGroundTruthData(indexGtReader, 11);
     angBias.y = gtReader.getGroundTruthData(indexGtReader, 12);
@@ -178,6 +187,10 @@ void DataReader::UpdateDataReader(int index, int index2){
 
     Point3d biasAcc;
     // tomar el resto de los datos de gt
+    indexGtReader++;
+    timeGtReader = gtReader.getGroundTruthData(indexGtReader, 0);
+    //cout << "time gt reader" << imageReader.getImageTime(imageIndex0 +index)<<endl;
+    
     while(timeGtReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index2)))
     {
        
@@ -189,6 +202,8 @@ void DataReader::UpdateDataReader(int index, int index2){
         quaternion.x = gtReader.getGroundTruthData(indexGtReader, 5);
         quaternion.y = gtReader.getGroundTruthData(indexGtReader, 6);
         quaternion.z = gtReader.getGroundTruthData(indexGtReader, 7);
+
+        //cout << "q " << quaternion.x << "p " << position.x << endl;
 
         rpy = toRPY(quaternion);
 
@@ -215,6 +230,7 @@ void DataReader::UpdateDataReader(int index, int index2){
         timeGtReader = gtReader.getGroundTruthData(indexGtReader, 0);
     }
 
+    //cout << "time gt reader" << imageReader.getImageTime(imageIndex0 +index2)<<endl;
     //cout <<"ImuIndex2 "<<indexImuReader<<endl;
     //cout <<"GtIndex2 "<<indexGtReader<<endl;
 
