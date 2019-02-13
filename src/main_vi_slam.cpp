@@ -111,8 +111,8 @@ int main( int argc, char** argv ){
     while(Data.currentTimeMs<61000) // j <data.lastindex
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j, j+10);
-        j = j+10;
+        Data.UpdateDataReader(j, j+20);
+        j = j+20;
          
         positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
         

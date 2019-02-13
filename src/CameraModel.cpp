@@ -90,10 +90,12 @@ void CameraModel::GetCameraModel(string _calibration_path) {
         initUndistortRectifyMap(original_intrinsic_camera_, dist_coeffs_, Mat(), output_intrinsic_camera_, Size(out_width_, out_height_), CV_16SC2, map1_, map2_);
 
         // K_
+        /*
         original_intrinsic_camera_.at<float>(0, 0) /= in_width_;
 		original_intrinsic_camera_.at<float>(0, 2) /= in_width_;
 		original_intrinsic_camera_.at<float>(1, 1) /= in_height_;
 		original_intrinsic_camera_.at<float>(1, 2) /= in_height_;
+        */
         
     }
 }
