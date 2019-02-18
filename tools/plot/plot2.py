@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-Ts = 0.05*1
+Ts = 0.05*20
 
 
 
@@ -23,8 +23,8 @@ Ts = 0.05*1
 
 def main():
 
-    plot_est = [0, 0, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
-    plot_res = [0,0,0, 1] # residuales: pos, velocidad, aceleracion, orientacion
+    plot_est = [1, 1, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
+    plot_res = [0,0,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
     plot_error = [0, 0, 0, 0]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
@@ -46,7 +46,7 @@ def main():
     #debug
     estAngVelocity= np.zeros([0, 3])
 
-    maxTime = 60.0
+    maxTime = 142.0
     
     with open('/home/lujano/Documents/outputVISlam.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
@@ -66,19 +66,20 @@ def main():
     for quaternion in  gtOrientationQ :
         gtOrientationRPY = np.append( gtOrientationRPY, quaternion2RPY(quaternion), 0)
    
-    
+    """
     rest = np.full_like(estPosition[:, 0], 1)
     estPosition[:, 0] = estPosition[:, 0] - estPosition[0, 0]*rest 
     estPosition[:, 1] = estPosition[:, 1] - estPosition[0, 1]*rest 
     estPosition[:, 2] = estPosition[:, 2] - estPosition[0, 2]*rest 
 
-    estPosition[:, 0] = estPosition[:, 0]*5.0 + gtPosition[0, 0]*rest 
-    estPosition[:, 1] = estPosition[:, 1]*5.0 + gtPosition[0, 1]*rest 
-    estPosition[:, 2] = estPosition[:, 2]*5.0 + gtPosition[0, 2]*rest 
+    estPosition[:, 0] = estPosition[:, 0] + gtPosition[0, 0]*rest 
+    estPosition[:, 1] = estPosition[:, 1] + gtPosition[0, 1]*rest 
+    estPosition[:, 2] = estPosition[:, 2] + gtPosition[0, 2]*rest 
+    """
+    gtAccx= fd(gtVelocity[:, 0], Ts)
+    gtAccy = fd(gtVelocity[:, 1], Ts)
+    gtAccz = fd(gtVelocity[:, 2], Ts)
     
-    gtAccx= fd(gtVelocity[:, 0], 1/20.0)
-    gtAccy = fd(gtVelocity[:, 1], 1/20.0)
-    gtAccz = fd(gtVelocity[:, 2], 1/20.0)
             
     time = np.arange(0, Ts*(estPosition[:, 0].size), Ts )
 
@@ -98,6 +99,15 @@ def main():
         label2 = ["Velocidad y estimada", "Vy(m/s)", "Velocidad y groundtruth"]
         label3 = ["Velocidad z estimada", "Vz(m/s)", "Velocidad z groundtruth"]
         plotTriple(estVelocity, gtVelocity, time, label1, label2, label3, maxTime)
+
+    if plot_est[2] == 1:
+        # Plot Acceleration
+        label1 = ["Aceleracion x estimada", "Ax(m/s²)", "Aceleracion x groundtruth"]
+        label2 = ["Aceleracion y estimada", "Ay(m/s²)", "Aceleracion y groundtruth"]
+        label3 = ["Aceleracion z estimada", "Az(m/s²)", "Aceleracion z groundtruth"]
+        plotTripleSeparado(estAcc[:,0], estAcc[:,1], estAcc[:,2],
+            gtAccx, gtAccy, gtAccz, time, label1, label2, label3, maxTime)
+
 
     if plot_est[3] == 1:
         # Plot orientation (RPY)

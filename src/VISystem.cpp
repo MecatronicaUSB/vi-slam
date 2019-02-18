@@ -202,6 +202,7 @@ namespace vi
         h  = p2.y - p1.y;
     }
 
+
     void VISystem::Calibration(string _calibration_path) 
     {
         cout << "Reading calibration xml file";
@@ -216,6 +217,8 @@ namespace vi
             exit(0);
         }
     }
+
+
 
     void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
     {
@@ -336,46 +339,70 @@ namespace vi
            
         Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
 
-        Point3d  translationGt;
+        Point3f  translationGt;
 
         Point3d rotationGt = rotationMatrix2RPY(RotationResidual)*180/M_PI;
         Point3d rotationEst = rotationMatrix2RPY(Rotation_ResCam)*180/M_PI;
+
+        
         translationGt.x = TraslationResidual.at<float>(0,0);
         translationGt.y = TraslationResidual.at<float>(1,0);
         translationGt.z = TraslationResidual.at<float>(2,0);
 
+        
+
         int lvl = 0;
 
+       
         
-        cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
-        cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
-        cout << "RotaEst" << " rx "<< rotationEst.x<< " ry " << rotationEst.y<< " rz " << rotationEst.z <<endl;
-
+         
+       
+        
 
         
         vector<KeyPoint> warpedDebugKeyPoints;
-        vector<KeyPoint> warpedDebugKeyPoints2;
+
+
         WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints, 1.0);
-        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints2, 10.0);
         //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints);
 
          // WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints, 1.0);
          //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints2, 10);
         
+        /*
         float u1 = warpedDebugKeyPoints[0].pt.x;
-        float    v1 = warpedDebugKeyPoints[0].pt.y;
-                float u2 = warpedDebugKeyPoints2[0].pt.x;
-        float    v2 = warpedDebugKeyPoints2[0].pt.y;
+        float v1 = warpedDebugKeyPoints[0].pt.y;
+        float u2 = _previous_frame->nextGoodMatches[0].pt.x;
+        float v2 = _previous_frame->nextGoodMatches[0].pt.y;
         cout << "u1 " << u1 << " v1 " <<  v1 << " u2 " << u2<< " v2 " << v2 <<endl;
+        */
         
-        drawKeypoints(_previous_frame->grayImage[lvl], warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints2, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(currentImageDebugToShow, _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(_current_frame->grayImage[lvl], _current_frame->prevGoodMatches, currentImageToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+        
+        drawKeypoints(_previous_frame->grayImage[lvl], _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+       // drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(_current_frame->grayImage[lvl], _current_frame->prevGoodMatches, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+
+      
+
+        clock_t begin= clock(); 
+        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, Rotation_ResCam);
+        if(translationResEst.dot(translationGt)<0)
+        {
+            translationResEst = -translationResEst;
+        }
+        clock_t detect1 = clock(); 
+        double elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;  
+
+        cout << "elapsed = " << elapsed_detect*1000<< " ms" <<endl; 
+        cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
+        cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
+         cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
+        cout << "RotaEst" << " rx "<< rotationEst.x<< " ry " << rotationEst.y<< " rz " << rotationEst.z <<endl;
 
         imshow("currentDebugImage1", currentImageDebugToShow);
         imshow("currentDebugImage2", currentImageToShow);
-        char c_input = (char) waitKey(-1);
+        char c_input = (char) waitKey(30);
         if( c_input == 'q' | c_input == ((char)27) )  {
                 exit(0);
         }
@@ -383,6 +410,148 @@ namespace vi
         
     }
 
+    Point3f VISystem::F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat)
+    {
+        int lvl = 0;
+        float fx = fx_[lvl];
+        float fy = fy_[lvl];
+        float cx = cx_[lvl];
+        float cy = cy_[lvl];
+
+        Point3f vector1, vector1k; //Feature Vector en frame 1
+        Point3f vector2, vector2k; // Feature Vector en frame2
+        Point3f normal, n1, n2;  // vector del plano 1 y 2 de cada pareja de features
+        Point3f d, dnorm; // vector de dezplazamiento y normalizado
+
+        int numkeypoints = inPoints1.size();
+        Point3f pont;
+        
+
+        float u1, v1, u2, v2;
+        float u1k, v1k, u2k, v2k; // key
+
+        vector <Point3f> normalVectors;
+        Mat degenerate = Mat::zeros(1, numkeypoints, CV_32F) ; // vector la degeneracion de los vectores
+
+        float sx = TraslationResidual.at<float>(0,0);
+        float sy = TraslationResidual.at<float>(1,0);
+        float sz = TraslationResidual.at<float>(2,0);
+        float scale = sqrt(sx*sx+sy*sy+sz*sz);
+
+        // Debug string con degeneracion
+       
+
+
+        // Crear vectores normales al plano de correspondecias (epipolar)
+        for (int i = 0; i< numkeypoints; i++)
+        {
+            u1 = inPoints1[i].pt.x;
+            v1 = inPoints1[i].pt.y;
+            u2 = inPoints2[i].pt.x;
+            v2 = inPoints2[i].pt.y;
+
+             // Creacion de vectores
+            vector1.x = (u1-cx)/fx;
+            vector1.y = (v1-cy)/fy;
+            vector1.z = 1.0;
+
+            vector2.x = (u2-cx)/fx;
+            vector2.y = (v2-cy)/fy;
+            vector2.z = 1.0;
+
+            vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
+            vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
+
+            normal = vector1.cross(rotationMat*vector2); // Vector normal al plano epipolar
+            normalVectors.push_back(normal); // 
+            degenerate.at<float>(0, i) = sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);
+             std::ostringstream strs;
+            strs << fixed<< setprecision(2)<< degenerate.at<float>(0, i)*10;
+            std::string str = strs.str();
+            putText(currentImageDebugToShow,str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.32,Scalar(50,255,50),0.9, LINE_AA);
+
+
+
+        }
+
+
+        
+        // Filtrar los vectores normales en funcion de su degeneracion
+        
+        vector <Point3f> normalVectorsOk; // Vectores filtrados  
+        Mat sortedIndexes; // vector para almacenar los indices de  con las valores ordenados;
+
+        // Ordenar arreglos de coordenadas de forma descendente, y guardar los indices en Sorted;
+        cv::sortIdx(degenerate, sortedIndexes, CV_SORT_EVERY_ROW + CV_SORT_DESCENDING); 
+
+        int sizeNewGroup = int(numkeypoints*1.0); // Numero de vectores normales a considerar en el filtro
+        int index;
+        for (int i = 0; i<sizeNewGroup; i++)
+        {
+            index = sortedIndexes.at<int>(0, i); // indice
+            normalVectorsOk.push_back(normalVectors[index]);
+            //cout << degenerate.at<float>(0, index) <<endl;
+        }
+        
+        // Obtener vector de traslacion RANSAC del grupo filtrado
+        int index1, index2;
+        Point3f dVector;
+        float errorMin= 10000000;
+        Point3f optimalDistance;
+        float errorSum = 0.0;
+
+        int RANSAC_iter = 1000;
+        for (int i = 0; i<RANSAC_iter; i++)
+        {
+            index1 = rand()%(sizeNewGroup -1); // Tomar un feature aleatorio
+            index2 = rand()%(sizeNewGroup -1); // Tomar un feature aleatorio
+            errorSum = 0.0;
+            dVector = normalVectors[index1].cross(normalVectors[index2]);
+            if (dVector.x != 0.0 || dVector.y != 0.0 ||  dVector.z!=0.0)
+            {
+                dVector = dVector/sqrt(dVector.x*dVector.x +dVector.y*dVector.y+dVector.z*dVector.z);
+
+                float errorx = (sx-scale*dVector.x)/sx;
+                float errory = (sy-scale*dVector.y)/sy;
+                float errorz = (sz-scale*dVector.z)/sz;
+
+                //cout << "ex " << errorx*100 << " ey " << errory*100 << " ez " << errorz*100 <<endl;
+                
+
+                for (int i = 0; i<sizeNewGroup ; i++)
+                {
+                    errorSum = errorSum + abs(dVector.dot(normalVectors[i]))*abs(dVector.dot(normalVectors[i]));
+                }
+                if (errorSum<errorMin)
+                {
+                    errorMin = errorSum;
+                    optimalDistance = dVector;
+                }
+
+
+            }
+            /*
+            if ( (vector1-rotationMat*vector2).dot(dVector)>0)
+            {
+                dVector = -dVector;
+            }
+            */
+        }
+
+        /*
+        cout << "optimal Distance = " <<scale*optimalDistance << endl;
+        cout << "error min = "<< errorMin << endl;
+        cout << "gt distance" << TraslationResidual <<endl;
+        */
+
+        
+
+
+        return scale*optimalDistance ;
+
+
+        
+    }
 
     void VISystem::WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints, float z)
     {
@@ -402,38 +571,59 @@ namespace vi
 
         Mat projectionMat;
         hconcat(rotationMat, translationMat, projectionMat);
-        cout << projectionMat <<endl;
+        //cout << projectionMat <<endl;
  
         projectionMat = cameraMatrix * projectionMat;
 
-        cout << projectionMat <<endl;
+
+
+        //cout << projectionMat <<endl;
 
           
         int numkeypoints = inPoints.size();
 
         float u1, v1, u2, v2, a, b;
-        Mat inPoint3dHomo = Mat::ones(4, 1, CV_32FC1); 
+        Mat inPoint3dHomo = Mat::ones(3, 1, CV_32FC1); 
         Mat outPoint3dHomo = Mat::ones(3, 1, CV_32FC1); 
 
         for (int index = 0; index< numkeypoints; index++)
         {
-            u1 = inPoints[index].pt.x;
-            v1 = inPoints[index].pt.y;
-            a = z*(u1-cx)/fx;
-            b = z*(v1-cy)/fy;
+            u2 = inPoints[index].pt.x;
+            v2 = inPoints[index].pt.y;
+            a =(u2-cx)/fx;
+            b =(v2-cy)/fy;
             inPoint3dHomo.at<float>(0, 0) = a;
             inPoint3dHomo.at<float>(1, 0) = b;
-            inPoint3dHomo.at<float>(2, 0) = z;
+            inPoint3dHomo.at<float>(2, 0) = 1.0;
+            float tx  = translationMat.at<float>(0, 0);
+            float ty  = translationMat.at<float>(1, 0);
+            float tz  = translationMat.at<float>(2, 0);
+            float sx  = a;
+            float sy  = b;
+            float sz  =  1.0;
+            float module =  sqrt(tx*tx+ty*ty+tz*tz);
+            float modulein =  sqrt(sx*sx+sy*sy+sz*sz);
+            //translationMat = translationMat/module;
+            outPoint3dHomo = rotationMat*inPoint3dHomo;//+translationMat/r;
+            float c = outPoint3dHomo.at<float>(2, 0);
+            float sca =(1-c)/translationMat.at<float>(2, 0);
+            //cout << "sca" << sca <<endl;
+            //cout << outPoint3dHomo.at<float>(2, 0) <<endl;
+            //outPoint3dHomo = outPoint3dHomo+sca*translationMat;
 
-            outPoint3dHomo = projectionMat*inPoint3dHomo;
 
             KeyPoint outKeypoint;
-            float z2 = outPoint3dHomo.at<float>(2, 0)/z;
             //cout << a << "fdas " << b <<  " z " << endl;
-            outKeypoint.pt.x = outPoint3dHomo.at<float>(0, 0)/(z);
-            outKeypoint.pt.y = outPoint3dHomo.at<float>(1, 0)/(z);
+            outKeypoint.pt.x = fx*outPoint3dHomo.at<float>(0, 0)/outPoint3dHomo.at<float>(2, 0)+cx;
+            outKeypoint.pt.y = fy*outPoint3dHomo.at<float>(1, 0)/outPoint3dHomo.at<float>(2, 0)+cy;
             //cout <<  outPoint3dHomo.at<float>(2, 0) <<  " " << outPoint3dHomo.at<float>(3, 0) <<endl;
-            //cout << "u1 " << u1 << " v1 " <<  v1 << " u2 " << outKeypoint.pt.x << " v2 " << outKeypoint.pt.y <<endl;
+            if(index == -1)
+            {
+                cout <<  inPoint3dHomo <<endl;
+                cout <<  outPoint3dHomo <<endl;
+                cout << "u1 " << u1 << " v1 " <<  v1 << " u2 " << outKeypoint.pt.x << " v2 " << outKeypoint.pt.y <<endl;
+            }
+            
 
             outPoints.push_back(outKeypoint);
 
@@ -1092,8 +1282,13 @@ namespace vi
 
         Mat33f rotationCamEigen ;
         cv2eigen(imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation, rotationCamEigen);
-        current_poseCam = SE3(rotationCamEigen, SE3::Point(0.0, 0.0, 0.0));
+        SE3::Point tRes;
+        tRes.x() = translationResEst.x;
+        tRes.y() = translationResEst.y;
+        tRes.z() = translationResEst.z;
         
+        current_poseCam = SE3(rotationCamEigen, tRes); // residual
+        /*
         //current_poseCam = SE3(camera.frameList[camera.frameList.size()-2]->rigid_transformation_.unit_quaternion(), (camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation()));
         Mat44f rigidEigen = current_poseCam.matrix();
         
@@ -1108,6 +1303,8 @@ namespace vi
         cv2eigen(residualRotation, rotationEigen);
         current_poseCam.translation() = current_poseCam.translation();
         current_poseCam = SE3( rotationEigen, -current_poseCam.translation() );
+
+        */
         
 
 

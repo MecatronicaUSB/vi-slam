@@ -108,11 +108,11 @@ int main( int argc, char** argv ){
     positionCamGTprev = Data.gtPosition.back()+visystem.imu2camTranslation;
     RPYOrientationCamGTprev = rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
     outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
-    while(Data.currentTimeMs<61000) // j <data.lastindex
+    while(j < Data.indexLastData) // j <data.lastindex
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j, j+20);
-        j = j+20;
+        Data.UpdateDataReader(j, j+6);
+        j = j+6;
          
         positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
         
