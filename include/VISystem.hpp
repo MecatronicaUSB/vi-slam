@@ -55,7 +55,7 @@ class VISystem
         Mat TukeyFunctionWeights(Mat _input) ;
         Mat WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
         Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat);
-        void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints, float z);
+        void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
         float MedianAbsoluteDeviation(Mat _input);
         float MedianMat(Mat _input) ;
 

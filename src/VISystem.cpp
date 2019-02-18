@@ -363,7 +363,7 @@ namespace vi
         vector<KeyPoint> warpedDebugKeyPoints;
 
 
-        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints, 1.0);
+        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints);
         //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints);
 
          // WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints, 1.0);
