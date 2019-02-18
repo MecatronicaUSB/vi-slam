@@ -298,8 +298,7 @@ Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position)
     double s3 = sin(yaw);
 	
 	Mat transformationMatrix = Mat::zeros(4,4,CV_32FC1);
-
-
+	
 	transformationMatrix.at<float>(0,0) = c3*c2;
 	transformationMatrix.at<float>(0,1) = c3*s2*s1-s3*c1;
 	transformationMatrix.at<float>(0,2) = c3*s2*c1+s3*s1;

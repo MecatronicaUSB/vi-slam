@@ -121,8 +121,10 @@ int main( int argc, char** argv ){
         
         qOrientationCamGT = toQuaternion(RPYOrientationCamGT.x, RPYOrientationCamGT.y, RPYOrientationCamGT.z);
         Mat transformationResidual = RPYAndPosition2transformationMatrix(RPYOrientationCamGTprev, positionCamGTprev).inv()*RPYAndPosition2transformationMatrix(RPYOrientationCamGT, positionCamGT);
+        
         Mat Traslation_ResCamGT = Mat::ones(3, 1, CV_32FC1);  
         Mat Rotation_ResCamGt = transformationMatrix2rotationMatrix(transformationResidual);
+        
         Traslation_ResCamGT.at<float>(0,0) = transformationResidual.at<float>(0,3);
         Traslation_ResCamGT.at<float>(1,0) = transformationResidual.at<float>(1,3);
         Traslation_ResCamGT.at<float>(2,0) = transformationResidual.at<float>(2,3);
