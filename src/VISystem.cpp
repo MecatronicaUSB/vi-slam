@@ -147,8 +147,10 @@ namespace vi
         InitializeCamera(camera_model->detector, camera_model->matcher, w, h, camera_model->num_cells, camera_model->length_patch );
         
         camera.Update(currentImage);
-        bool key_added = camera.addKeyframe();
-        cout << "Camera Initialized"<<endl;
+        nPointsLastKeyframe = camera.detectAndComputeFeatures(); // asumir que la primera imagen es buena y es keyframe
+        lastImageWasKeyframe = true;
+        camera.saveFrame();
+        cout << "Camera Initialized con "<< camera.frameList.back()->keypoints.size() << " features"<<endl;
 
         initialized = true;
         cout << "Initializing system ... done" << endl << endl;
@@ -220,7 +222,7 @@ namespace vi
 
 
 
-    void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
+    bool VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration)
     {
         prevImage = currentImage;
         currentImage = _currentImage.clone();
@@ -262,11 +264,11 @@ namespace vi
             Track();
         }
         
-        
+        return false;
 
     }
 
-    void VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition)
+    bool VISystem::AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition)
     {
         prev_gtPosition = current_gtPosition;
         current_gtPosition = _gtPosition+imu2camTranslation ;
@@ -275,45 +277,83 @@ namespace vi
         currentImage = _currentImage.clone();
        
         
-        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // primeras medidas
+        imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // Medidas tomadas
         imuCore.estimate();
         velocityCam = velocityCam+imuCore.residualVelocity; // velocidad igual a la de la imu
         velocityImu = velocityCam;
         accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
      
-        camera.Update(_currentImage);
-        bool key_added = camera.addKeyframe();
-        num_keyframes = camera.frameList.size();
-        if (camera.frameList.size()>= 1) // primera imagen agregada
-        {
-            /*
-            drawKeypoints(prevImage, camera.frameList[camera.frameList.size()-2]->nextGoodMatches , prevImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-            drawKeypoints(currentImage, camera.frameList[camera.frameList.size()-1]->prevGoodMatches, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-            imshow("prevImage", prevImageToShow);
-            imshow("currentImage", currentImageToShow);
-            waitKey();
-            */
-            //camera.printStatistics();
 
-            /*if (camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size() < min_features)
-            {
-                //min_features = camera.frameList[camera.frameList.size()-1]->prevGoodMatches.size();
-                camera.printStatistics();
-                
-            }
-            */
-            if (num_keyframes > num_max_keyframes)
-            {
-                FreeLastFrame();
-            }
-            // Estimar pose de camara con solver
-            //EstimatePoseFeaturesIter(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-            //EstimatePoseFeatures(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-            EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-            //EstimatePoseFeaturesRansac(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-            Track();
-        }
+        // Limpiar basura por favor
+
+        // Analizar imagen nueva
+        camera.Update(_currentImage);
+        nPointsCurrentImage = camera.detectAndComputeFeatures();
         
+
+
+        currentImageIsKeyframe = false;
+
+        if (nPointsCurrentImage > int(nPointsLastKeyframe*0.45)) // se considera que es hay suficientes puntos para el match
+        {
+            camera.computeGoodMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
+            if (lastImageWasKeyframe){
+                init_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld[0]);
+                final_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld.back());
+                RotationResCam =  imu2camRotation.t()* init_rotationMatrix.t()*final_rotationMatrix*imu2camRotation;
+
+            }
+            else
+            {
+                final_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld.back());
+                RotationResCam =  imu2camRotation.t()* init_rotationMatrix.t()*final_rotationMatrix*imu2camRotation;
+            }
+
+            Point3d rpyResidual = rotationMatrix2RPY(RotationResCam);
+             float disparityThreshold = 22;
+             double disparityAngThreshold = 10.0;
+
+            double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
+            float disparity = Disparity(camera.frameList.back()->nextGoodMatches, camera.currentFrame->prevGoodMatches);
+
+            if (disparity > disparityThreshold) currentImageIsKeyframe = true;   
+            if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
+
+            if (currentImageIsKeyframe)
+            {
+                camera.saveFrame(); // Guardar frame como keyframe
+                num_keyframes = camera.frameList.size();
+
+                if (num_keyframes > num_max_keyframes)
+                {
+                    FreeLastFrame();
+                }
+                
+                // Estimar traslacion entre keyframes
+                EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+
+                // Obtener la nueva posicion de la cámarael
+                Track();
+
+
+                nPointsLastKeyframe = nPointsCurrentImage;
+            }
+            
+
+            cout << "Disparity Trans = " << disparity <<endl;
+            cout << "Disparity Ang = " << disparityAng <<endl;
+                
+          
+            
+            
+
+        }
+     
+        
+
+        lastImageWasKeyframe = currentImageIsKeyframe;
+
+        return lastImageWasKeyframe;
         
 
     }
@@ -334,15 +374,64 @@ namespace vi
     }
 
 
+  float VISystem::Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints )
+  {
+        int lvl = 0;
+        float fx = fx_[lvl];
+        float fy = fy_[lvl];
+        float cx = cx_[lvl];
+        float cy = cy_[lvl];
+
+        float disparitySum = 0;
+        float disparity = 0;
+
+        int numkeypoints = keyPoints.size();
+
+        float u1, v1, u2, v2, a, b; // u1, v1 es la reproyeccion de u2,v2 considerando solo rotacion
+        float uk1, vk1; // posicion en pixeles del punto del keyframe
+        Point3f inPoint3dHomo ; 
+        Point3f outPoint3dHomo; 
+
+        for (int index = 0; index< numkeypoints ; index++)
+        {
+            u2 = inPoints[index].pt.x;
+            v2 = inPoints[index].pt.y;
+
+            uk1 = keyPoints[index].pt.x;
+            vk1 = keyPoints[index].pt.y;
+
+            a =(u2-cx)/fx;
+            b =(v2-cy)/fy;
+            inPoint3dHomo.x = a;
+            inPoint3dHomo.y = b;
+            inPoint3dHomo.z = 1.0;
+
+            outPoint3dHomo = RotationResCam*inPoint3dHomo;
+            u1 = fx*outPoint3dHomo.x/outPoint3dHomo.z+cx;
+            v1 = fy*outPoint3dHomo.y/outPoint3dHomo.z+cy;
+            
+            //cout << RotationResCam <<endl;
+            //cout << "u2 " << u2 << " v2 "<< v2 << endl;
+            //cout << "err" << uk1 << " vk1 "<< vk1 << endl;
+            
+            disparitySum = disparitySum+ sqrt((uk1-u1)*(uk1-u1) +(vk1-v1)*(vk1-v1) );
+            
+            
+
+        }
+
+        disparity = disparitySum/numkeypoints; // Disparidad promedio
+
+        return disparity;
+  }
+
   void VISystem::EstimatePoseFeaturesDebug(Frame* _previous_frame, Frame* _current_frame)
     {
-           
-        Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
-
+        
         Point3f  translationGt;
 
         Point3d rotationGt = rotationMatrix2RPY(RotationResidual)*180/M_PI;
-        Point3d rotationEst = rotationMatrix2RPY(Rotation_ResCam)*180/M_PI;
+        Point3d rotationEst = rotationMatrix2RPY(RotationResCam)*180/M_PI;
 
         
         translationGt.x = TraslationResidual.at<float>(0,0);
@@ -363,7 +452,7 @@ namespace vi
         vector<KeyPoint> warpedDebugKeyPoints;
 
 
-        WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints);
+        //WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints);
         //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints);
 
          // WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints, 1.0);
@@ -379,14 +468,14 @@ namespace vi
         
         
         drawKeypoints(_previous_frame->grayImage[lvl], _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-       // drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+        //drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+        drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
         drawKeypoints(_current_frame->grayImage[lvl], _current_frame->prevGoodMatches, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
 
       
 
         clock_t begin= clock(); 
-        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, Rotation_ResCam);
+        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, RotationResCam);
         if(translationResEst.dot(translationGt)<0)
         {
             translationResEst = -translationResEst;
@@ -397,7 +486,7 @@ namespace vi
         cout << "elapsed = " << elapsed_detect*1000<< " ms" <<endl; 
         cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
         cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
-         cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
+        cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
         cout << "RotaEst" << " rx "<< rotationEst.x<< " ry " << rotationEst.y<< " rz " << rotationEst.z <<endl;
 
         imshow("currentDebugImage1", currentImageDebugToShow);
@@ -647,7 +736,7 @@ namespace vi
     void VISystem::EstimatePoseFeaturesIter(Frame* _previous_frame, Frame* _current_frame)
     {
         Prof.clear();
-        Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
+        Matx33f Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
         
 
         vector<KeyPoint> goodKeypoints1, goodKeypoints2;
@@ -667,19 +756,19 @@ namespace vi
         float cx = cx_[lvl];
         float cy = cy_[lvl];
 
-        Mat rotationMatrix = Rotation_ResCam;
+        Matx33f rotationMatrix = Rotation_ResCam;
 
-        double r11 = rotationMatrix.at<float>(0,0);
-        double r12 = rotationMatrix.at<float>(0,1);
-        double r13 = rotationMatrix.at<float>(0,2);
+        double r11 = rotationMatrix(0,0);
+        double r12 = rotationMatrix(0,1);
+        double r13 = rotationMatrix(0,2);
 
-        double r21 = rotationMatrix.at<float>(1,0);
-        double r22 = rotationMatrix.at<float>(1,1);
-        double r23 = rotationMatrix.at<float>(1,2);
+        double r21 = rotationMatrix(1,0);
+        double r22 = rotationMatrix(1,1);
+        double r23 = rotationMatrix(1,2);
 
-        double r31 = rotationMatrix.at<float>(2,0);
-        double r32 = rotationMatrix.at<float>(2,1);
-        double r33 = rotationMatrix.at<float>(2,2);
+        double r31 = rotationMatrix(2,0);
+        double r32 = rotationMatrix(2,1);
+        double r33 = rotationMatrix(2,2);
 
 
         double coeffz;
@@ -711,7 +800,8 @@ namespace vi
         cameraMat.at<float>(2,2) = 1.0;
         
         Mat P1 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
-        Mat P2 = getProjectionMat(cameraMat, rotationMatrix, TraslationResidual);
+        Mat P2 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
+        //Mat P2 = getProjectionMat(cameraMat, rotationMatrix, TraslationResidual);
         
         // Compute depth of 3D points using triangulation
         Mat mapPoints;
@@ -855,7 +945,7 @@ namespace vi
         
         Point3d residualRPYcam = rotationMatrix2RPY(imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation);//rotationMatrix2RPY(imu2camRotationRPY2rotationMatrix(imuCore.residualRPY));
         
-        Mat world2imuRotation = imuCore.final_rotationMatrix;
+        Matx33f world2imuRotation = imuCore.final_rotationMatrix;
         Point3d currentRPYCam = rotationMatrix2RPY(world2imuRotation*imu2camRotation);
 
         Point3d currentPositionCam = positionCam;
@@ -864,7 +954,7 @@ namespace vi
          
  
         
-        Mat residualRotation = RPY2rotationMatrix(-residualRPYcam);
+        Matx33f residualRotation = RPY2rotationMatrix(-residualRPYcam);
         cout << "dale"<<residualRotation<<endl;
 
        
@@ -1290,7 +1380,7 @@ namespace vi
 
 
         Mat33f rotationCamEigen ;
-        cv2eigen(imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation, rotationCamEigen);
+        cv2eigen(RotationResCam, rotationCamEigen);
         SE3::Point tRes;
         tRes.x() = translationResEst.x;
         tRes.y() = translationResEst.y;
@@ -1405,7 +1495,7 @@ namespace vi
         float sx = TraslationResidual.at<float>(0,0);
         float sy = TraslationResidual.at<float>(1,0);
         float sz = TraslationResidual.at<float>(2,0);
-        Mat Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
+        Matx33f Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
         //Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
         //Mat trans_skew =  E*Rotation_ResCam.t();
 

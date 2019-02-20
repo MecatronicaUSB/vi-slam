@@ -119,7 +119,7 @@ void DataReader::UpdateDataReader(int index, int index2){
     double timeImage = imageReader.getImageTime(imageIndex0+index); // poner en clase
     double timeLineImu = imuReader.getGroundTruthData(indexImuReader, 0);
     double timeLineGt= gtReader.getGroundTruthData(indexGtReader, 0);
-    cout << "time dif " << timeImage -timeLineGt <<endl;
+    //cout << "time dif " << timeImage -timeLineGt <<endl;
     
     double delta1;
     double delta2;
@@ -131,7 +131,7 @@ void DataReader::UpdateDataReader(int index, int index2){
         timeLineGt= gtReader.getGroundTruthData(indexGtReader, 0);
         delta1 = timeLineGt-timeImage;
     }
-    cout << "time dif " << timeImage -timeLineGt <<endl;
+    //cout << "time dif " << timeImage -timeLineGt <<endl;
      // Encontrar el indice del dato de imu posterior a la imagen1    
     
     delta2 = timeLineImu-timeImage;
@@ -161,8 +161,8 @@ void DataReader::UpdateDataReader(int index, int index2){
      accBias.clear();
     // Obtener todos los datos entre las dos imagenes
     timeImuReader = imuReader.getGroundTruthData(indexImuReader, 0);
-    cout << "time image 2 = " << imageReader.getImageTime(imageIndex0 +index2) - imageReader.getImageTime(imageIndex0 +index)<<endl;
-        cout << "time imu reader" << imageReader.getImageTime(imageIndex0 +index)-timeImuReader<<endl;
+    //cout << "time image 2 = " << imageReader.getImageTime(imageIndex0 +index2) - imageReader.getImageTime(imageIndex0 +index)<<endl;
+     //   cout << "time imu reader" << imageReader.getImageTime(imageIndex0 +index)-timeImuReader<<endl;
     while(timeImuReader<=static_cast<double>(imageReader.getImageTime(imageIndex0 +index2)))
     {
         angularVelocity.x =  imuReader.getGroundTruthData(indexImuReader, 1);

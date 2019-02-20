@@ -93,41 +93,44 @@ int Camera::detectAndComputeFeatures(){
 
 void Camera::setDetector(int _detector)
 {
-    switch (_detector)
+    switch (_detector) // Añadir brisk para futuras versiones
     {
         case USE_KAZE:
         {
-            detector = KAZE::create(); // Normaliza distancia
+            detector = KAZE::create( false, false, 0.005f); // Normaliza distancia
+            //detector.setThreshold(200.0);
             cout << "Using Kaze detector"<<endl;
             break;
         }
         case USE_AKAZE:
         {
-            detector = AKAZE::create();
+            detector = AKAZE::create(AKAZE::DESCRIPTOR_MLDB,
+                                      0,  3,
+                                      0.004f);
             cout << "Using Akaze detector"<<endl;
             break;
         }
         case USE_SIFT:
         {
-            detector = SIFT::create();
+            detector = SIFT::create(200);
             cout << "Using SIFT detector"<<endl;
             break;
         }
         case USE_SURF:
         {
-            detector = SURF::create(); // Normaliza distancia
+            detector = SURF::create(1000); // setThreshold
             cout << "Using SURF detector"<<endl;
             break;
         }
         case USE_ORB:
         {
-            detector = ORB::create(600);
+            detector = ORB::create(200);
             cout << "Using ORB detector"<<endl;
             break;
         }
         default:
         {
-            detector = KAZE::create();
+            detector = KAZE::create(false, false, 0.005);
             cout << "Using Kaze detector"<<endl;
             break;
         }
@@ -200,17 +203,19 @@ bool Camera::addKeyframe()
     cdetect = clock(); 
 
     
-    if ( (nPointsDetect > 1) && (frameList.size()!= 0))
+    if ( (nPointsDetect > 10) && (frameList.size()!= 0)) // Frames disferentes al primero
     { // is a keyframe (maybe)
         //computeDescriptors();
         num_images = num_images+1;
         cdescriptors = clock(); 
         computeGoodMatches();
         cgood = clock();
-        computeGradient();
+        //computeGradient();
         cgradient = clock();
+        /*
         ObtainPatchesPointsPreviousFrame();
         ObtainDebugPointsPreviousFrame(); // Debug
+        */
         //computePatches();
         //computeResiduals();
         cpatches = clock();
@@ -222,7 +227,7 @@ bool Camera::addKeyframe()
         //computeDescriptors();
         cdescriptors = clock(); 
         cgood = clock();
-        computeGradient();
+        //computeGradient();
         cgradient = clock();
         cpatches = clock();
         saveFrame();

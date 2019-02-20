@@ -5,6 +5,8 @@ import math
 
 Ts = 0.05*20
 
+lastindex = int(50)
+
 
 
 
@@ -23,12 +25,12 @@ Ts = 0.05*20
 
 def main():
 
-    plot_est = [1, 1, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
+    plot_est = [1, 0, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
     plot_res = [0,0,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
     plot_error = [0, 0, 0, 0]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
-
+    time = np.array([])
     estPosition = np.zeros([0, 3])
     gtPosition = np.zeros([0, 3])
     estVelocity = np.zeros([0, 3])
@@ -47,17 +49,26 @@ def main():
     estAngVelocity= np.zeros([0, 3])
 
     maxTime = 142.0
-    
+
+    #time = np.arange(0, Ts*(estPosition[:, 0].size), Ts )
+    found = False
+    index = 0
     with open('/home/lujano/Documents/outputVISlam.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
-            estPosition = np.append( estPosition, [[float(row[0]), float(row[1]), float(row[2])]], 0)
-            estVelocity = np.append( estVelocity, [[float(row[3]), float(row[4]), float(row[5])]], 0)
-            estAcc = np.append( estAcc, [[float(row[6]), float(row[7]), float(row[8])]], 0)
-            estOrientationQ = np.append( estOrientationQ, [[float(row[9]), float(row[10]), float(row[11]), float(row[12])]], 0)
-            gtPosition = np.append( gtPosition, [[float(row[13]), float(row[14]), float(row[15])]], 0)
-            gtVelocity = np.append( gtVelocity, [[float(row[16]), float(row[17]), float(row[18])]], 0)
-            gtOrientationQ = np.append( gtOrientationQ, [[float(row[19]), float(row[20]), float(row[21]), float(row[22])]], 0)
+            time = np.append( time, [float(row[0])], 0)
+            if found :
+                if float(row[0])> maxTime:
+                    found = True
+                    lastindex = index
+            estPosition = np.append( estPosition, [[float(row[1]), float(row[2]), float(row[3])]], 0)
+            estVelocity = np.append( estVelocity, [[float(row[4]), float(row[5]), float(row[6])]], 0)
+            estAcc = np.append( estAcc, [[float(row[7]), float(row[8]), float(row[9])]], 0)
+            estOrientationQ = np.append( estOrientationQ, [[float(row[10]), float(row[11]), float(row[12]), float(row[13])]], 0)
+            gtPosition = np.append( gtPosition, [[float(row[14]), float(row[15]), float(row[16])]], 0)
+            gtVelocity = np.append( gtVelocity, [[float(row[17]), float(row[18]), float(row[19])]], 0)
+            gtOrientationQ = np.append( gtOrientationQ, [[float(row[20]), float(row[21]), float(row[22]), float(row[23])]], 0)
+            index = index+1
             #estAngVelocity = np.append( estAngVelocity, [[float(row[23]), float(row[24]), float(row[25])]], 0)
 
         
@@ -79,9 +90,11 @@ def main():
     gtAccx= fd(gtVelocity[:, 0], Ts)
     gtAccy = fd(gtVelocity[:, 1], Ts)
     gtAccz = fd(gtVelocity[:, 2], Ts)
+
+    
     
             
-    time = np.arange(0, Ts*(estPosition[:, 0].size), Ts )
+  
 
 
     
@@ -432,8 +445,8 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
     
 
     plt.subplot(3, 1, 1)
-    plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1,0], 'b-', linewidth=2, label=label1[0])
-    plt.plot(time[0:int(maxTime/Ts)+1], gtData[0:int(maxTime/Ts)+1, 0], 'r-', linewidth=2, label=label1[2])
+    plt.plot(time, estData[:,0], 'b-', linewidth=2, label=label1[0])
+    plt.plot(time, gtData[:, 0], 'r-', linewidth=2, label=label1[2])
     plt.ylabel(label1[1])
     plt.legend()
     plt.xlim([0, maxTime])
@@ -443,8 +456,8 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
 
 
     plt.subplot(3, 1, 2)
-    plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1,1], 'b-', linewidth=2, label=label2[0])
-    plt.plot(time[0:int(maxTime/Ts)+1], gtData[0:int(maxTime/Ts)+1,1], 'r-', linewidth=2, label=label2[2])
+    plt.plot(time, estData[:,1], 'b-', linewidth=2, label=label2[0])
+    plt.plot(time, gtData[:,1], 'r-', linewidth=2, label=label2[2])
     plt.ylabel(label2[1])
     plt.xlim([0, maxTime])
     plt.legend()
@@ -454,8 +467,8 @@ def plotTriple( estData, gtData, time, label1, label2, label3, maxTime):
 
     
     plt.subplot(3, 1, 3)
-    plt.plot(time[0:int(maxTime/Ts)+1], estData[0:int(maxTime/Ts)+1, 2], 'b-', linewidth=2, label=label3[0])
-    plt.plot(time[0:int(maxTime/Ts)+1], gtData[0:int(maxTime/Ts)+1, 2], 'r-', linewidth=2, label=label3[2])
+    plt.plot(time, estData[:, 2], 'b-', linewidth=2, label=label3[0])
+    plt.plot(time, gtData[:, 2], 'r-', linewidth=2, label=label3[2])
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.xlim([0, maxTime])
@@ -474,8 +487,8 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
     plt.figure()
   
     plt.subplot(3, 1, 1)
-    plt.plot(time[0:int(maxTime/Ts)+1], estData1[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label1[0])
-    plt.plot(time[0:int(maxTime/Ts)+1], gtData1[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label1[2])
+    plt.plot(time, estData1, 'b-', linewidth=2, label=label1[0])
+    plt.plot(time, gtData1, 'r-', linewidth=2, label=label1[2])
     plt.ylabel(label1[1])
     plt.xlabel("t(s)")
     plt.legend()
@@ -486,8 +499,8 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 
 
     plt.subplot(3, 1, 2)
-    plt.plot(time[0:int(maxTime/Ts)+1], estData2[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label2[0])
-    plt.plot(time[0:int(maxTime/Ts)+1], gtData2[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label2[2])
+    plt.plot(time, estData2, 'b-', linewidth=2, label=label2[0])
+    plt.plot(time, gtData2, 'r-', linewidth=2, label=label2[2])
     plt.ylabel(label2[1])
     plt.xlabel("t(s)")
     plt.xlim([0, maxTime])
@@ -498,8 +511,8 @@ def plotTripleSeparado( estData1, estData2, estData3, gtData1, gtData2, gtData3,
 
     
     plt.subplot(3, 1, 3)
-    plt.plot(time[0:int(maxTime/Ts)+1], estData3[0:int(maxTime/Ts)+1], 'b-', linewidth=2, label=label3[0])
-    plt.plot(time[0:int(maxTime/Ts)+1], gtData3[0:int(maxTime/Ts)+1], 'r-', linewidth=2, label=label3[2])
+    plt.plot(time, estData3, 'b-', linewidth=2, label=label3[0])
+    plt.plot(time, gtData3, 'r-', linewidth=2, label=label3[2])
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.xlim([0, maxTime])
@@ -527,9 +540,6 @@ def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.xlabel("t(s)")
     plt.legend()
     plt.xlim([0, maxTime])
-    ymax = np.max(Data1[0:int(maxTime/Ts)])
-    ymin = np.min(Data1[0:int(maxTime/Ts)])
-    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
     plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
@@ -540,9 +550,6 @@ def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label2[1])
     plt.xlabel("t(s)")
     plt.legend()
-    ymax = np.max(Data2[0:int(maxTime/Ts)])
-    ymin = np.min(Data2[0:int(maxTime/Ts)])
-    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.xlim([0, maxTime])
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
@@ -554,9 +561,6 @@ def plot(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.legend()
-    ymax = np.max(Data3[0:int(maxTime/Ts)])
-    ymin = np.min(Data3[0:int(maxTime/Ts)])
-    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.xlim([0, maxTime])
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
@@ -574,7 +578,7 @@ def plotHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.figure()
 
     plt.subplot(3, 1, 1)
-    plt.hist(Data1[0:int(maxTime/Ts)], bins = 30, density=True)
+    plt.hist(Data1[0:lastindex], bins = 30, density=True)
     plt.ylabel("Frecuencia")
     plt.xlabel(label1[1])
     plt.minorticks_on()
@@ -583,7 +587,7 @@ def plotHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
 
     plt.subplot(3, 1, 2)
-    plt.hist( Data2[0:int(maxTime/Ts)],  bins =30, density=True )
+    plt.hist( Data2[0:lastindex],  bins =30, density=True )
     plt.ylabel("Frecuencia")
     plt.xlabel(label2[1])
     plt.minorticks_on()
@@ -592,7 +596,7 @@ def plotHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     
     plt.subplot(3, 1, 3)
-    plt.hist(Data3[0:int(maxTime/Ts)], bins=30, density=True)
+    plt.hist(Data3[0:lastindex], bins=30, density=True)
     plt.ylabel("Frecuencia")
     plt.xlabel(label3[1])
     plt.minorticks_on()
@@ -612,7 +616,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.figure()
 
     plt.subplot2grid( (3, 4), (0, 3))
-    plt.hist(Data1[0:int(maxTime/Ts)], 30, density=True, orientation="horizontal")
+    plt.hist(Data1[0:lastindex], 30, density=True, orientation="horizontal")
     plt.xlabel("Frecuencia")
     plt.ylabel(label1[1])
     plt.minorticks_on()
@@ -621,7 +625,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
 
     plt.subplot2grid( (3, 4), (1, 3))
-    plt.hist( Data2[0:int(maxTime/Ts)],  bins =30, density=True, orientation="horizontal" )
+    plt.hist( Data2[0:lastindex],  bins =30, density=True, orientation="horizontal" )
     plt.xlabel("Frecuencia")
     plt.ylabel(label2[1])
     plt.minorticks_on()
@@ -630,7 +634,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     
     plt.subplot2grid( (3, 4), (2, 3))
-    plt.hist(Data3[0:int(maxTime/Ts)], bins=30, density=True, orientation="horizontal")
+    plt.hist(Data3[0:lastindex], bins=30, density=True, orientation="horizontal")
     plt.xlabel("Frecuencia")
     plt.ylabel(label3[1])
     plt.minorticks_on()
@@ -646,8 +650,8 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.xlabel("t(s)")
     plt.legend()
     plt.xlim([0, maxTime])
-    ymax = np.max(Data1[0:int(maxTime/Ts)])
-    ymin = np.min(Data1[0:int(maxTime/Ts)])
+    ymax = np.max(Data1[0:lastindex])
+    ymin = np.min(Data1[0:lastindex])
     plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
@@ -659,8 +663,8 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label2[1])
     plt.xlabel("t(s)")
     plt.legend()
-    ymax = np.max(Data2[0:int(maxTime/Ts)])
-    ymin = np.min(Data2[0:int(maxTime/Ts)])
+    ymax = np.max(Data2[0:lastindex])
+    ymin = np.min(Data2[0:lastindex])
     plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.xlim([0, maxTime])
     plt.minorticks_on()
@@ -673,8 +677,8 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.legend()
-    ymax = np.max(Data3[0:int(maxTime/Ts)])
-    ymin = np.min(Data3[0:int(maxTime/Ts)])
+    ymax = np.max(Data3[0:lastindex])
+    ymin = np.min(Data3[0:lastindex])
     plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.xlim([0, maxTime])
     plt.minorticks_on()

@@ -62,6 +62,7 @@ class ImuFilterNode{
         void detectAngBias(); // Detectar medidas para la calibración ang
         void detectAccBias(); // Detectar medidas para la calibración acc
         void printStatistics();
+        void clearData(); // Borra los datos obtenidos
         Point3d transform2World(Point3d acc, Point3d localAngles);
         Point3d angularPosition;
         Point3d angularVelocity;
@@ -78,11 +79,11 @@ class ImuFilterNode{
         vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
         vector <Point3d> accelerationWorld; // aceleracion del robot respecto al mundo
 
-        Mat init_rotationMatrix;
-        Mat final_rotationMatrix;
-        Mat residual_rotationMatrix;
+        Matx33f init_rotationMatrix;
+        Matx33f final_rotationMatrix;
+        Matx33f residual_rotationMatrix;
 
-        vector <Mat> world2imuRotation;
+        vector <Matx33f> world2imuRotation;
 
         // Residuales
         Point3d residualRPY;

@@ -111,8 +111,8 @@ int main( int argc, char** argv ){
     while(j < Data.indexLastData) // j <data.lastindex
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j, j+6);
-        j = j+6;
+        Data.UpdateDataReader(j, j+4);
+        j = j+4;
          
         positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
         
@@ -129,14 +129,14 @@ int main( int argc, char** argv ){
         Traslation_ResCamGT.at<float>(1,0) = transformationResidual.at<float>(1,3);
         Traslation_ResCamGT.at<float>(2,0) = transformationResidual.at<float>(2,3);
         
-        positionCamGTprev =  positionCamGT;
-        RPYOrientationCamGTprev = RPYOrientationCamGT;
+
         
         
         visystem.setGtRes(Traslation_ResCamGT, Rotation_ResCamGt);
         
 
-        visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration, Data.gtPosition.back());
+       bool disparityFound =  visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration, Data.gtPosition.back());
+
        
 
 
@@ -175,33 +175,41 @@ int main( int argc, char** argv ){
         <<  Data.gtQuaternion.back().w <<","
         <<endl;
         */
-        outputFilecsv <<  visystem.positionCam.x<<","
-        <<visystem.positionCam.y<<","
-        <<visystem.positionCam.z<<","
-        <<visystem.velocityCam.x<<","
-        <<visystem.velocityCam.y<<","
-        <<visystem.velocityCam.z<<","
-        <<visystem.accCam.x<<","
-        <<visystem.accCam.y<<","
-        <<visystem.accCam.z<<","
-        <<visystem.qOrientationCam.x <<","
-        <<visystem.qOrientationCam.y <<","
-        <<visystem.qOrientationCam.z <<","
-        <<visystem.qOrientationCam.w <<","
-        <<  positionCamGT.x <<","
-        <<  positionCamGT.y <<","
-        <<  positionCamGT.z <<","
-        <<  velocityCamGT.x <<","
-        <<  velocityCamGT.y <<","
-        <<  velocityCamGT.z <<","
-        <<  qOrientationCamGT.x <<","        
-        <<  qOrientationCamGT.y <<","
-        <<  qOrientationCamGT.z <<","
-        <<  qOrientationCamGT.w <<","
-        <<visystem.imuCore.angularVelocityIMUFilter.back().x<<","
-        <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
-        <<visystem.imuCore.angularVelocityIMUFilter.back().z
-        <<endl;
+       if (disparityFound)
+       {
+            outputFilecsv <<  Data.currentTimeMs/1000.0 <<  ","  // indice de tiempo
+            << visystem.positionCam.x<<","
+            <<visystem.positionCam.y<<","
+            <<visystem.positionCam.z<<","
+            <<visystem.velocityCam.x<<","
+            <<visystem.velocityCam.y<<","
+            <<visystem.velocityCam.z<<","
+            <<visystem.accCam.x<<","
+            <<visystem.accCam.y<<","
+            <<visystem.accCam.z<<","
+            <<visystem.qOrientationCam.x <<","
+            <<visystem.qOrientationCam.y <<","
+            <<visystem.qOrientationCam.z <<","
+            <<visystem.qOrientationCam.w <<","
+            <<  positionCamGT.x <<","
+            <<  positionCamGT.y <<","
+            <<  positionCamGT.z <<","
+            <<  velocityCamGT.x <<","
+            <<  velocityCamGT.y <<","
+            <<  velocityCamGT.z <<","
+            <<  qOrientationCamGT.x <<","        
+            <<  qOrientationCamGT.y <<","
+            <<  qOrientationCamGT.z <<","
+            <<  qOrientationCamGT.w <<","
+            <<visystem.imuCore.angularVelocityIMUFilter.back().x<<","
+            <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
+            <<visystem.imuCore.angularVelocityIMUFilter.back().z
+            <<endl;
+
+            positionCamGTprev =  positionCamGT;
+            RPYOrientationCamGTprev = RPYOrientationCamGT;
+       }
+
         
 
                 

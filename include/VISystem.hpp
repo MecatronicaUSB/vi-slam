@@ -45,8 +45,8 @@ class VISystem
         void EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame);
         void EstimatePoseFeaturesRansac(Frame* _previous_frame, Frame* _current_frame);
         void CalculateROI(Mat image);
-        void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
-        void AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition) ;
+        bool AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
+        bool AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition) ;
         void ObtainKeypointsTransformation(Mat candidates);
         void MatPoint2Keypoints( Mat _MatPoints, vector<KeyPoint> &_outputKeypoints);
         void FreeLastFrame();
@@ -58,6 +58,7 @@ class VISystem
         void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
         float MedianAbsoluteDeviation(Mat _input);
         float MedianMat(Mat _input) ;
+        float Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
 
         void setGtRes(Mat TraslationResGT , Mat RotationGT);
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
@@ -78,7 +79,7 @@ class VISystem
         Quaterniond qOrientationImu;
         Point3d RPYOrientationImu;
         Mat world2imuTransformation;
-        Mat world2imuRotation;
+        Matx33f world2imuRotation;
 
         Point3d positionCam;
         Point3d velocityCam;
@@ -90,7 +91,7 @@ class VISystem
 
 
         Mat imu2camTransformation;
-        Mat imu2camRotation;
+        Matx33f imu2camRotation;
         Point3d imu2camTranslation;
 
         SE3 final_poseCam;
@@ -133,8 +134,14 @@ class VISystem
         vector<Mat> K_ = vector<Mat>(PYRAMID_LEVELS);
         vector<double> Prof;
         Mat TraslationResidual;
-        Mat RotationResidual;
+        Matx33f RotationResidual;
+        Matx33f RotationResCam; // residual de rotacion
+        Matx33f init_rotationMatrix, final_rotationMatrix;
         Point3f translationResEst;
+        int nPointsLastKeyframe;
+        int nPointsCurrentImage;
+        bool lastImageWasKeyframe;
+        bool currentImageIsKeyframe;
 
 
    

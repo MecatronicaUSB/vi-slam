@@ -53,22 +53,21 @@ Point3d toRPY(const Quaterniond& q)
 	return angles;
 }
 
-Point3d rotationMatrix2RPY(Mat rotationMatrix)
+Point3d rotationMatrix2RPY(Matx33f rotationMatrix)
 {
 	// roll (x-axis rotation)
 	double roll, pitch,  yaw;
-	
-	double r11 = rotationMatrix.at<float>(0,0);
-	double r12 = rotationMatrix.at<float>(0,1);
-	double r13 = rotationMatrix.at<float>(0,2);
+	double r11 = rotationMatrix(0,0);
+	double r12 = rotationMatrix(0,1);
+	double r13 = rotationMatrix(0,2);
 
-	double r21 = rotationMatrix.at<float>(1,0);
-	double r22 = rotationMatrix.at<float>(1,1);
-	double r23 = rotationMatrix.at<float>(1,2);
+	double r21 = rotationMatrix(1,0);
+	double r22 = rotationMatrix(1,1);
+	double r23 = rotationMatrix(1,2);
 
-	double r31 = rotationMatrix.at<float>(2,0);
-	double r32 = rotationMatrix.at<float>(2,1);
-	double r33 = rotationMatrix.at<float>(2,2);
+	double r31 = rotationMatrix(2,0);
+	double r32 = rotationMatrix(2,1);
+	double r33 = rotationMatrix(2,2);
 
 	yaw = atan2(r21, r11);
 	pitch = atan2(-r31, sqrt(r32*r32+r33*r33));
@@ -180,7 +179,7 @@ Point3d toRPY360(Point3d angles)
 }
 
 
-Mat RPY2rotationMatrix(Point3d rpy )
+Matx33f RPY2rotationMatrix(Point3d rpy )
 {
 	// roll (x-axis rotation)
 	double roll = rpy.x;
@@ -195,20 +194,20 @@ Mat RPY2rotationMatrix(Point3d rpy )
     double c3 = cos(yaw);
     double s3 = sin(yaw);
 	
-	Mat rotationMatrix = Mat::zeros(3,3,CV_32FC1);
+	Matx33f rotationMatrix ;// = Mat::zeros(3,3,CV_32FC1);
 
 
-	rotationMatrix.at<float>(0,0) = c3*c2;
-	rotationMatrix.at<float>(0,1) = c3*s2*s1-s3*c1;
-	rotationMatrix.at<float>(0,2) = c3*s2*c1+s3*s1;
+	rotationMatrix(0,0) = c3*c2;
+	rotationMatrix(0,1) = c3*s2*s1-s3*c1;
+	rotationMatrix(0,2) = c3*s2*c1+s3*s1;
 
-	rotationMatrix.at<float>(1,0) = s3*c2;
-	rotationMatrix.at<float>(1,1) = s3*s2*s1+c3*c1;
-	rotationMatrix.at<float>(1,2) = s3*s2*c1-c3*s1;
+	rotationMatrix(1,0) = s3*c2;
+	rotationMatrix(1,1) = s3*s2*s1+c3*c1;
+	rotationMatrix(1,2) = s3*s2*c1-c3*s1;
 
-	rotationMatrix.at<float>(2,0) = -s2;
-	rotationMatrix.at<float>(2,1) = c2*s1;
-	rotationMatrix.at<float>(2,2) = c2*c1;
+	rotationMatrix(2,0) = -s2;
+	rotationMatrix(2,1) = c2*s1;
+	rotationMatrix(2,2) = c2*c1;
 
 	/*
 	worldVector.x = c3*c2*acc.x + (c3*s2*s1-s3*c1)*acc.y+(c3*s2*c1+s3*s1)*acc.z;

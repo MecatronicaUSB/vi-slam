@@ -294,6 +294,8 @@ void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched
 
 void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
 {
+    _matched1.clear(); // Borrar datos antiguos
+    _matched2.clear(); // Borrar datos antiguos
     for(unsigned i = 0; i < goodMatches.size(); i++) {
         _matched1.push_back(keypoints_1[goodMatches[i].queryIdx]);
         _matched2.push_back(keypoints_2[goodMatches[i].trainIdx]);

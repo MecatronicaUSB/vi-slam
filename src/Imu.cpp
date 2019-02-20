@@ -124,20 +124,20 @@ void Imu::calibrateAng(int axis)
 
 void Imu::calibrateAcc(int axis)
 {
-    Point3d gravityinWorld ;
+    Point3f gravityinWorld ;
     gravityinWorld.x = 0.0;
     gravityinWorld.y = 0.0;
     gravityinWorld.z = 9.68;
 
-    Point3d gravityInImu;
-    Point3d accSum;
+    Point3f gravityInImu;
+    Point3f accSum;
     accSum.x= 0.0;
     accSum.y = 0.0;
     accSum.z = 0.0;
     for (int i = 0; i < n ; i++)
     {
-        gravityInImu = Mat2point( world2imuRotation[i].t()*point2Mat(gravityinWorld));
-        accSum = accSum + accelerationMeasure[i] -gravityInImu;
+        gravityInImu = world2imuRotation[i].t()*gravityinWorld;
+        accSum = accSum + Point3f(accelerationMeasure[i]) -gravityInImu;
     }
 
     if(axis == 0)
@@ -213,21 +213,21 @@ void Imu::detectAngBias()
 
 void Imu::detectAccBias()
 {
-    Point3d counter = Point3d(0.0, 0.0, 0.0);
-    Point3d accThreshold =  Point3d(0.3, 0.3, 0.1);
+    Point3f counter = Point3d(0.0, 0.0, 0.0);
+    Point3f accThreshold =  Point3d(0.3, 0.3, 0.1);
     
     
-    Point3d gravityinWorld ;
+    Point3f gravityinWorld ;
     gravityinWorld.x = 0.0;
     gravityinWorld.y = 0.0;
     gravityinWorld.z = 9.68;
 
-    Point3d gravityInImu;
-    Point3d accMed;
+    Point3f gravityInImu;
+    Point3f accMed;
     for (int i = 0; i < n ; i++)
     {
-        gravityInImu = Mat2point( world2imuRotation[i].t()*point2Mat(gravityinWorld));
-        accMed = accelerationMeasure[i] -gravityInImu;
+        gravityInImu = world2imuRotation[i].t()*gravityinWorld;
+        accMed = Point3f(accelerationMeasure[i]) -gravityInImu;
        if(abs(accMed.x)<accThreshold.x)
        {
            counter.x++;
@@ -278,11 +278,8 @@ void Imu::detectAccBias()
 
 void Imu::estimateOrientation()
 {
-    rpyAnglesWorld.clear();
-    quaternionWorld.clear();
-    angularVelocityIMUFilter.clear();
-    world2imuRotation.clear();
 
+    clearData();
     Quaterniond orientation;
     elapsed_filter = 0.0;
     for (int i = 0; i < n; i++)
@@ -319,6 +316,14 @@ void Imu::estimateOrientation()
     elapsed_filter = elapsed_filter/n;
 }
 
+void Imu:: clearData()
+{
+    rpyAnglesWorld.clear();
+    quaternionWorld.clear();
+    angularVelocityIMUFilter.clear();
+    world2imuRotation.clear();
+}
+
 void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
 {
     accelerationWorld.clear();
@@ -328,7 +333,7 @@ void Imu::computeAcceleration() // Implementar la estimación del bias y ruido
         // restar bias local
         accelerationMeasure[i] = accelerationMeasure[i]+accBias;
         // transformar acelerarion al sistema fijo (world)
-        accWorld = Mat2point(world2imuRotation[i]*point2Mat(accelerationMeasure[i]));
+        accWorld = world2imuRotation[i]*Point3f(accelerationMeasure[i]);
         accWorld.z = accWorld.z-9.68; // restar la aceleracion de gravedad
         accelerationWorld.push_back(accWorld);
     }
