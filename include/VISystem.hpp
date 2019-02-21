@@ -54,13 +54,16 @@ class VISystem
         Mat IdentityWeights(int _num_residuals) ;
         Mat TukeyFunctionWeights(Mat _input) ;
         Mat WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
-        Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat);
+        Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, double threshold = 350);
+        void FilterKeypoints(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2, double threshold);
         void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
         float MedianAbsoluteDeviation(Mat _input);
         float MedianMat(Mat _input) ;
         float Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
+        void Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2) ;
+        
 
-        void setGtRes(Mat TraslationResGT , Mat RotationGT);
+        void setGtRes(Mat TranslationResGT , Mat RotationGT);
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
         
         bool initialized, distortion_valid , depth_available;
@@ -133,7 +136,7 @@ class VISystem
 
         vector<Mat> K_ = vector<Mat>(PYRAMID_LEVELS);
         vector<double> Prof;
-        Mat TraslationResidual;
+        Mat TranslationResidual;
         Matx33f RotationResidual;
         Matx33f RotationResCam; // residual de rotacion
         Matx33f init_rotationMatrix, final_rotationMatrix;

@@ -49,8 +49,9 @@ int main( int argc, char** argv ){
     DataReader Data(imagesPath, imuFile, gtFile, separator);
 
        
-    int j = 1;
-    Data.UpdateDataReader(j-1, j);
+    int j = 100;
+    int i = 99;
+    Data.UpdateDataReader(i, j);
 
     VISystem visystem(argc, argv);
     visystem.InitializeSystem( calibrationFile, Data.gtPosition.back(), Data.gtLinearVelocity.back(), Data.gtRPY.back().z, Data.image1, Data.imuAngularVelocity, Data.imuAcceleration);
@@ -108,11 +109,13 @@ int main( int argc, char** argv ){
     positionCamGTprev = Data.gtPosition.back()+visystem.imu2camTranslation;
     RPYOrientationCamGTprev = rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
     outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
-    while(j < Data.indexLastData) // j <data.lastindex
+
+    clock_t begin1= clock(); 
+    while(j < Data.indexLastData-100) // j <data.lastindex
     {  // Cambiar por constant
         Mat finalImage, finalImage2;
-        Data.UpdateDataReader(j, j+4);
-        j = j+4;
+        Data.UpdateDataReader(j, j+1);
+        j = j+1;
          
         positionCamGT = Data.gtPosition.back()+visystem.imu2camTranslation;
         
@@ -458,7 +461,10 @@ int main( int argc, char** argv ){
     
     
 
+    clock_t detect1 = clock(); 
+    double elapsed_detect = double(detect1- begin1) / CLOCKS_PER_SEC;  
 
+    cout << "elapsed Final = " << elapsed_detect*1000<< " ms" <<endl; 
 
 
     return 0;

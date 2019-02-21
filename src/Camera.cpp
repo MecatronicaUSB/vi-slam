@@ -106,13 +106,13 @@ void Camera::setDetector(int _detector)
         {
             detector = AKAZE::create(AKAZE::DESCRIPTOR_MLDB,
                                       0,  3,
-                                      0.004f);
+                                      0.002f);
             cout << "Using Akaze detector"<<endl;
             break;
         }
         case USE_SIFT:
         {
-            detector = SIFT::create(200);
+            detector = SIFT::create(600); //Numero de feaures
             cout << "Using SIFT detector"<<endl;
             break;
         }

@@ -294,7 +294,7 @@ namespace vi
 
         currentImageIsKeyframe = false;
 
-        if (nPointsCurrentImage > int(nPointsLastKeyframe*0.45)) // se considera que es hay suficientes puntos para el match
+        if (nPointsCurrentImage > int(nPointsLastKeyframe*0.35)) // se considera que es hay suficientes puntos para el match
         {
             camera.computeGoodMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
             if (lastImageWasKeyframe){
@@ -311,14 +311,17 @@ namespace vi
 
             Point3d rpyResidual = rotationMatrix2RPY(RotationResCam);
              float disparityThreshold = 22;
-             double disparityAngThreshold = 10.0;
+             double disparityAngThreshold = 5.0;
 
             double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
             float disparity = Disparity(camera.frameList.back()->nextGoodMatches, camera.currentFrame->prevGoodMatches);
 
-            if (disparity > disparityThreshold) currentImageIsKeyframe = true;   
-            if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
-
+            cout << "Disparity Trans = " << disparity <<endl;
+            cout << "Disparity Ang = " << disparityAng <<endl;
+            
+            //if (disparity > disparityThreshold) currentImageIsKeyframe = true;   
+            //if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
+            /*
             if (currentImageIsKeyframe)
             {
                 camera.saveFrame(); // Guardar frame como keyframe
@@ -331,18 +334,57 @@ namespace vi
                 
                 // Estimar traslacion entre keyframes
                 EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
+                Triangulate(camera.frameList[camera.frameList.size()-2]->nextGoodMatches, camera.frameList[camera.frameList.size()-1]->prevGoodMatches);
 
                 // Obtener la nueva posicion de la cámarael
                 Track();
 
-
+                imshow("currentDebugImage1", currentImageDebugToShow);
+                imshow("currentDebugImage2", currentImageToShow);
+                char c_input = (char) waitKey(1);
+                if( c_input == 'q' | c_input == ((char)27) )  {
+                        exit(0);
+                }
+                if( c_input == 'k'  )  {
+                        currentImageIsKeyframe = true;
+                }
                 nPointsLastKeyframe = nPointsCurrentImage;
             }
-            
+            */
+            vector <KeyPoint>  filter1, filter2;
+            FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
+            EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-1], camera.currentFrame);
+            Triangulate(filter1, filter2);
 
-            cout << "Disparity Trans = " << disparity <<endl;
-            cout << "Disparity Ang = " << disparityAng <<endl;
+                // Obtener la nueva posicion de la cámarael
+           
+            imshow("currentDebugImage1", currentImageDebugToShow);
+            imshow("currentDebugImage2", currentImageToShow);
+
+          
                 
+            char c_input = (char) waitKey(-1);
+            if( c_input == 'q' | c_input == ((char)27) )  {
+                    exit(0);
+            }
+            if( c_input == 'k'  )  {
+                    currentImageIsKeyframe = true;
+            }
+
+             if (currentImageIsKeyframe)
+            {
+                camera.saveFrame(); // Guardar frame como keyframe
+                num_keyframes = camera.frameList.size();
+
+                if (num_keyframes > num_max_keyframes)
+                {
+                    FreeLastFrame();
+                }
+                  nPointsLastKeyframe = nPointsCurrentImage;
+            }
+          
+        
+
           
             
             
@@ -367,9 +409,9 @@ namespace vi
     }
     
     // Lujano Algorithm
-    void VISystem::setGtRes(Mat TraslationResGT, Mat RotationResGT )
+    void VISystem::setGtRes(Mat TranslationResGT, Mat RotationResGT )
     {
-        TraslationResidual = TraslationResGT;
+        TranslationResidual = TranslationResGT;
         RotationResidual =  RPY2rotationMatrix (rotationMatrix2RPY(RotationResGT)) ;
     }
 
@@ -434,9 +476,9 @@ namespace vi
         Point3d rotationEst = rotationMatrix2RPY(RotationResCam)*180/M_PI;
 
         
-        translationGt.x = TraslationResidual.at<float>(0,0);
-        translationGt.y = TraslationResidual.at<float>(1,0);
-        translationGt.z = TraslationResidual.at<float>(2,0);
+        translationGt.x = TranslationResidual.at<float>(0,0);
+        translationGt.y = TranslationResidual.at<float>(1,0);
+        translationGt.z = TranslationResidual.at<float>(2,0);
 
         
 
@@ -452,7 +494,7 @@ namespace vi
         vector<KeyPoint> warpedDebugKeyPoints;
 
 
-        //WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TraslationResidual, warpedDebugKeyPoints);
+        //WarpFunctionRT(_current_frame->prevGoodMatches, RotationResidual, TranslationResidual, warpedDebugKeyPoints);
         //WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints);
 
          // WarpFunctionRT(_current_frame->prevGoodMatches, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1), warpedDebugKeyPoints, 1.0);
@@ -475,7 +517,7 @@ namespace vi
       
 
         clock_t begin= clock(); 
-        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, RotationResCam);
+        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, RotationResCam, 370.0);
         if(translationResEst.dot(translationGt)<0)
         {
             translationResEst = -translationResEst;
@@ -486,20 +528,15 @@ namespace vi
         cout << "elapsed = " << elapsed_detect*1000<< " ms" <<endl; 
         cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
         cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
-        cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
-        cout << "RotaEst" << " rx "<< rotationEst.x<< " ry " << rotationEst.y<< " rz " << rotationEst.z <<endl;
+       // cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
+        //cout << "RotaEst" << " rx "<< rotationEst.x<< " ry " << rotationEst.y<< " rz " << rotationEst.z <<endl;
 
-        imshow("currentDebugImage1", currentImageDebugToShow);
-        imshow("currentDebugImage2", currentImageToShow);
-        char c_input = (char) waitKey(30);
-        if( c_input == 'q' | c_input == ((char)27) )  {
-                exit(0);
-        }
+
         
         
     }
 
-    Point3f VISystem::F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat)
+    void VISystem::FilterKeypoints(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2, double threshold)
     {
         int lvl = 0;
         float fx = fx_[lvl];
@@ -507,10 +544,10 @@ namespace vi
         float cx = cx_[lvl];
         float cy = cy_[lvl];
 
-        Point3f vector1, vector1k; //Feature Vector en frame 1
-        Point3f vector2, vector2k; // Feature Vector en frame2
-        Point3f normal, n1, n2;  // vector del plano 1 y 2 de cada pareja de features
-        Point3f d, dnorm; // vector de dezplazamiento y normalizado
+        Point3d vector1; //Feature Vector en frame 1 
+        Point3d vector2; // Feature Vector en frame2
+        Point3d normal;  // vector del plano 1 y 2 de cada pareja de features
+
 
         int numkeypoints = inPoints1.size();
         Point3f pont;
@@ -519,12 +556,86 @@ namespace vi
         float u1, v1, u2, v2;
         float u1k, v1k, u2k, v2k; // key
 
-        vector <Point3f> normalVectors;
+        // Vector unitario de traslacion
+        Point3d tVec;
+
+        tVec.x = TranslationResidual.at<float>(0,0);
+        tVec.y = TranslationResidual.at<float>(1,0);
+        tVec.z = TranslationResidual.at<float>(2,0);
+        tVec = tVec/sqrt(tVec.x*tVec.x +tVec.y*tVec.y+tVec.z*tVec.z);
+
+        // Debug string con degeneracion
+       
+
+        int count  = 0;
+        // Crear vectores normales al plano de correspondecias (epipolar)
+        for (int i = 0; i< numkeypoints; i++)
+        {
+            u1 = inPoints1[i].pt.x;
+            v1 = inPoints1[i].pt.y;
+            u2 = inPoints2[i].pt.x;
+            v2 = inPoints2[i].pt.y;
+
+             // Creacion de vectores
+            vector1.x = (u1-cx)/fx;
+            vector1.y = (v1-cy)/fy;
+            vector1.z = 1.0;
+
+            vector2.x = (u2-cx)/fx;
+            vector2.y = (v2-cy)/fy;
+            vector2.z = 1.0;
+
+            vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
+            vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
+
+            normal = vector1.cross(Matx33d(RotationResidual)*vector2); // Vector normal al plano epipolar
+            
+            double error = -1000.0/std::log10(abs(tVec.dot(normal)));
+
+             if(error<threshold)
+            {
+                outPoints1.push_back(inPoints1[i]);
+                outPoints2.push_back(inPoints2[i]);
+                count++;
+            }
+
+        }
+
+        cout << "count filter " <<  count << endl;
+
+
+    }
+
+    Point3f VISystem::F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, double threshold)
+    {
+        int lvl = 0;
+        float fx = fx_[lvl];
+        float fy = fy_[lvl];
+        float cx = cx_[lvl];
+        float cy = cy_[lvl];
+        
+        
+        //double thresholdError; //
+        //thresholdError = 350.0;
+
+        Point3d vector1, vector1k; //Feature Vector en frame 1
+        Point3d vector2, vector2k; // Feature Vector en frame2
+        Point3d normal, n1, n2;  // vector del plano 1 y 2 de cada pareja de features
+        Point3d d, dnorm; // vector de dezplazamiento y normalizado
+
+        int numkeypoints = inPoints1.size();
+        Point3f pont;
+        
+
+        float u1, v1, u2, v2;
+        float u1k, v1k, u2k, v2k; // key
+
+        vector <Point3d> normalVectors;
         Mat degenerate = Mat::zeros(1, numkeypoints, CV_32F) ; // vector la degeneracion de los vectores
 
-        float sx = TraslationResidual.at<float>(0,0);
-        float sy = TraslationResidual.at<float>(1,0);
-        float sz = TraslationResidual.at<float>(2,0);
+        float sx = TranslationResidual.at<float>(0,0);
+        float sy = TranslationResidual.at<float>(1,0);
+        float sz = TranslationResidual.at<float>(2,0);
         float scale = sqrt(sx*sx+sy*sy+sz*sz);
 
         // Debug string con degeneracion
@@ -551,14 +662,15 @@ namespace vi
             vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
             vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
 
-            normal = vector1.cross(rotationMat*vector2); // Vector normal al plano epipolar
+            normal = vector1.cross(Matx33d(rotationMat)*vector2); // Vector normal al plano epipolar
             normalVectors.push_back(normal); // 
             degenerate.at<float>(0, i) = sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z);
              std::ostringstream strs;
+             /*
             strs << fixed<< setprecision(2)<< degenerate.at<float>(0, i)*10;
             std::string str = strs.str();
             putText(currentImageDebugToShow,str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.32,Scalar(50,255,50),0.9, LINE_AA);
-
+            */
 
 
         }
@@ -567,7 +679,7 @@ namespace vi
         
         // Filtrar los vectores normales en funcion de su degeneracion
         
-        vector <Point3f> normalVectorsOk; // Vectores filtrados  
+        vector <Point3d> normalVectorsOk; // Vectores filtrados  
         Mat sortedIndexes; // vector para almacenar los indices de  con las valores ordenados;
 
         // Ordenar arreglos de coordenadas de forma descendente, y guardar los indices en Sorted;
@@ -584,10 +696,12 @@ namespace vi
         
         // Obtener vector de traslacion RANSAC del grupo filtrado
         int index1, index2;
-        Point3f dVector;
+        Point3d dVector;
         float errorMin= 10000000;
         Point3f optimalDistance;
         float errorSum = 0.0;
+        float count = 0;
+        float countMax = 0;
 
         int RANSAC_iter = 1000;
         for (int i = 0; i<RANSAC_iter; i++)
@@ -599,22 +713,28 @@ namespace vi
             if (dVector.x != 0.0 || dVector.y != 0.0 ||  dVector.z!=0.0)
             {
                 dVector = dVector/sqrt(dVector.x*dVector.x +dVector.y*dVector.y+dVector.z*dVector.z);
-
                 float errorx = (sx-scale*dVector.x)/sx;
                 float errory = (sy-scale*dVector.y)/sy;
                 float errorz = (sz-scale*dVector.z)/sz;
 
                 //cout << "ex " << errorx*100 << " ey " << errory*100 << " ez " << errorz*100 <<endl;
                 
-
+                count = 0;
                 for (int i = 0; i<sizeNewGroup ; i++)
                 {
-                    errorSum = errorSum + abs(dVector.dot(normalVectors[i]))*abs(dVector.dot(normalVectors[i]));
+                    
+                    double error = -1000.0/std::log10(abs(dVector.dot(normalVectors[i])));
+                    //cout<<" e "  << error<<endl;
+                    if(error<threshold)
+                    {
+                        count++;
+                    }
                 }
-                if (errorSum<errorMin)
+
+                if (count>countMax)
                 {
-                    errorMin = errorSum;
-                    optimalDistance = dVector;
+                    countMax =count;
+                    optimalDistance = Point3f(dVector);
                 }
 
 
@@ -627,10 +747,13 @@ namespace vi
             */
         }
 
+       cout << "countMax " << countMax << " points " <<  numkeypoints<<endl;
+
+
         /*
         cout << "optimal Distance = " <<scale*optimalDistance << endl;
         cout << "error min = "<< errorMin << endl;
-        cout << "gt distance" << TraslationResidual <<endl;
+        cout << "gt distance" << TranslationResidual <<endl;
         */
 
         
@@ -733,6 +856,70 @@ namespace vi
 
     }
 
+    void VISystem::Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2) 
+    {
+
+        Mat cameraMat = Mat::eye(3, 3, CV_32FC1);
+        cameraMat.at<float>(0,0) = fx_[0];
+        cameraMat.at<float>(0,2) = cx_[0];
+        cameraMat.at<float>(1,1) = fy_[0];
+        cameraMat.at<float>(1,2) = cy_[0];
+        cameraMat.at<float>(2,2) = 1.0;
+        Mat P1 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
+        Mat P2 = getProjectionMat(cameraMat, Mat(RotationResidual), TranslationResidual);
+
+
+        array<vector<Point2f>,2> points;
+        KeyPoint::convert( inPoints1 , points[0], vector<int>());
+        KeyPoint::convert( inPoints2 , points[1], vector<int>());
+                
+        // Compute depth of 3D points using triangulation
+        Mat mapPoints;
+        
+        
+        if(inPoints1.size()!= 0)
+        {
+            triangulatePoints(P1, P2, points[0], points[1], mapPoints);
+
+            Mat pt_3d; convertPointsFromHomogeneous(Mat(mapPoints.t()).reshape(4, 1),pt_3d);
+
+
+            Vec3d rvec(0,0,0); //Rodrigues(R ,rvec);
+            Vec3d tvec(0,0,0); // = P.col(3);
+            vector<Point2f> reprojected_pt_set1;
+            projectPoints(pt_3d,rvec,tvec,cameraMat, Mat(),reprojected_pt_set1);
+            cout << " nr Triangulated " << inPoints1.size()<<endl;
+        
+            for (int index = 0; index <inPoints1.size(); index++)
+            {
+
+        
+                //int index = i;
+                float u1 = inPoints1[index].pt.x;
+                float v1 = inPoints1[index].pt.y;
+                
+                
+                float x = pt_3d.at<float>(0,index);
+                float y = pt_3d.at<float>(1,index);
+                float z = pt_3d.at<float>(2,index);
+                float z2 = sqrt(x*x+y*y+z*z);
+                std::ostringstream strs;
+                
+                strs << fixed<< setprecision(2)<<z2;
+                std::string str = strs.str();
+                float errorx = u1 - reprojected_pt_set1[index].x;
+                float errory = v1 - reprojected_pt_set1[index].y;
+                float errorf = sqrt( errorx*errorx+errory*errory );
+            
+
+                putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.32,Scalar(50,255,50),0.9, LINE_AA);
+                
+                
+            }
+        }
+
+    }
+
     void VISystem::EstimatePoseFeaturesIter(Frame* _previous_frame, Frame* _current_frame)
     {
         Prof.clear();
@@ -774,9 +961,9 @@ namespace vi
         double coeffz;
         double coeffy;
 
-        float sx = TraslationResidual.at<float>(0,0);
-        float sy = TraslationResidual.at<float>(1,0);
-        float sz = TraslationResidual.at<float>(2,0);
+        float sx = TranslationResidual.at<float>(0,0);
+        float sy = TranslationResidual.at<float>(1,0);
+        float sz = TranslationResidual.at<float>(2,0);
 
          //cout << "TransGT" << " sx " << sx<< " sy " << sy<< " sz " << sz <<endl;
 
@@ -801,7 +988,7 @@ namespace vi
         
         Mat P1 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
         Mat P2 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
-        //Mat P2 = getProjectionMat(cameraMat, rotationMatrix, TraslationResidual);
+        //Mat P2 = getProjectionMat(cameraMat, rotationMatrix, TranslationResidual);
         
         // Compute depth of 3D points using triangulation
         Mat mapPoints;
@@ -958,9 +1145,9 @@ namespace vi
         cout << "dale"<<residualRotation<<endl;
 
        
-        float sx = TraslationResidual.at<float>(0,0);
-        float sy = TraslationResidual.at<float>(1,0);
-        float sz = TraslationResidual.at<float>(2,0);
+        float sx = TranslationResidual.at<float>(0,0);
+        float sy = TranslationResidual.at<float>(1,0);
+        float sz = TranslationResidual.at<float>(2,0);
 
         cout << "TransGT" << " sx " << sx<< " sy " << sy<< " sz " << sz <<endl;
 
@@ -1492,9 +1679,9 @@ namespace vi
 
    
 
-        float sx = TraslationResidual.at<float>(0,0);
-        float sy = TraslationResidual.at<float>(1,0);
-        float sz = TraslationResidual.at<float>(2,0);
+        float sx = TranslationResidual.at<float>(0,0);
+        float sy = TranslationResidual.at<float>(1,0);
+        float sz = TranslationResidual.at<float>(2,0);
         Matx33f Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
         //Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
         //Mat trans_skew =  E*Rotation_ResCam.t();
