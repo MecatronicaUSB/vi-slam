@@ -352,7 +352,10 @@ namespace vi
             }
             */
             vector <KeyPoint>  filter1, filter2;
-            FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
+            filter1 = camera.frameList[camera.frameList.size()-1]->nextGoodMatches;
+            filter2 = camera.currentFrame->prevGoodMatches;
+
+            //FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
             EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-1], camera.currentFrame);
             Triangulate(filter1, filter2);
 
@@ -912,7 +915,7 @@ namespace vi
                 float errorf = sqrt( errorx*errorx+errory*errory );
             
 
-                putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.32,Scalar(50,255,50),0.9, LINE_AA);
+                putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.37,Scalar(50,255,50),0.9, LINE_AA);
                 
                 
             }
