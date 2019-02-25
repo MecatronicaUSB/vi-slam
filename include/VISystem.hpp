@@ -30,6 +30,16 @@ using namespace cv;
 namespace vi
 {
 class CameraModel;
+
+
+
+// 3D point
+struct Landmark
+{
+    cv::Point3f pt;
+    int seen = 0; // how many cameras have seen this point
+};
+
 class VISystem
 {
     public:
@@ -112,6 +122,8 @@ class VISystem
         Camera camera;
         Imu imuCore;
 
+        
+
         Mat currentImage;
         Mat currentImageToShow;
         Mat currentImageDebugToShow;
@@ -147,6 +159,15 @@ class VISystem
         int nPointsCurrentImage;
         bool lastImageWasKeyframe;
         bool currentImageIsKeyframe;
+
+        // Landmarks
+
+        vector<Landmark> landmark;
+
+        // Trayectoria
+
+        vector<Point3f> MapPose; // Poses del robot entre keyframes
+        vector<Matx33f> MapOrientation; // Poses de la orientacion
 
 
    

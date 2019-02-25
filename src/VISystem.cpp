@@ -355,11 +355,12 @@ namespace vi
             //filter1 = camera.frameList[camera.frameList.size()-1]->nextGoodMatches;
             //filter2 = camera.currentFrame->prevGoodMatches;
 
-            FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
+            
             EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-1], camera.currentFrame);
+            FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
             Triangulate(filter1, filter2);
 
-                // Obtener la nueva posicion de la cámarael
+            // Obtener la nueva posicion de la cámara
            
             imshow("currentDebugImage1", currentImageDebugToShow);
             imshow("currentDebugImage2", currentImageToShow);

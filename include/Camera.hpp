@@ -10,6 +10,7 @@
 
 #include "Matcher.hpp"
 #include "Options.hpp"
+#include <map>
 #include <iostream>
 #include <iomanip>
 #include <opencv2/imgproc.hpp>
@@ -65,6 +66,14 @@ class Frame
         bool obtainedGradients;   //!< flag de obtencion del gradiente
         bool obtainedGoodMatches; //!< flag de obtencion de matches    
         bool isKeyFrame;          //!< flag de keyframe
+        
+        
+        // alias to clarify map usage below
+        using kp_idx_t = size_t;
+        using landmark_idx_t = size_t;
+        using img_idx_t = size_t;
+
+        std::map<kp_idx_t, landmark_idx_t> kp_landmark; // Mapa que relaciona el feature con su landmark
 };
 
 class Camera
