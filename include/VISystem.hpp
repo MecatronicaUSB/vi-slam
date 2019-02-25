@@ -6,6 +6,7 @@
 #include "Plus.hpp"
 #include "CameraModel.hpp"
 #include "opencv2/core.hpp"
+#include "opencv2/sfm.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/calib3d.hpp"
 #include "opencv2/core/eigen.hpp"
@@ -22,6 +23,7 @@
 
 using namespace std;
 using namespace cv;
+
 
 #define PYRAMID_LEVELS 5
 

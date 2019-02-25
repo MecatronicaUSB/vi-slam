@@ -352,10 +352,10 @@ namespace vi
             }
             */
             vector <KeyPoint>  filter1, filter2;
-            filter1 = camera.frameList[camera.frameList.size()-1]->nextGoodMatches;
-            filter2 = camera.currentFrame->prevGoodMatches;
+            //filter1 = camera.frameList[camera.frameList.size()-1]->nextGoodMatches;
+            //filter2 = camera.currentFrame->prevGoodMatches;
 
-            //FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
+            FilterKeypoints(camera.frameList[camera.frameList.size()-1]->nextGoodMatches, camera.currentFrame->prevGoodMatches, filter1, filter2, 500.0);
             EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-1], camera.currentFrame);
             Triangulate(filter1, filter2);
 
@@ -869,7 +869,7 @@ namespace vi
         cameraMat.at<float>(1,2) = cy_[0];
         cameraMat.at<float>(2,2) = 1.0;
         Mat P1 = getProjectionMat(cameraMat, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
-        Mat P2 = getProjectionMat(cameraMat, Mat(RotationResidual), TranslationResidual);
+        Mat P2 = getProjectionMat(cameraMat, Mat(RotationResidual.t()), Mat(-RotationResidual.t())*TranslationResidual );
 
 
         array<vector<Point2f>,2> points;
@@ -882,7 +882,7 @@ namespace vi
         
         if(inPoints1.size()!= 0)
         {
-            triangulatePoints(P1, P2, points[0], points[1], mapPoints);
+            triangulatePoints(P1, P2,  points[0], points[1],  mapPoints);
 
             Mat pt_3d; convertPointsFromHomogeneous(Mat(mapPoints.t()).reshape(4, 1),pt_3d);
 
@@ -914,8 +914,7 @@ namespace vi
                 float errory = v1 - reprojected_pt_set1[index].y;
                 float errorf = sqrt( errorx*errorx+errory*errory );
             
-
-                putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.37,Scalar(50,255,50),0.9, LINE_AA);
+                if (z>0.0) putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.37,Scalar(10,255,10),0.9, LINE_AA);
                 
                 
             }
