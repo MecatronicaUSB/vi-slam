@@ -44,20 +44,12 @@ class Frame
         ~Frame();
 
         // ---------- Attributes
-        vector<Mat> grayImage =  vector<Mat>(5);  //!< imagen en escala de grises
-        vector<Mat> gradientX= vector<Mat>(5) ;  //!< gradiente en direccion x de la imagen
-        vector<Mat> gradientY= vector<Mat>(5);  //!< gradiente en direccion y de la imagen
-        vector<Mat> gradient= vector<Mat>(5);   //!< gradiente en direccion x y y de la imagen
-        
-        vector<KeyPoint> keypoints;        //!< keypoints de la imagen
+        Mat grayImage; //!< imagen en escala de grises
+        vector<KeyPoint> keypoints;        //!< keypoints dectados en la imagen
         vector<KeyPoint>  prevGoodMatches; //!< matches con la imagen anterior
         vector<KeyPoint>  nextGoodMatches; //!< matches con la imagen siguiente
         Mat descriptors;                   //!< keypoints de la imagen
-        vector<Mat> prevPatches; //!< Parches de intensidad alrededor de los features
-        vector<Mat> nextPatches; //!< Parches de intensidad alrededor de los features
-        vector<Mat> candidatePoints  = vector<Mat>(5);
-        vector<KeyPoint> debugKeypoints ;// debug Points
-        vector<Mat> candidateDebugPoints  = vector<Mat>(5);
+        
 
         int idFrame;      //!< identificador del frame
         double imageTime; //!< tiempo en el que fue tomado la imagen
@@ -73,7 +65,18 @@ class Frame
         using landmark_idx_t = size_t;
         using img_idx_t = size_t;
 
+        std::map<kp_idx_t, kp_idx_t> kp_next_match; // seypoint to 3d points
+        std::map<kp_idx_t, kp_idx_t> kp_prev_match; // seypoint to 3d points
         std::map<kp_idx_t, landmark_idx_t> kp_landmark; // Mapa que relaciona el feature con su landmark
+
+        bool kp_next_exist(size_t kp_idx) { return kp_next_match.count(kp_idx) > 0; }
+        bool kp_prev_exist(size_t kp_idx) { return kp_prev_match.count(kp_idx) > 0; }
+        bool kp_3d_exist(size_t kp_idx) { return kp_landmark.count(kp_idx) > 0; }
+
+        landmark_idx_t& kp_3d_idx(size_t kp_idx) { return kp_landmark[kp_idx]; } // indice del vector de landmarks
+        kp_idx_t& kp_next_idx(size_t kp_idx) { return kp_next_match[kp_idx]; } // indice del vector de landmarks
+        kp_idx_t& kp_prev_idx(size_t kp_idx) { return kp_prev_match[kp_idx]; } // indice del vector de landmarks
+        
 };
 
 class Camera
@@ -92,25 +95,20 @@ class Camera
         void computeDescriptors();
         void computeGoodMatches(); // Retorna las correspondencias filtradas entre dos imagenes
 
-        void computeGradient(); // Calcula el gradiente de la imagen
+        void computeFastMatches(); // Calcular matches sin filtrado
+
 
         bool addKeyframe(); // Añade o no un keyframe 
-        
         void saveFrame(); //(frame->framelist)
-        void ObtainDebugPointsPreviousFrame();
-        void ObtainPatchesPointsPreviousFrame();
-        void computePatches(); // calcula los parches del frame actual;
-        void computeResiduals(); // calculas los residuales fotometricos entre el frame actual y el anterior
+       
         
         void printStatistics();
         
         vector <Frame *> frameList;  // lista de todos los frames
-        vector <Mat>   Residuals;  // residuales de intensidad entre dos imagenes
         vector<DMatch> goodMatches; // correspondencias finales entre dos frames
         Frame * currentFrame;
        
-        int w_residual;  // ancho del parche de intensidad y del residual
-        int h_residual;  //  del parche de intensidad y del residual
+
         int detectorType; // tipo de detector a utilizar
         int matcherType;  // tipo de matcher a utilizar
 
@@ -121,8 +119,8 @@ class Camera
         Ptr<Feature2D> detector;   //!< Pointer to OpenCV feature extractor
 
         //Informacion de la imagen
-        vector<int> w_size = vector<int>(5);
-        vector<int> h_size = vector<int>(5);
+        int w_size ;
+        int h_size ;
         // Tamaño de parches (impar)
         int w_patch, h_patch;
 

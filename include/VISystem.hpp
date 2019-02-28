@@ -47,30 +47,40 @@ class VISystem
         VISystem(int argc, char *argv[]);
         ~VISystem();
         
-        void InitializeCamera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
-        void InitializeSystem(string _calPath, Point3d _iniPosition, Point3d _iniVelocity, double _iniYaw, Mat image,  vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration );
-        void InitializePyramid(int _width, int _height, Mat _K);
-        // Gauss-Newton using Foward Compositional Algorithm - Using features
-        void Calibration(string _calibration_path);
-        void EstimatePoseFeaturesIter(Frame* _previous_frame, Frame* _current_frame);
+        
+        // Funciones iniciales
+        // Leer archivo de configuracion del sistema
+        void setConfig(string _calPath); 
+        void readConfig(string _calibration_path);
+        // colocar la posicion inicial del sistema
+        void setInitPose( Point3d _iniPosition, double _iniYaw);
+        // colocar data inicial
+        void setInitData(Mat image,  vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
+        // colocar parametros de configuracion a la cámara
+        void setCameraConfig(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells);
+
+
+        // Añadir frame
+        bool AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
+
+        // estimar pose actual
+        void Track();
+        // estimar vector de traslacion
+        void EstimateTranslationVector(Frame* _previous_frame, Frame* _current_frame);
+        // estimar escala del vector de traslacion
         void EstimatePoseFeaturesDebug(Frame* _previous_frame, Frame* _current_frame);
-        void EstimatePoseFeatures(Frame* _previous_frame, Frame* _current_frame);
         void EstimatePoseFeaturesRansac(Frame* _previous_frame, Frame* _current_frame);
         void CalculateROI(Mat image);
-        bool AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
-        bool AddFrame(Mat _currentImage, vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration, Point3d _gtPosition) ;
-        void ObtainKeypointsTransformation(Mat candidates);
-        void MatPoint2Keypoints( Mat _MatPoints, vector<KeyPoint> &_outputKeypoints);
+        
+        
         void FreeLastFrame();
-        void Track();
-        Mat IdentityWeights(int _num_residuals) ;
-        Mat TukeyFunctionWeights(Mat _input) ;
-        Mat WarpFunctionSE3(Mat _points2warp, SE3 _rigid_transformation, int _lvl);
+        
+       
         Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, double threshold = 350);
         void FilterKeypoints(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2, double threshold);
         void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
-        float MedianAbsoluteDeviation(Mat _input);
-        float MedianMat(Mat _input) ;
+        
+        
         float Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
         void Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2) ;
         
@@ -78,7 +88,7 @@ class VISystem
         void setGtRes(Mat TranslationResGT , Mat RotationGT);
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
         
-        bool initialized, distortion_valid , depth_available;
+        
         int  num_keyframes;
         int  num_max_keyframes;
         int  min_features;
@@ -88,14 +98,15 @@ class VISystem
         int h, w, h_input, w_input;
         float fx, fy, cx, cy;
 
+        // IMU
         Point3d positionImu;
         Point3d velocityImu;
         Point3d accImu;
         Quaterniond qOrientationImu;
         Point3d RPYOrientationImu;
-        Mat world2imuTransformation;
-        Matx33f world2imuRotation;
+        double iniYaw;
 
+        // Cámara
         Point3d positionCam;
         Point3d velocityCam;
         Point3d accCam;
@@ -113,9 +124,7 @@ class VISystem
         SE3 final_poseImu;
         SE3 current_poseCam;
         SE3 current_poseImu;
-        Point3d prev_gtPosition;
-        Point3d current_gtPosition;
-        Point3d current_gtTraslation;
+
 
         CameraModel* camera_model;
         
@@ -135,21 +144,8 @@ class VISystem
 
         Mat outputCurrentImage, outputLastImage;
 
-        // Width and height of images for each pyramid level available
-        vector<int> w_ = vector<int>(PYRAMID_LEVELS);
-        vector<int> h_ = vector<int>(PYRAMID_LEVELS);
-
-        vector<float> fx_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> fy_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> cx_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> cy_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> invfx_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> invfy_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> invcx_ = vector<float>(PYRAMID_LEVELS);
-        vector<float> invcy_ = vector<float>(PYRAMID_LEVELS);
-
-        vector<Mat> K_ = vector<Mat>(PYRAMID_LEVELS);
-        vector<double> Prof;
+        
+        
         Mat TranslationResidual;
         Matx33f RotationResidual;
         Matx33f RotationResCam; // residual de rotacion

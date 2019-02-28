@@ -13,12 +13,7 @@ Frame::Frame(){
 
 Frame::~Frame()
 {
-    grayImage.clear();
-    gradientX.clear();
-    gradientY.clear();
-    gradient.clear();
-
-    candidatePoints.clear();
+   
 }
 Camera::Camera()
 {
@@ -39,12 +34,9 @@ Camera::Camera(int _detector, int _matcher, int _w_size, int _h_size, int _num_c
 
 void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path)
 {
-    w_size[0] = _w_size;
-    h_size[0] = _h_size;
-    for (int lvl = 1; lvl < 5; lvl++) {
-        w_size[lvl] = _w_size >> lvl;
-        h_size[lvl] = _h_size >> lvl;
-    }
+    w_size = _w_size;
+    h_size = _h_size;
+
     setDetector(_detector);
     setMatcher(_matcher);
 
@@ -63,18 +55,14 @@ void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size,
 void Camera::Update (Mat _grayImage){
     currentFrame = new Frame();
     elapsed_computeGoodMatches = elapsed_computeGradient= elapsed_descriptors =elapsed_detect = 0.0;
-    _grayImage.copyTo(currentFrame->grayImage[0]); // Copiar imagen
-    // Escalamiento de la imagen para los niveles piramidales
-    for (int i=1; i<5; i++) {
-        resize(currentFrame->grayImage[i-1], currentFrame->grayImage[i], Size(), 0.5, 0.5);
-    }
+    _grayImage.copyTo(currentFrame->grayImage); // Copiar imagen
     
 }
 
 int Camera::detectFeatures(){
             
     clock_t begin = clock(); // Tiempo de inicio del codigo
-    detector -> detect( currentFrame->grayImage[0], currentFrame->keypoints);
+    detector -> detect( currentFrame->grayImage, currentFrame->keypoints);
     clock_t detect1 = clock(); 
     elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;                     
     return currentFrame-> keypoints.size();
@@ -84,7 +72,7 @@ int Camera::detectFeatures(){
 int Camera::detectAndComputeFeatures(){
             
     clock_t begin = clock(); // Tiempo de inicio del codigo
-    detector -> detectAndCompute( currentFrame->grayImage[0],  Mat(), currentFrame->keypoints, currentFrame->descriptors);
+    detector -> detectAndCompute( currentFrame->grayImage,  Mat(), currentFrame->keypoints, currentFrame->descriptors);
     clock_t detect1 = clock(); 
     elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;                     
     return currentFrame-> keypoints.size();
@@ -149,6 +137,7 @@ void Camera::computeGoodMatches()
     matcher.setKeypoints(frameList[frameList.size()-1]->keypoints, currentFrame->keypoints);
     matcher.setDescriptors(frameList[frameList.size()-1]->descriptors, currentFrame->descriptors );
     matcher.computeMatches(); // Computa las primeras parejas
+    matcher.computeSymMatches();
     matcher.computeBestMatches(n_cells); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
     matcher.getGoodMatches(frameList[frameList.size()-1]->nextGoodMatches, currentFrame->prevGoodMatches) ;// matched 1, 2
     //matcher.printStatistics();
@@ -156,32 +145,25 @@ void Camera::computeGoodMatches()
 
 }
 
+void Camera::computeFastMatches()
+{
+    matcher.clear();
+    matcher.setKeypoints(frameList[frameList.size()-1]->keypoints, currentFrame->keypoints);
+    matcher.setDescriptors(frameList[frameList.size()-1]->descriptors, currentFrame->descriptors );
+    matcher.computeFastMatches(); // Computa las primeras parejas
+    matcher.computeBestMatches(n_cells); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
+    matcher.getGoodMatches(frameList[frameList.size()-1]->nextGoodMatches, currentFrame->prevGoodMatches);
+    currentFrame->obtainedGoodMatches = true;
+
+
+}
+
 void Camera::setMatcher(int _matcher)
 {
     matcher.setMatcher(_matcher);
-    matcher.setImageDimensions(w_size[0], h_size[0]);
+    matcher.setImageDimensions(w_size, h_size);
 }
 
-// Gradiente
-
-void Camera::computeGradient()
-{
-    // gradiente para niveles piramidales
-    for (int lvl = 0; lvl<5; lvl++) {
-        Scharr(currentFrame->grayImage[lvl], currentFrame->gradientX[lvl], CV_16S, 1, 0, 3, 0, BORDER_DEFAULT);
-        Scharr(currentFrame->grayImage[lvl], currentFrame->gradientY[lvl], CV_16S, 0, 1, 3, 0, BORDER_DEFAULT);
-        
-        Mat gradientX, gradientY;
-        currentFrame->gradientX[lvl].copyTo(gradientX);
-        currentFrame->gradientY[lvl].copyTo(gradientY);
-        convertScaleAbs(gradientX, gradientX, 1.0, 0.0);
-        convertScaleAbs(gradientY, gradientY, 1.0, 0.0);
-
-        addWeighted(gradientX, 0.5, gradientY, 0.5, 0, currentFrame->gradient[lvl]);
-    }
-
-    currentFrame->obtainedGradients = true;
-}
 
 // Save current Frame
 
@@ -265,61 +247,6 @@ bool Camera::addKeyframe()
     }
   
 }
-/*
-void Camera::computePatches()  // Crear parches de la imagen anterior y la actual
-{ 
-    Mat patch1(w_patch, h_patch, CV_16SC1);
-    Mat patch2(w_patch, h_patch, CV_16SC1);
-    int cx1, cy1; // ubicacion del feature dentro del parche (centro del parche)
-    int start_x1, start_y1;
-    int index_x1, index_y1;
-    int cx2, cy2; // ubicacion del feature dentro del parche (centro del parche)
-    int start_x2, start_y2;
-    int index_x2, index_y2;
-    int i, j;
-    for (int index = 0 ; index < currentFrame->prevGoodMatches.size();index++ ) // imagen anterior
-    {
-        cx1 = frameList.back()->nextGoodMatches[index].pt.x;
-        cy1 = frameList.back()->nextGoodMatches[index].pt.y;
-        start_x1 = cx1-int((w_patch-1)/2);
-        start_y1 = cy1-int((h_patch-1)/2);
-        cx2 = currentFrame->prevGoodMatches[index].pt.x;
-        cy2 = currentFrame->prevGoodMatches[index].pt.y;
-        start_x2 = cx2-int((w_patch-1)/2);
-        start_y2 = cy2-int((h_patch-1)/2);
-
-        for ( i = 0; i< h_patch ; i++) // fila
-        {
-            index_x1 = start_x1+i;
-            index_x2 = start_x2+i;
-            for (j = 0; j< w_patch ; j++) // columna
-            {
-                index_y1 = start_y1+j;
-                index_y2 = start_y2+j;
-                patch1.at<char16_t>(i, j) = frameList.back()->grayImage.at<uchar>(index_y1, index_x1);
-                patch2.at<char16_t>(i, j) = currentFrame->grayImage.at<uchar>(index_y2, index_x2);
-
-            }
-        }
-        frameList.back()-> nextPatches.push_back(patch1);
-        currentFrame-> prevPatches.push_back(patch2);
-
-    }
-
-}
-*/
-void Camera::computeResiduals()
-{
-    Residuals.clear(); // limpiar contenedor
-    for(int i = 0; i < currentFrame-> prevPatches.size(); i++)
-    {
-        Mat Residual =  frameList.back()-> nextPatches[i] -currentFrame-> prevPatches[i] ;
-        Residuals.push_back(Residual);
-    }
-    //cout<< "R = " <<Residuals.back()<<endl;
-    //cout<< "Rsize = " <<Residuals.size()<<endl;
-}
-
 
 
 void Camera::printStatistics()
@@ -355,93 +282,6 @@ void Camera::printStatistics()
     ;
 }
 
-void Camera::ObtainPatchesPointsPreviousFrame() {
-    vector<KeyPoint> goodKeypoints;
-    
-    goodKeypoints = frameList[frameList.size()-1]->nextGoodMatches;
-    int num_max_keypoints = goodKeypoints.size();
 
-    // Saves features found
-    float factor_depth = 0.0002, factor_lvl;
-    float depth_initialization = 1;    
-    vector <int> patch_size = vector <int> (5);
-
-    patch_size [0]= 5;
-    patch_size [1]= 3;
-    patch_size [2]= 2;
-    patch_size [3]= 5;
-    patch_size [4]= 5;
-
-
-   
-    for ( int lvl = 0; lvl< 5; lvl++)
-    {
-        float factor_lvl = 1.0/pow(2, lvl);
-        
-        int start_point = patch_size[lvl] - 1 / 2;
-        for (int i=0; i< min(num_max_keypoints, 200); i++) {
-
-                    float x = (goodKeypoints[i].pt.x+0.5)*factor_lvl-0.5;
-                    float y = (goodKeypoints[i].pt.y+0.5)*factor_lvl-0.5;
-
-
-
-                        float z = 1.0;
-
-                        for (int i=x-start_point; i<=x+start_point; i++) {
-                            for (int j=y-start_point; j<=y+start_point; j++) {
-                                if (i>0 && i<w_size[lvl] && j>0 && j<h_size[lvl]) {
-                                    Mat pointMat_patch = Mat::ones(1, 4, CV_32FC1);                
-                                    pointMat_patch.at<float>(0,0) = i;
-                                    pointMat_patch.at<float>(0,1) = j;
-                                    pointMat_patch.at<float>(0,2) = z;
-
-                                    frameList[frameList.size()-1]->candidatePoints[lvl].push_back(pointMat_patch);
-                                
-                            
-                        }
-                    }
-                }
-            }
-
-    }
-   
-}
-
-
-void Camera::ObtainDebugPointsPreviousFrame() {
-    vector<KeyPoint> goodKeypoints;
-    
-    goodKeypoints = frameList[frameList.size()-1]->nextGoodMatches;
-    int num_max_keypoints = goodKeypoints.size();
-
-    // Saves features found
-    float factor_depth = 0.0002, factor_lvl;
-    float depth_initialization = 1;    
-
-    int patch_size_ = 5;
-    int start_point = patch_size_ - 1 / 2;
-    for ( int lvl = 0; lvl< 5; lvl++)
-    {
-        float factor_lvl = 1.0/pow(2, lvl);
-        for (int i=0; i< min(num_max_keypoints, 200); i++) {
-
-            float x = (goodKeypoints[i].pt.x+0.5)*factor_lvl-0.5;
-            float y = (goodKeypoints[i].pt.y+0.5)*factor_lvl-0.5;
-            float z = 1.0;
-
-            Mat pointMat_patch = Mat::ones(1, 4, CV_32FC1);                
-            pointMat_patch.at<float>(0,0) = x;
-            pointMat_patch.at<float>(0,1) = y;
-            pointMat_patch.at<float>(0,2) = z;
-
-            frameList[frameList.size()-1]->candidateDebugPoints[lvl].push_back(pointMat_patch);     
-                    
-        
-        }
-    }
-
-
-}
  
  

@@ -420,12 +420,14 @@ void Imu::estimate()
     n_total = n_total+n; // numero de medidas procesadas
     currentTimeMs = n_total*timeStep*1000; // tiempo en ms
 
+    /*
     if (currentTimeMs < 2500)
     {
         calibrateAng(3);
         //calibrateAcc(3);
         cout <<currentTimeMs<<endl;
     }
+    */
 
 
     

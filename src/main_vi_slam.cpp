@@ -54,9 +54,10 @@ int main( int argc, char** argv ){
     Data.UpdateDataReader(i, j);
 
     VISystem visystem(argc, argv);
-    visystem.InitializeSystem( calibrationFile, Data.gtPosition.back(), Data.gtLinearVelocity.back(), Data.gtRPY.back().z, Data.image1, Data.imuAngularVelocity, Data.imuAcceleration);
-    cout << "Initializate System"<<endl;
-    Quaterniond qinit = toQuaternion(Data.gtRPY[0].x, Data.gtRPY[0].y, Data.gtRPY[0].z);
+    visystem.setConfig(calibrationFile);
+    visystem.setInitPose(Data.gtPosition.back(), Data.gtRPY.back().z);
+    visystem.setInitData( Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
+
 
     //VisualizerVector3 rqt_error("error", 10.0);
     
@@ -80,8 +81,7 @@ int main( int argc, char** argv ){
    // VisualizerVector3 residual_angEst ("residual_angEst", 1200);
     //VisualizerVector3 residual_angGt ("residual_angGt", 1200);
     //VisualizerVector3 angulo_groundtruth ("angulo_groundtruth",1200);
-    Mat frame1;
-    Mat frame2;
+
     Point3f error;
     double position[3];
     double orientation[4];
@@ -90,9 +90,7 @@ int main( int argc, char** argv ){
     double orientation2[4];
 
    
-   
-    vector<KeyPoint> vectorMatches;
-    Quaterniond qGt_initial;
+
     
     //Gt para camara 
     Quaterniond qOrientationCamGT;
@@ -105,7 +103,7 @@ int main( int argc, char** argv ){
 
     std::ofstream outputFilecsv;
 
-    Point3d zero;
+    
     positionCamGTprev = Data.gtPosition.back()+visystem.imu2camTranslation;
     RPYOrientationCamGTprev = rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
     outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
@@ -113,7 +111,7 @@ int main( int argc, char** argv ){
     clock_t begin1= clock(); 
     while(j < Data.indexLastData-100) // j <data.lastindex
     {  // Cambiar por constant
-        Mat finalImage, finalImage2;
+        
         Data.UpdateDataReader(j, j+1);
         j = j+1;
          
@@ -138,7 +136,7 @@ int main( int argc, char** argv ){
         visystem.setGtRes(Traslation_ResCamGT, Rotation_ResCamGt);
         
 
-       bool disparityFound =  visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration, Data.gtPosition.back());
+        bool disparityFound =  visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
 
        
 

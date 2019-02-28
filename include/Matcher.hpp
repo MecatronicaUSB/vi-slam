@@ -32,6 +32,7 @@ class Matcher
         void setMatcher(int _matcher);
         void setImageDimensions(int w, int h); // dimensiones de la imagen
         void computeMatches();
+        void computeFastMatches();
         void computeSymMatches();
         int bestMatchesFilter ( int n_features);// Dsitrubuye los features uniformemente y selecciona  las mejores parejas
         int nnFilter(vector<vector<DMatch> > &matches, double nn_ratio); // filtro de vecinos mas cercanos
@@ -39,11 +40,13 @@ class Matcher
         void pushBackVectorMatches(vector<DMatch> &matches);
         void getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
         void getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
+        void getFastMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
         void sortMatches();
         double getMatchPercentage();
         void computeBestMatches(int n_features);
         void getGrid(int n_features, vector<KeyPoint> &grid_point);
         void printStatistics();
+        
         void clear();
 
 
@@ -65,6 +68,7 @@ class Matcher
         double elapsed_detect1, elapsed_detect2, elapsed_knn1, elapsed_knn2;
         double elapsed_symMatches, elapsed_sortMatches, elapsed_bestMatches;
         double matchPercentage;
+        
 
 
 };

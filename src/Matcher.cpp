@@ -93,6 +93,48 @@ void Matcher::computeMatches()
     
 }
 
+void Matcher::computeFastMatches()
+{ 
+    clock_t begin = clock(); // Tiempo de inicio del codigo
+    matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
+    clock_t knn1 = clock(); 
+    clock_t knn2 = clock();  
+    elapsed_knn1 = double(knn1- begin) / CLOCKS_PER_SEC;
+    elapsed_knn2 = double(knn2- knn1) / CLOCKS_PER_SEC;
+
+    // Descartar con distancia euclidiana (revisar los filtros de distancia)
+    double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
+    
+    int removed1;
+    
+   
+    removed1 = nnFilter(aux_matches1, nn_match_ratio);
+
+    std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
+    for (matchIterator1= aux_matches1.begin();matchIterator1!= aux_matches1.end(); ++matchIterator1) 
+    {
+        
+        if (matchIterator1->size() >= 2) // dos  o mas vecinos
+        {
+                        
+            matches.push_back(DMatch((*matchIterator1)[0].queryIdx,
+                        (*matchIterator1)[0].trainIdx,
+                        (*matchIterator1)[0].distance));
+
+                    
+            
+            
+        }
+    }
+
+
+
+
+
+
+    
+}
+
 void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de simetria
 {
 
@@ -285,6 +327,8 @@ void Matcher::getGrid(int n_features, vector<KeyPoint> &grid_points)
 
 void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
 {
+    _matched1.clear(); // Borrar datos antiguos
+    _matched2.clear(); // Borrar datos antiguos
     for(unsigned i = 0; i < matches.size(); i++) {
         _matched1.push_back(keypoints_1[matches[i].queryIdx]);
         _matched2.push_back(keypoints_2[matches[i].trainIdx]);
@@ -353,7 +397,7 @@ void Matcher::sortMatches()
 void Matcher::computeBestMatches(int n_cells)
 {
         clock_t begin = clock(); // Tiempo de inicio del codigo
-        computeSymMatches();
+        
         clock_t sym = clock(); 
         sortMatches();
         clock_t sort = clock(); 
@@ -380,3 +424,4 @@ void Matcher::printStatistics()
     ;
 
 }
+
