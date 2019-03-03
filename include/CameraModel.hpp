@@ -122,7 +122,7 @@ public:
 	int use_gt;
 	int use_ros;
 	int detector, matcher;
-	int num_cells, length_patch;
+	int num_wcells, num_hcells;
 	Mat imu2cam0Transformation;
 
 private:

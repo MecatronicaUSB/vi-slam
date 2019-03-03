@@ -83,26 +83,59 @@ Point3d rotationMatrix2RPY(Matx33f rotationMatrix)
 }
 
 
-Point3d transformationMatrix2RPY(Mat transformationMatrix)
+Matx44d PAndR2T(Matx33f rotationMatrix, Point3f position)
+{
+	// roll (x-axis rotation)
+	Matx44d T;
+	T(0,0)= rotationMatrix(0,0);
+	T(0,1) = rotationMatrix(0,1);
+	T(0,2) = rotationMatrix(0,2);
+
+	T(1,0) = rotationMatrix(1,0);
+	T(1,1) = rotationMatrix(1,1);
+	T(1,2) = rotationMatrix(1,2);
+
+	T(2,0) = rotationMatrix(2,0);
+	T(2,1) = rotationMatrix(2,1);
+	T(2,2) = rotationMatrix(2,2);
+
+	T(0,3) = position.x;
+	T(1,3) = position.y;
+	T(2,3) = position.z;
+
+	T(3,0) = 0.0;
+	T(3,1) = 0.0;
+	T(3,2) = 0.0;
+	T(3,3) = 1.0;
+
+
+
+	return T;
+}
+
+
+Point3d transformationMatrix2RPY(Matx44d transformationMatrix)
 {
 	// roll (x-axis rotation)
 	double roll, pitch,  yaw;
 	
-	double r11 = transformationMatrix.at<float>(0,0);
-	double r12 = transformationMatrix.at<float>(0,1);
-	double r13 = transformationMatrix.at<float>(0,2);
+	double r11 = transformationMatrix(0,0);
+	double r12 = transformationMatrix(0,1);
+	double r13 = transformationMatrix(0,2);
 
-	double r21 = transformationMatrix.at<float>(1,0);
-	double r22 = transformationMatrix.at<float>(1,1);
-	double r23 = transformationMatrix.at<float>(1,2);
+	double r21 = transformationMatrix(1,0);
+	double r22 = transformationMatrix(1,1);
+	double r23 = transformationMatrix(1,2);
 
-	double r31 = transformationMatrix.at<float>(2,0);
-	double r32 = transformationMatrix.at<float>(2,1);
-	double r33 = transformationMatrix.at<float>(2,2);
+	double r31 = transformationMatrix(2,0);
+	double r32 = transformationMatrix(2,1);
+	double r33 = transformationMatrix(2,2);
 
-	roll = atan2(r21, r11);
+	yaw = atan2(r21, r11);
 	pitch = atan2(-r31, sqrt(r32*r32+r33*r33));
-	yaw = atan2(r32, r33);
+	roll = atan2(r32, r33);
+
+
 
 	Point3d angles;
 	angles.x = roll;
@@ -113,13 +146,13 @@ Point3d transformationMatrix2RPY(Mat transformationMatrix)
 	return angles;
 }
 
-Point3d transformationMatrix2position(Mat transformationMatrix)
+Point3d transformationMatrix2position(Matx44d transformationMatrix)
 {
 	Point3d translation;
 
-	translation.x = transformationMatrix.at<float>(0,3) ;
-	translation.y = transformationMatrix.at<float>(1,3) ;
-	translation.z = transformationMatrix.at<float>(2,3) ;
+	translation.x = transformationMatrix(0,3) ;
+	translation.y = transformationMatrix(1,3) ;
+	translation.z = transformationMatrix(2,3) ;
 
 	return translation;
 
@@ -281,7 +314,7 @@ Point3d Mat2point(Mat pointMat)
 }
 
 
-Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position)
+Matx44d RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position)
 {
 	
 	double roll = rpy.x;
@@ -296,25 +329,29 @@ Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position)
     double c3 = cos(yaw);
     double s3 = sin(yaw);
 	
-	Mat transformationMatrix = Mat::zeros(4,4,CV_32FC1);
+	Matx44d transformationMatrix ;
 	
-	transformationMatrix.at<float>(0,0) = c3*c2;
-	transformationMatrix.at<float>(0,1) = c3*s2*s1-s3*c1;
-	transformationMatrix.at<float>(0,2) = c3*s2*c1+s3*s1;
+	transformationMatrix(0,0) = c3*c2;
+	transformationMatrix(0,1) = c3*s2*s1-s3*c1;
+	transformationMatrix(0,2) = c3*s2*c1+s3*s1;
 
-	transformationMatrix.at<float>(1,0) = s3*c2;
-	transformationMatrix.at<float>(1,1) = s3*s2*s1+c3*c1;
-	transformationMatrix.at<float>(1,2) = s3*s2*c1-c3*s1;
+	transformationMatrix(1,0) = s3*c2;
+	transformationMatrix(1,1) = s3*s2*s1+c3*c1;
+	transformationMatrix(1,2) = s3*s2*c1-c3*s1;
 
-	transformationMatrix.at<float>(2,0) = -s2;
-	transformationMatrix.at<float>(2,1) = c2*s1;
-	transformationMatrix.at<float>(2,2) = c2*c1;
+	transformationMatrix(2,0) = -s2;
+	transformationMatrix(2,1) = c2*s1;
+	transformationMatrix(2,2) = c2*c1;
 
 
-	transformationMatrix.at<float>(0,3) = position.x;
-	transformationMatrix.at<float>(1,3) = position.y;
-	transformationMatrix.at<float>(2,3) = position.z;
-	transformationMatrix.at<float>(3,3) = 1.0;
+	transformationMatrix(0,3) = position.x;
+	transformationMatrix(1,3) = position.y;
+	transformationMatrix(2,3) = position.z;
+
+	transformationMatrix(3,3) = 1.0;
+	transformationMatrix(3,0) = 0.0;
+	transformationMatrix(3,1) = 0.0;
+	transformationMatrix(3,2) = 0.0;
 
 	return transformationMatrix;
 

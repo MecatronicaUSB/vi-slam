@@ -9,7 +9,7 @@
 //#include "opencv2/sfm.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/calib3d.hpp"
-#include "opencv2/core/eigen.hpp"
+//#include "opencv2/core/eigen.hpp"
 #include <ctime>
 
 #include <ros/ros.h>
@@ -25,7 +25,7 @@ using namespace std;
 using namespace cv;
 
 
-#define PYRAMID_LEVELS 5
+
 
 namespace vi
 {
@@ -85,7 +85,7 @@ class VISystem
         void Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2) ;
         
 
-        void setGtRes(Mat TranslationResGT , Mat RotationGT);
+        void setGtTras(Point3d TranslationResGT );
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
         
         
@@ -112,7 +112,7 @@ class VISystem
         Point3d accCam;
         Quaterniond qOrientationCam;
         Point3d RPYOrientationCam;
-        Mat prev_world2camTransformation;
+       
         
 
 
@@ -120,10 +120,11 @@ class VISystem
         Matx33f imu2camRotation;
         Point3d imu2camTranslation;
 
-        SE3 final_poseCam;
-        SE3 final_poseImu;
-        SE3 current_poseCam;
-        SE3 current_poseImu;
+        Matx44d final_poseCam;
+        Matx44d final_poseImu;
+        Matx44d current_poseCam;
+        Matx44d current_poseImu;
+        Matx33f prueba;
 
 
         CameraModel* camera_model;
@@ -142,13 +143,12 @@ class VISystem
         Rect ROI;
         
 
-        Mat outputCurrentImage, outputLastImage;
-
         
         
-        Mat TranslationResidual;
-        Matx33f RotationResidual;
-        Matx33f RotationResCam; // residual de rotacion
+        Point3d TranslationResidualGT;
+        
+        Matx33f RotationResCam; // residual de rotacion de camara
+        Matx33f RotationResImu; // residual de rotacion de la imu
         Matx33f init_rotationMatrix, final_rotationMatrix;
         Point3f translationResEst;
         int nPointsLastKeyframe;
@@ -164,6 +164,9 @@ class VISystem
 
         vector<Point3f> MapPose; // Poses del robot entre keyframes
         vector<Matx33f> MapOrientation; // Poses de la orientacion
+
+        // lista de keyframes
+        vector <Frame *> frameList;  // lista de todos los frames
 
 
    

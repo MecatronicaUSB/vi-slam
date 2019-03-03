@@ -38,10 +38,10 @@ void Imu::setImuBias(Point3d acc_bias, Point3d ang_bias)
 
 
 
-void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_measure,vector <Point3d>  &a_measure )
+void Imu::initializate(double gt_yaw, vector <Point3d> &w_measure,vector <Point3d>  &a_measure )
 {
     initialYawGt = gt_yaw;
-    setImuInitialVelocity( gt_velocity);
+
     setImuData(w_measure, a_measure);
 
     angBias = accBias = Point3d(0.0, 0.0, 0.0); // bias 0
@@ -54,8 +54,8 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
     Quaterniond orientation;
     
     
-    calibrateAng(3);
-    cout<<"bias "<< angBias<<endl;
+    //calibrateAng(3);
+    //cout<<"bias "<< angBias<<endl;
     for (int i = 0; i < n ; i++)
     {
         UpdatePublisher( angularVelocityMeasure[i]-angBias, accelerationMeasure[i]); //
@@ -65,6 +65,7 @@ void Imu::initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_m
         orientation.z = imuFusedData.orientation.z;
         orientation.w = imuFusedData.orientation.w;
         rpyAnglesWorld.push_back(toRPY(orientation));
+        
     
     }
 
@@ -355,48 +356,6 @@ void Imu::computeVelocity()
   
 }
 
-void Imu::computePosition()
-{
-   
-    Point3d translationBetweenFrames;
-    for(int i= 0; i<n;i++)
-    {
-        translationBetweenFrames.x = 0.5*(accelerationWorld[i].x)*timeStep*timeStep;
-        translationBetweenFrames.y = 0.5*(accelerationWorld[i].y)*timeStep*timeStep;
-        translationBetweenFrames.z = 0.5*(accelerationWorld[i].z)*timeStep*timeStep;
-    }
-    position.x = initialVelocity.x*n*timeStep+translationBetweenFrames.x;//n mediciones despues del frame1
-    position.y = initialVelocity.y*n*timeStep+translationBetweenFrames.y;// mas la medicion inicial asumida 0
-    position.z = initialVelocity.z*n*timeStep+translationBetweenFrames.z;// revisar n
-
-}
-
-void Imu::computeAngularVelocity()
-{
-    angularVelocity.x = 0.0;
-    angularVelocity.y = 0.0;
-    angularVelocity.z = 0.0;
-    for(int i= 0; i<n;i++)
-    {
-        angularVelocity.x = angularVelocity.x +angularVelocityMeasure[i].x;
-        angularVelocity.y = angularVelocity.y +angularVelocityMeasure[i].y;
-        angularVelocity.z = angularVelocity.z +angularVelocityMeasure[i].z;
-    }
-    angularVelocity.x = angularVelocity.x/n;
-    angularVelocity.y = angularVelocity.y/n;
-    angularVelocity.z = angularVelocity.z/n;
-}
-
-void Imu::computeAngularPosition() // rad/s
-{
-    angularPosition.x = angularVelocity.x*timeStep*n;
-    angularPosition.y = angularVelocity.x*timeStep*n;
-    angularPosition.z = angularVelocity.x*timeStep*n;
-    //quaternion = toQuaternion(angularPosition.y, angularPosition.x, angularPosition.z);
-    
-
-}
-
 
 void Imu::estimate()
 {   
@@ -406,44 +365,12 @@ void Imu::estimate()
     //detectAccBias();
     computeAcceleration();
     computeVelocity();
-    computePosition();
-    computeAngularVelocity();
-    computeAngularPosition();
-    init_rotationMatrix = RPY2rotationMatrix(rpyAnglesWorld[0]);
-    final_rotationMatrix = RPY2rotationMatrix(rpyAnglesWorld.back());
-    residual_rotationMatrix = init_rotationMatrix.t()*final_rotationMatrix; // inverse rotation by final rotation
-    residualRPY = rotationMatrix2RPY(residual_rotationMatrix);
+
+
     residualVelocity =  velocity;
-    residualPosition = position;
-    initialVelocity = initialVelocity + residualVelocity;
 
     n_total = n_total+n; // numero de medidas procesadas
-    currentTimeMs = n_total*timeStep*1000; // tiempo en ms
-
-    /*
-    if (currentTimeMs < 2500)
-    {
-        calibrateAng(3);
-        //calibrateAcc(3);
-        cout <<currentTimeMs<<endl;
-    }
-    */
-
-
     
-
-}
-
-void Imu::setImuInitialPosition()
-{
-
-}
-
-
-void Imu::setImuInitialVelocity(Point3d initial_velocity)
-{
-    initialVelocity = initial_velocity;
-
 
 }
 

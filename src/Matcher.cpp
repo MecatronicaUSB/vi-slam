@@ -32,6 +32,12 @@ void Matcher::setImageDimensions(int w, int h)
     w_size = w;
     h_size = h;
 }
+
+void Matcher::setGridSize(int _n_wcells, int _n_hcells)
+{
+    n_wcells = _n_wcells;
+    n_hcells = _n_hcells;
+}
 void Matcher::setKeypoints(vector<KeyPoint> _keypoints_1, vector<KeyPoint> _keypoints_2)
 {
 
@@ -82,25 +88,15 @@ void Matcher::setMatcher(int _matcher)
 
 void Matcher::computeMatches()
 { 
-    clock_t begin = clock(); // Tiempo de inicio del codigo
     matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
-    clock_t knn1 = clock(); 
-    matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);
-    clock_t knn2 = clock();  
-    elapsed_knn1 = double(knn1- begin) / CLOCKS_PER_SEC;
-    elapsed_knn2 = double(knn2- knn1) / CLOCKS_PER_SEC;
- 
-    
+    matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);  
 }
 
 void Matcher::computeFastMatches()
 { 
-    clock_t begin = clock(); // Tiempo de inicio del codigo
+
     matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
-    clock_t knn1 = clock(); 
-    clock_t knn2 = clock();  
-    elapsed_knn1 = double(knn1- begin) / CLOCKS_PER_SEC;
-    elapsed_knn2 = double(knn2- knn1) / CLOCKS_PER_SEC;
+
 
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
@@ -210,14 +206,14 @@ int Matcher::nnFilter(vector<vector<DMatch> > &matches, double nn_ratio)
     return removed;
 }
 
-int Matcher::bestMatchesFilter(int n_features){
+int Matcher::bestMatchesFilter(){
     float winWSize;
     float winHSize;
 
     
 
-    winWSize = w_size/floor(sqrt(n_features));
-    winHSize = h_size/floor(sqrt(n_features));
+    winWSize = w_size/n_wcells; // Tamaño horizontal de ventana
+    winHSize = h_size/n_hcells; // Tamaño vertical de ventana
 
     //cout <<"Win w size = "<<fixed<<winWSize<<endl;
     //cout <<"Win h size = "<< fixed<<winHSize<<endl;
@@ -228,14 +224,12 @@ int Matcher::bestMatchesFilter(int n_features){
     float h_final;
     float w_final;
 
-    int root_n;
-
-    root_n = static_cast<int>(floor(sqrt(n_features)));
-    //cout <<"root_n = "<< root_n<<endl;
+    
     vector<DMatch> VectorMatches; // Cambio
     DMatch point;
-    point.distance = 100000.0f;
-    for (int j = 0; j<root_n; j++) {
+    // inicializar los resultados en la celdas horizontales como distancias "infinitas"
+    point.distance = 100000.0f; // un numero grande
+    for (int i = 0; i<n_wcells; i++) {
         VectorMatches.push_back(point);
     }
     
@@ -244,7 +238,7 @@ int Matcher::bestMatchesFilter(int n_features){
 
     h_final = winHSize;
     int i;
-    for (int j = 0; j<root_n; j++) {
+    for (int j = 0; j<n_hcells; j++) {
         // if 2 NN has been identified
             while (keypoints_1[(*matchIterator).queryIdx].pt.y <= h_final )
             {
@@ -285,45 +279,6 @@ int Matcher::bestMatchesFilter(int n_features){
     
 }
 
-void Matcher::getGrid(int n_features, vector<KeyPoint> &grid_points)
-{
-    float h_final;
-    float w_final;
-    float winHSize;
-    float winWSize;
-
-    winWSize = w_size/floor(sqrt(n_features));
-    winHSize = h_size/floor(sqrt(n_features));
-
-    h_final = winHSize;
-    
-    int root_n;
-
-    KeyPoint point;
-    root_n = static_cast<int>(floor(sqrt(n_features)));
-    for (int j = 0; j<root_n; j++)
-    {
-        // if 2 NN has been identified
-        w_final = winWSize;
-        for (int i = 0; i < root_n; i++) //Mejorar deslizando desde el medio
-        {
-            point.pt.x = w_final-winWSize/2;
-            point.pt.y = h_final-winHSize/2;
-            grid_points.push_back(point);
-            w_final = w_final+winWSize;
-            
-        } 
-        //cout<<"w final "<<w_final<<endl;
-
-        h_final = h_final+winHSize;
-                
-    }
-
-    cout<< "\nSize grid= " <<grid_points.size()<<endl;
-    
-    
-
-}
 
 void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
 {
@@ -346,9 +301,6 @@ void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_mat
     }
 }
 
-double Matcher::getMatchPercentage(){
-    return 0.0;
-}
 
 void Matcher::resetVectorMatches(vector<DMatch> &Vector)
 {
@@ -394,20 +346,14 @@ void Matcher::sortMatches()
     }
     
 }
-void Matcher::computeBestMatches(int n_cells)
+void Matcher::computeBestMatches()
 {
-        clock_t begin = clock(); // Tiempo de inicio del codigo
-        
-        clock_t sym = clock(); 
+   
+
         sortMatches();
-        clock_t sort = clock(); 
-        int matches_found = bestMatchesFilter(n_cells);
+   
+        int matches_found = bestMatchesFilter();
 
-
-        clock_t best = clock(); 
-        elapsed_symMatches = double(sym- begin) / CLOCKS_PER_SEC;
-        elapsed_sortMatches= double(sort- sym) / CLOCKS_PER_SEC;
-        elapsed_bestMatches= double(best- sort) / CLOCKS_PER_SEC;
 }
 
 void Matcher::printStatistics()

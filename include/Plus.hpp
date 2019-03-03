@@ -27,13 +27,16 @@ double computeDiff(double gt_angle, double gt_est);
 Mat point2MatPlusOne(Point3d point);
 Mat point2Mat(Point3d point);
 Point3d Mat2point(Mat position);
-Point3d transformationMatrix2RPY(Mat transformationMatrix);
-Point3d transformationMatrix2position(Mat transformationMatrix);
+Point3d transformationMatrix2RPY(Matx44d transformationMatrix);
+Point3d transformationMatrix2position(Matx44d transformationMatrix);
 Point3d rotationMatrix2RPY(Matx33f rotationMatrix);
 Matx33f RPY2rotationMatrix(Point3d rpy );
-Mat RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position);
+Matx44d RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position);
 Mat transformationMatrix2rotationMatrix(Mat transformationMatrix );
 
 Mat RPYWorld2ResidualAngImu(Point3d rpy ); //Sobrante
+
+Matx44d PAndR2T(Matx33f rotationMatrix, Point3f position);
+
 
 #endif

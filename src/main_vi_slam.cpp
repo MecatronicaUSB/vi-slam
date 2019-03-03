@@ -49,13 +49,14 @@ int main( int argc, char** argv ){
     DataReader Data(imagesPath, imuFile, gtFile, separator);
 
        
-    int j = 100;
-    int i = 99;
+    int j = 301;
+    int i = 300;
     Data.UpdateDataReader(i, j);
 
     VISystem visystem(argc, argv);
     visystem.setConfig(calibrationFile);
     visystem.setInitPose(Data.gtPosition.back(), Data.gtRPY.back().z);
+   
     visystem.setInitData( Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
 
 
@@ -94,7 +95,7 @@ int main( int argc, char** argv ){
     
     //Gt para camara 
     Quaterniond qOrientationCamGT;
-    Point3d RPYOrientationCamGT, RPYOrientationCamGTprev;
+    Point3d RPYOrientationCamGT,RPYOrientationCamGTprev;
     Point3d positionCamGT, positionCamGTprev;
     Point3d velocityCamGT;
 
@@ -119,23 +120,20 @@ int main( int argc, char** argv ){
         
         velocityCamGT  = Data.gtLinearVelocity.back();
         RPYOrientationCamGT =rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
+        Matx44d transformationResidual = RPYAndPosition2transformationMatrix(RPYOrientationCamGTprev, positionCamGTprev).inv()*RPYAndPosition2transformationMatrix(RPYOrientationCamGT, positionCamGT);
+        
         
         qOrientationCamGT = toQuaternion(RPYOrientationCamGT.x, RPYOrientationCamGT.y, RPYOrientationCamGT.z);
-        Mat transformationResidual = RPYAndPosition2transformationMatrix(RPYOrientationCamGTprev, positionCamGTprev).inv()*RPYAndPosition2transformationMatrix(RPYOrientationCamGT, positionCamGT);
         
-        Mat Traslation_ResCamGT = Mat::ones(3, 1, CV_32FC1);  
-        Mat Rotation_ResCamGt = transformationMatrix2rotationMatrix(transformationResidual);
-        
-        Traslation_ResCamGT.at<float>(0,0) = transformationResidual.at<float>(0,3);
-        Traslation_ResCamGT.at<float>(1,0) = transformationResidual.at<float>(1,3);
-        Traslation_ResCamGT.at<float>(2,0) = transformationResidual.at<float>(2,3);
         
 
+        Point3f residualTrans;
+        residualTrans.x = transformationResidual(0,3);
+        residualTrans.y = transformationResidual(1,3);
+        residualTrans.z = transformationResidual(2,3);
+ 
         
-        
-        visystem.setGtRes(Traslation_ResCamGT, Rotation_ResCamGt);
-        
-
+        visystem.setGtTras(residualTrans);
         bool disparityFound =  visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
 
        
@@ -150,34 +148,12 @@ int main( int argc, char** argv ){
          cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
    
 
-        /*
-        outputFilecsv <<  visystem.positionImu.x<<","
-        <<visystem.positionImu.y<<","
-        <<visystem.positionImu.z<<","
-        <<visystem.velocityImu.x<<","
-        <<visystem.velocityImu.y<<","
-        <<visystem.velocityImu.z<<","
-        <<visystem.accImu.x<<","
-        <<visystem.accImu.y<<","
-        <<visystem.accImu.z<<","
-        <<visystem.qOrientationImu.x <<","
-        <<visystem.qOrientationImu.y <<","
-        <<visystem.qOrientationImu.z <<","
-        <<visystem.qOrientationImu.w <<","
-        <<  Data.gtPosition.back().x <<","
-        <<  Data.gtPosition.back().y <<","
-        <<  Data.gtPosition.back().z <<","
-        <<  Data.gtLinearVelocity.back().x <<","
-        <<  Data.gtLinearVelocity.back().y <<","
-        << Data.gtLinearVelocity.back().z<<","
-        <<  Data.gtQuaternion.back().x <<","        
-        <<  Data.gtQuaternion.back().y <<","
-        <<  Data.gtQuaternion.back().z<<","
-        <<  Data.gtQuaternion.back().w <<","
-        <<endl;
-        */
+        
+     
+        
        if (disparityFound)
        {
+           
             outputFilecsv <<  Data.currentTimeMs/1000.0 <<  ","  // indice de tiempo
             << visystem.positionCam.x<<","
             <<visystem.positionCam.y<<","
@@ -206,9 +182,42 @@ int main( int argc, char** argv ){
             <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
             <<visystem.imuCore.angularVelocityIMUFilter.back().z
             <<endl;
-
+            
+            /*
+        outputFilecsv <<  Data.currentTimeMs/1000.0 <<  ","  // indice de tiempo
+        <<  visystem.positionImu.x<<","
+        <<visystem.positionImu.y<<","
+        <<visystem.positionImu.z<<","
+        <<visystem.velocityImu.x<<","
+        <<visystem.velocityImu.y<<","
+        <<visystem.velocityImu.z<<","
+        <<visystem.accImu.x<<","
+        <<visystem.accImu.y<<","
+        <<visystem.accImu.z<<","
+        <<visystem.qOrientationImu.x <<","
+        <<visystem.qOrientationImu.y <<","
+        <<visystem.qOrientationImu.z <<","
+        <<visystem.qOrientationImu.w <<","
+        <<  Data.gtPosition.back().x <<","
+        <<  Data.gtPosition.back().y <<","
+        <<  Data.gtPosition.back().z <<","
+        <<  Data.gtLinearVelocity.back().x <<","
+        <<  Data.gtLinearVelocity.back().y <<","
+        << Data.gtLinearVelocity.back().z<<","
+        <<  Data.gtQuaternion.back().x <<","        
+        <<  Data.gtQuaternion.back().y <<","
+        <<  Data.gtQuaternion.back().z<<","
+        <<  Data.gtQuaternion.back().w <<","
+        <<visystem.imuCore.angularVelocityIMUFilter.back().x<<","
+        <<visystem.imuCore.angularVelocityIMUFilter.back().y<<","
+        <<visystem.imuCore.angularVelocityIMUFilter.back().z
+        <<endl;
+        
+        */
+    
             positionCamGTprev =  positionCamGT;
-            RPYOrientationCamGTprev = RPYOrientationCamGT;
+            RPYOrientationCamGTprev =RPYOrientationCamGT ;
+
        }
 
         

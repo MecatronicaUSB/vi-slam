@@ -9,7 +9,7 @@
 #define CAMERA_H_
 
 #include "Matcher.hpp"
-#include "Options.hpp"
+
 #include <map>
 #include <iostream>
 #include <iomanip>
@@ -53,9 +53,9 @@ class Frame
 
         int idFrame;      //!< identificador del frame
         double imageTime; //!< tiempo en el que fue tomado la imagen
-        Sophus::SE3f rigid_transformation_;
 
-        bool obtainedGradients;   //!< flag de obtencion del gradiente
+
+
         bool obtainedGoodMatches; //!< flag de obtencion de matches    
         bool isKeyFrame;          //!< flag de keyframe
         
@@ -83,8 +83,8 @@ class Camera
 {
     public:
         Camera();
-        Camera(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
-        void initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_cells, int _length_path);
+        Camera(int _detector, int _matcher,int _w_size, int _h_size, int _num_wcells, int _num_hcells);
+        void initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_wcells, int _num_hcells);
         void Update (Mat _grayImage); // Ingresa una nueva imagen al sistema
 
         void setDetector(int _detector); //
@@ -98,11 +98,16 @@ class Camera
         void computeFastMatches(); // Calcular matches sin filtrado
 
 
-        bool addKeyframe(); // Añade o no un keyframe 
+        
+        
+        
+
+
+        // Estimar traslacion con
         void saveFrame(); //(frame->framelist)
        
         
-        void printStatistics();
+        
         
         vector <Frame *> frameList;  // lista de todos los frames
         vector<DMatch> goodMatches; // correspondencias finales entre dos frames
@@ -115,40 +120,16 @@ class Camera
         Matcher matcher; // Matcher del sistema
         int nPointsDetect;  // numero de puntos detectados en la imagen actual
         int nBestMatches; // numero de matches finales
-        int n_cells;  // numero de celdas del grid
+        int n_wcells;  // numero de celdas horizontales del grid
+        int n_hcells;  // numero de celdas verticales del grid
+         // el numero de celdas totales es n_wcells*n_hcells
         Ptr<Feature2D> detector;   //!< Pointer to OpenCV feature extractor
 
-        //Informacion de la imagen
+        // tamaño de la imagen 
         int w_size ;
         int h_size ;
-        // Tamaño de parches (impar)
-        int w_patch, h_patch;
 
-        // Informacion de estadisticas
-        double elapsed_detect;
-        double elapsed_descriptors;
-        double elapsed_computeGoodMatches;
-        double elapsed_computeGradient;
-        double elapsed_computePatches;
 
-        // Promedios
-        double elapsed_detect_mean;
-        double elapsed_descriptors_mean;
-        double elapsed_computeGoodMatches_mean;
-        double elapsed_computeGradient_mean;
-        double elapsed_computePatches_mean;
-        double nPointsDetect_mean;
-        double nBestMatches_mean;
-        int num_images;
-
-          // Suma total de tiempos
-        double elapsed_detect_sum;
-        double elapsed_descriptors_sum;
-        double elapsed_computeGoodMatches_sum;
-        double elapsed_computeGradient_sum;
-        double elapsed_computePatches_sum;
-        double nPointsDetect_sum;
-        double nBestMatches_sum;
     
 };
 

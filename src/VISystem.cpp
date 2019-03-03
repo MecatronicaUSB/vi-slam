@@ -60,7 +60,9 @@ namespace vi
         imu2camTranslation = transformationMatrix2position(imu2camTransformation);
 
         // Configurar objeto cámara
-        camera.initializate(camera_model->detector, camera_model->matcher, w_input, h_input, camera_model->num_cells, camera_model->length_patch);
+        camera.initializate(camera_model->detector, camera_model->matcher, w_input, h_input, camera_model->num_wcells, camera_model->num_hcells);
+
+        
         
 
         // Configura objeto imu
@@ -111,17 +113,19 @@ namespace vi
         currentImage = image;
         // Colocar medidas iniciales de IMU
         Point3d _iniVelocity = Point3d(0.0, 0.0, 0.0); // Asumir velocidad inicial cero
-        imuCore.initializate(iniYaw, _iniVelocity,  _imuAngularVelocity, _imuAcceleration); // Poner yaw inicial del gt
+        imuCore.initializate(iniYaw, _imuAngularVelocity, _imuAcceleration); // Poner yaw inicial del gt
              
         camera.Update(currentImage);
         nPointsLastKeyframe = camera.detectAndComputeFeatures(); // asumir que la primera imagen es buena y es keyframe
         lastImageWasKeyframe = true;
+        
         camera.saveFrame();
         cout << "Camera Initialized con "<< camera.frameList.back()->keypoints.size() << " features"<<endl;
 
         // Calcular posiciones
         velocityImu = Point3d(0.0, 0.0, 0.0);
         RPYOrientationImu = imuCore.rpyAnglesWorld.back();
+       
 
         qOrientationImu = imuCore.quaternionWorld.back();
         
@@ -129,14 +133,16 @@ namespace vi
         // Posicion inicial de la camara;
         positionCam = positionImu+imu2camTranslation;
         velocityCam = velocityImu;
-        RPYOrientationCam = rotationMatrix2RPY(RPY2rotationMatrix(toRPY(qOrientationImu))*imu2camRotation);
+        
+        RPYOrientationCam = rotationMatrix2RPY(RPY2rotationMatrix(RPYOrientationImu)*imu2camRotation);
         qOrientationCam = toQuaternion(RPYOrientationCam.x, RPYOrientationCam.y, RPYOrientationCam.z);
 
 
-        // PosicionCam
-        Mat33f rotationEigen ;
-        cv2eigen(RPY2rotationMatrix(toRPY(qOrientationImu))*imu2camRotation, rotationEigen);
-        final_poseCam = SE3(rotationEigen, SE3::Point(positionCam.x, positionCam.y, positionCam.z));
+        
+        final_poseCam =PAndR2T(RPY2rotationMatrix(RPYOrientationImu)*imu2camRotation, positionCam );
+        
+
+       
 
         
         
@@ -208,11 +214,12 @@ namespace vi
         accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
      
 
-        // Limpiar basura por favor
+
 
         // Analizar imagen nueva
         camera.Update(_currentImage);
         nPointsCurrentImage = camera.detectAndComputeFeatures();
+        
         
     
 
@@ -221,18 +228,21 @@ namespace vi
         if (nPointsCurrentImage > int(nPointsLastKeyframe*0.35)) // se considera que es hay suficientes puntos para el match
         {
             camera.computeFastMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
-            
+           
             if (lastImageWasKeyframe){
+                
                 init_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld[0]);
                 final_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld.back());
-                RotationResCam =  imu2camRotation.t()* init_rotationMatrix.t()*final_rotationMatrix*imu2camRotation;
+             
 
             }
             else
             {
                 final_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld.back());
-                RotationResCam =  imu2camRotation.t()* init_rotationMatrix.t()*final_rotationMatrix*imu2camRotation;
+                
             }
+            RotationResImu = init_rotationMatrix.t()*final_rotationMatrix;
+            RotationResCam =  imu2camRotation.t()*RotationResImu*imu2camRotation;
 
             Point3d rpyResidual = rotationMatrix2RPY(RotationResCam);
              float disparityThreshold = 22;
@@ -269,7 +279,7 @@ namespace vi
 
                 imshow("currentDebugImage1", currentImageDebugToShow);
                 imshow("currentDebugImage2", currentImageToShow);
-                char c_input = (char) waitKey(30);
+                char c_input = (char) waitKey(1);
                 if( c_input == 'q' | c_input == ((char)27) )  {
                         exit(0);
                 }
@@ -343,10 +353,10 @@ namespace vi
     }
     
     // Lujano Algorithm
-    void VISystem::setGtRes(Mat TranslationResGT, Mat RotationResGT )
+    void VISystem::setGtTras(Point3d TranslationResGT )
     {
-        TranslationResidual = TranslationResGT;
-        RotationResidual =  RPY2rotationMatrix (rotationMatrix2RPY(RotationResGT)) ;
+        TranslationResidualGT = TranslationResGT;
+ 
     }
 
 
@@ -399,15 +409,13 @@ namespace vi
   void VISystem::EstimatePoseFeaturesDebug(Frame* _previous_frame, Frame* _current_frame)
     {
         
-        Point3f  translationGt;
+        Point3f  translationGt = Point3f(TranslationResidualGT);
 
-        Point3d rotationGt = rotationMatrix2RPY(RotationResidual)*180/M_PI;
+        
         Point3d rotationEst = rotationMatrix2RPY(RotationResCam)*180/M_PI;
 
         
-        translationGt.x = TranslationResidual.at<float>(0,0);
-        translationGt.y = TranslationResidual.at<float>(1,0);
-        translationGt.z = TranslationResidual.at<float>(2,0);
+
         
         
 
@@ -474,11 +482,9 @@ namespace vi
         float u1k, v1k, u2k, v2k; // key
 
         // Vector unitario de traslacion
-        Point3d tVec;
+        Point3d tVec = TranslationResidualGT;
 
-        tVec.x = TranslationResidual.at<float>(0,0);
-        tVec.y = TranslationResidual.at<float>(1,0);
-        tVec.z = TranslationResidual.at<float>(2,0);
+ 
         tVec = tVec/sqrt(tVec.x*tVec.x +tVec.y*tVec.y+tVec.z*tVec.z);
 
         // Debug string con degeneracion
@@ -505,7 +511,7 @@ namespace vi
             vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
             vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
 
-            normal = vector1.cross(Matx33d(RotationResidual)*vector2); // Vector normal al plano epipolar
+            normal = vector1.cross(Matx33d(RotationResCam)*vector2); // Vector normal al plano epipolar
             
             double error = -1000.0/std::log10(abs(tVec.dot(normal)));
 
@@ -546,9 +552,9 @@ namespace vi
         vector <Point3f> normalVectors;
         Mat degenerate = Mat::zeros(1, numkeypoints, CV_32F) ; // vector la degeneracion de los vectores
 
-        float sx = TranslationResidual.at<float>(0,0);
-        float sy = TranslationResidual.at<float>(1,0);
-        float sz = TranslationResidual.at<float>(2,0);
+        float sx = TranslationResidualGT.x;
+        float sy = TranslationResidualGT.y;
+        float sz = TranslationResidualGT.z;
         float scale = sqrt(sx*sx+sy*sy+sz*sz);
 
         // Debug string con degeneracion
@@ -688,7 +694,7 @@ namespace vi
 
 
         Mat P1 = getProjectionMat(K, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
-        Mat P2 = getProjectionMat(K, Mat(RotationResidual.t()), Mat(-RotationResidual.t())*TranslationResidual );
+        Mat P2 = getProjectionMat(K, Mat(RotationResCam.t()), Mat(-RotationResCam.t()*Point3f(TranslationResidualGT)) );
 
 
         array<vector<Point2f>,2> points;
@@ -745,70 +751,32 @@ namespace vi
 
     void VISystem::Track()
     {
-
-
-        Mat33f rotationCamEigen ;
-        cv2eigen(RotationResCam, rotationCamEigen);
-        SE3::Point tRes;
-        tRes.x() = translationResEst.x;
-        tRes.y() = translationResEst.y;
-        tRes.z() = translationResEst.z;
         
-        current_poseCam = SE3(rotationCamEigen, tRes); // residual
-        /*
-        //current_poseCam = SE3(camera.frameList[camera.frameList.size()-2]->rigid_transformation_.unit_quaternion(), (camera.frameList[camera.frameList.size()-2]->rigid_transformation_.translation()));
-        Mat44f rigidEigen = current_poseCam.matrix();
-        
-        Mat rigid = Mat(4,4,CV_32FC1);
-        eigen2cv(rigidEigen, rigid);
-       
-        
-        Point3d rpyCAM = rotationMatrix2RPY( transformationMatrix2rotationMatrix(rigid));
-        Mat residualRotation = RPY2rotationMatrix(rpyCAM);
-        //Mat residualRotation = RPY2rotationMatrix(rpyCAM);
-        Mat33f rotationEigen ;
-        cv2eigen(residualRotation, rotationEigen);
-        current_poseCam.translation() = current_poseCam.translation();
-        current_poseCam = SE3( rotationEigen, -current_poseCam.translation() );
-
-        */
+        current_poseCam = PAndR2T(RotationResCam , translationResEst ); // residual
         
 
-
+        
+        //qOrientationImu = imuCore.quaternionWorld.back();
         final_poseCam = final_poseCam*current_poseCam;
-
-        Mat31f t = final_poseCam.translation();
-        positionCam.x = t(0);
-        positionCam.y = t(1);
-        positionCam.z = t(2);
-        qOrientationCam.x = final_poseCam.unit_quaternion().x();
-        qOrientationCam.y = final_poseCam.unit_quaternion().y();
-        qOrientationCam.z = final_poseCam.unit_quaternion().z();
-        qOrientationCam.w = final_poseCam.unit_quaternion().w();
-        RPYOrientationCam = toRPY(qOrientationCam);
+        
         
 
-        Mat33f rotationImuEigen ;
-        cv2eigen(imuCore.residual_rotationMatrix, rotationImuEigen);
-        current_poseImu = SE3(rotationImuEigen, SE3::Point(0.0, 0.0, 0.0));
-
-        final_poseImu = final_poseImu*current_poseImu;
-
-        Mat31f t2 = final_poseImu.translation();
-        positionImu.x = -t2(0);
-        positionImu.y = -t2(2);
-        positionImu.z = -t2(1);
-        qOrientationImu.x = final_poseImu.unit_quaternion().x();
-        qOrientationImu.y = final_poseImu.unit_quaternion().y();
-        qOrientationImu.z = final_poseImu.unit_quaternion().z();
-        qOrientationImu.w = final_poseImu.unit_quaternion().w();
-        RPYOrientationImu = toRPY(qOrientationImu);
-      
+ 
+        positionCam.x = final_poseCam(0, 3);
+        positionCam.y = final_poseCam(1, 3);
+        positionCam.z = final_poseCam(2, 3);
         
-
-
+        
+        RPYOrientationCam = transformationMatrix2RPY(final_poseCam);
+        qOrientationCam = toQuaternion( RPYOrientationCam.x ,RPYOrientationCam.y, RPYOrientationCam.z);
 
         
+        qOrientationImu = imuCore.quaternionWorld.back();
+        
+        
+
+ 
+ 
 
         
     }
@@ -842,10 +810,10 @@ namespace vi
 
    
 
-        float sx = TranslationResidual.at<float>(0,0);
-        float sy = TranslationResidual.at<float>(1,0);
-        float sz = TranslationResidual.at<float>(2,0);
-        Matx33f Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
+        float sx = TranslationResidualGT.x;
+        float sy = TranslationResidualGT.y;
+        float sz = TranslationResidualGT.z;
+        //Matx33f Rotation_ResCam = imu2camRotation.t()* imuCore.residual_rotationMatrix*imu2camRotation;
         //Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
         //Mat trans_skew =  E*Rotation_ResCam.t();
 

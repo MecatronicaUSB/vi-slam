@@ -36,8 +36,8 @@ void CameraModel::GetCameraModel(string _calibration_path) {
         opencv_file["start_index"]>> start_index;
         opencv_file["use_gt"]>> use_gt;
         opencv_file["use_ros"]>> use_ros;
-        opencv_file["num_cells"]>> num_cells;
-        opencv_file["length_patch"]>> length_patch;
+        opencv_file["num_wcells"]>> num_wcells;
+        opencv_file["num_hcells"]>> num_hcells;
         opencv_file["detector"]>> detector;
         opencv_file["matcher"]>> matcher;
         

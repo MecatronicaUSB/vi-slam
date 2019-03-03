@@ -25,7 +25,7 @@ PATHS /usr/local
 NO_DEFAULT_PATH)
 
 find_package(CUDA)
-find_package(Eigen3 REQUIRED)
+
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -82,9 +82,7 @@ set(vi_slam_SOURCE_FILES
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/include
-  ${PROJECT_SOURCE_DIR}/thirdparty
   #/usr/local/cuda-8.0/targets/x86_64-linux/include
   #${PROJECT_SOURCE_DIR}/include/thirdparty/akaze
   #${CUDASIFT}

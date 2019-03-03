@@ -44,18 +44,15 @@ class ImuFilterNode{
         void createPublisher(double _timeStep);
         void setImuData(vector <Point3d> &w_measure,vector <Point3d>  &a_measure);
         void setImuBias(Point3d acc_Bias, Point3d ang_Bias);
-        void setImuInitialVelocity(Point3d initial_velocity);
-        void setImuInitialPosition();
-        void initializate(double gt_yaw, Point3d gt_velocity, vector <Point3d> &w_measure,vector <Point3d>  &a_measure );
+        void initializate(double gt_yaw, vector <Point3d> &w_measure,vector <Point3d>  &a_measure );
         void estimate();
         void estimateOrientation();
         void computeGravity();
-        void computePosition();
         void computeVelocity();
         void computeAcceleration();
-        //void computeAcceleration(vector <Point3d> gtRPY);
-        void computeAngularVelocity();
-        void computeAngularPosition();
+       
+
+
 
         void calibrateAng(int axis); // calibración angular considerando velocidad 0
         void calibrateAcc(int axis); // calibración acelaracion considerando velocidad 0
@@ -64,13 +61,12 @@ class ImuFilterNode{
         void printStatistics();
         void clearData(); // Borra los datos obtenidos
         Point3d transform2World(Point3d acc, Point3d localAngles);
-        Point3d angularPosition;
-        Point3d angularVelocity;
-        Point3d initialVelocity;
+    
+
         double initialYawGt;
         double initialYawFilter;
         double YawGt;
-        Point3d position; // posicion en x, y, z
+
         Point3d velocity; // velocidad en x, y, z
         Point3d accBias; // Bias aceleracion
         Point3d angBias; // Bias angular
@@ -79,15 +75,12 @@ class ImuFilterNode{
         vector <Point3d> rpyAnglesWorld; // orientacion del robot en rpy respecto al mundo 
         vector <Point3d> accelerationWorld; // aceleracion del robot respecto al mundo
 
-        Matx33f init_rotationMatrix;
-        Matx33f final_rotationMatrix;
-        Matx33f residual_rotationMatrix;
+
 
         vector <Matx33f> world2imuRotation;
 
-        // Residuales
-        Point3d residualRPY;
-        Point3d residualPosition;
+        // Residuales de traslacion
+        
         Point3d residualVelocity;
         double timeStep;
     private:

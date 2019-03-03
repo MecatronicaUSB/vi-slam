@@ -31,10 +31,11 @@ class Matcher
         void setDescriptors(Mat _descriptors_1, Mat _descriptors_2);
         void setMatcher(int _matcher);
         void setImageDimensions(int w, int h); // dimensiones de la imagen
+        void setGridSize(int _n_wcells, int _n_h_cells); // dimensiones de la imagen
         void computeMatches();
         void computeFastMatches();
         void computeSymMatches();
-        int bestMatchesFilter ( int n_features);// Dsitrubuye los features uniformemente y selecciona  las mejores parejas
+        int bestMatchesFilter ();// Dsitrubuye los features uniformemente y selecciona  las mejores parejas
         int nnFilter(vector<vector<DMatch> > &matches, double nn_ratio); // filtro de vecinos mas cercanos
         void resetVectorMatches(vector<DMatch> &matches);
         void pushBackVectorMatches(vector<DMatch> &matches);
@@ -42,9 +43,9 @@ class Matcher
         void getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
         void getFastMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
         void sortMatches();
-        double getMatchPercentage();
-        void computeBestMatches(int n_features);
-        void getGrid(int n_features, vector<KeyPoint> &grid_point);
+        
+        void computeBestMatches();
+        
         void printStatistics();
         
         void clear();
@@ -63,6 +64,7 @@ class Matcher
         int h_size, w_size;
         int nSymMatches; // Numero de correspondencias simetricas
         int nBestMatches; // numero de correspondencias finales
+        int n_wcells, n_hcells; // Numeros de celdas horizontales y verticales
 
         // Estadisticas de tiempo
         double elapsed_detect1, elapsed_detect2, elapsed_knn1, elapsed_knn2;
