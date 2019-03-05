@@ -5,6 +5,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/features2d.hpp"
+#include <map>
 
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -20,6 +21,56 @@ enum matcherType
     USE_BRUTE_FORCE_GPU,
     USE_BRUTE_FORCE_GPU_HAMMING
 
+};
+
+/// Clase Frame: Contiene toda la informacion de la imagen actual
+class Frame
+{
+    public:
+        /**
+         * @brief Constructor of Frame.
+         */
+        Frame();
+
+        /**
+         * @brief Destructor of Frame
+         */
+        ~Frame();
+
+        // ---------- Attributes
+        Mat grayImage; //!< imagen en escala de grises
+        vector<KeyPoint> keypoints;        //!< keypoints dectados en la imagen
+        vector<KeyPoint>  prevGoodMatches; //!< matches con la imagen anterior
+        vector<KeyPoint>  nextGoodMatches; //!< matches con la imagen siguiente
+        Mat descriptors;                   //!< keypoints de la imagen
+        
+
+        int idFrame;      //!< identificador del frame
+        double imageTime; //!< tiempo en el que fue tomado la imagen
+
+
+
+        bool obtainedGoodMatches; //!< flag de obtencion de matches    
+        bool isKeyFrame;          //!< flag de keyframe
+        
+        
+        // alias to clarify map usage below
+        using kp_idx_t = size_t;
+        using landmark_idx_t = size_t;
+        using img_idx_t = size_t;
+
+        std::map<kp_idx_t, kp_idx_t> kp_next_match; // seypoint to 3d points
+        std::map<kp_idx_t, kp_idx_t> kp_prev_match; // seypoint to 3d points
+        std::map<kp_idx_t, landmark_idx_t> kp_landmark; // Mapa que relaciona el feature con su landmark
+
+        bool kp_next_exist(size_t kp_idx) { return kp_next_match.count(kp_idx) > 0; }
+        bool kp_prev_exist(size_t kp_idx) { return kp_prev_match.count(kp_idx) > 0; }
+        bool kp_3d_exist(size_t kp_idx) { return kp_landmark.count(kp_idx) > 0; }
+
+        landmark_idx_t& kp_3d_idx(size_t kp_idx) { return kp_landmark[kp_idx]; } // indice del vector de landmarks
+        kp_idx_t& kp_next_idx(size_t kp_idx) { return kp_next_match[kp_idx]; } // indice del vector de landmarks
+        kp_idx_t& kp_prev_idx(size_t kp_idx) { return kp_prev_match[kp_idx]; } // indice del vector de landmarks
+        
 };
 
 class Matcher
@@ -41,7 +92,7 @@ class Matcher
         void pushBackVectorMatches(vector<DMatch> &matches);
         void getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
         void getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
-        void getFastMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2);
+        void getIndexesMatches(Frame* _previousFrame, Frame *_currentFrame);
         void sortMatches();
         
         void computeBestMatches();

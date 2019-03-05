@@ -39,9 +39,19 @@ void Camera::initializate(int _detector, int _matcher, int _w_size, int _h_size,
 
 }
 // Deteccion
-void Camera::Update (Mat _grayImage){
-    currentFrame = new Frame();
-    _grayImage.copyTo(currentFrame->grayImage); // Copiar imagen
+void Camera::setCurrentFrame (Frame *_currentFrame){
+   
+   currentFrame = _currentFrame ;
+   
+    
+    
+}
+
+void Camera::setPreviousFrame (Frame *_previousFrame){
+   
+   previousFrame = _previousFrame ;
+   
+    
     
 }
 
@@ -99,7 +109,7 @@ void Camera::setDetector(int _detector)
         }
         default:
         {
-            detector = KAZE::create(false, false, 0.005);
+            detector = KAZE::create(false, false, 0.009);
             cout << "Using Kaze detector"<<endl;
             break;
         }
@@ -115,12 +125,13 @@ void Camera::computeDescriptors()
 void Camera::computeGoodMatches()
 {
     matcher.clear();
-    matcher.setKeypoints(frameList[frameList.size()-1]->keypoints, currentFrame->keypoints);
-    matcher.setDescriptors(frameList[frameList.size()-1]->descriptors, currentFrame->descriptors );
+    matcher.setKeypoints(previousFrame->keypoints, currentFrame->keypoints);
+    matcher.setDescriptors(previousFrame->descriptors, currentFrame->descriptors );
     matcher.computeMatches(); // Computa las primeras parejas
     matcher.computeSymMatches();
     matcher.computeBestMatches(); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
-    matcher.getGoodMatches(frameList[frameList.size()-1]->nextGoodMatches, currentFrame->prevGoodMatches) ;// matched 1, 2
+    matcher.getIndexesMatches(previousFrame, currentFrame);
+    matcher.getGoodMatches(previousFrame->nextGoodMatches, currentFrame->prevGoodMatches) ;// matched 1, 2
     //matcher.printStatistics();
     currentFrame->obtainedGoodMatches = true;
 
@@ -129,11 +140,12 @@ void Camera::computeGoodMatches()
 void Camera::computeFastMatches()
 {
     matcher.clear();
-    matcher.setKeypoints(frameList[frameList.size()-1]->keypoints, currentFrame->keypoints);
-    matcher.setDescriptors(frameList[frameList.size()-1]->descriptors, currentFrame->descriptors );
+    matcher.setKeypoints(previousFrame->keypoints, currentFrame->keypoints);
+    matcher.setDescriptors(previousFrame->descriptors, currentFrame->descriptors );
     matcher.computeFastMatches(); // Computa las primeras parejas
     matcher.computeBestMatches(); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
-    matcher.getGoodMatches(frameList[frameList.size()-1]->nextGoodMatches, currentFrame->prevGoodMatches);
+    matcher.getIndexesMatches(previousFrame, currentFrame);
+    matcher.getGoodMatches(previousFrame->nextGoodMatches, currentFrame->prevGoodMatches);
     currentFrame->obtainedGoodMatches = true;
 
 
@@ -149,12 +161,6 @@ void Camera::setMatcher(int _matcher)
 
 // Save current Frame
 
-void Camera::saveFrame()
-{
-    currentFrame->isKeyFrame = true;
-    frameList.push_back(currentFrame);
-
-}
 
 
 

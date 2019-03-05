@@ -32,7 +32,7 @@ Point3d transformationMatrix2position(Matx44d transformationMatrix);
 Point3d rotationMatrix2RPY(Matx33f rotationMatrix);
 Matx33f RPY2rotationMatrix(Point3d rpy );
 Matx44d RPYAndPosition2transformationMatrix(Point3d rpy, Point3d position);
-Mat transformationMatrix2rotationMatrix(Mat transformationMatrix );
+Matx33f transformationMatrix2rotationMatrix(Matx44d transformationMatrix );
 
 Mat RPYWorld2ResidualAngImu(Point3d rpy ); //Sobrante
 

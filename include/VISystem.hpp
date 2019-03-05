@@ -38,6 +38,7 @@ struct Landmark
 {
     cv::Point3f pt;
     int seen = 0; // how many cameras have seen this point
+
 };
 
 class VISystem
@@ -77,16 +78,20 @@ class VISystem
         
        
         Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, double threshold = 350);
-        void FilterKeypoints(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2, double threshold);
+        void FilterKeypoints(double threshold, vector<bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2);
         void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
         
         
         float Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
-        void Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2) ;
+        void Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f prevR, Point3f prevt,  Matx33f currR, Point3f currt, vector <Point3f> &points3D);
         
 
         void setGtTras(Point3d TranslationResGT );
+        void saveFrame();
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
+        void addNewLandmarks( vector <Point3f> points3D, vector <bool> mask);
+        
+        float computeScale(vector<Point3f> points3D, vector <bool> mask);
         
         
         int  num_keyframes;
@@ -124,7 +129,7 @@ class VISystem
         Matx44d final_poseImu;
         Matx44d current_poseCam;
         Matx44d current_poseImu;
-        Matx33f prueba;
+   
 
 
         CameraModel* camera_model;
@@ -158,15 +163,19 @@ class VISystem
 
         // Landmarks
 
-        vector<Landmark> landmark;
+        vector<Landmark> landmarks;
 
         // Trayectoria
 
         vector<Point3f> MapPose; // Poses del robot entre keyframes
         vector<Matx33f> MapOrientation; // Poses de la orientacion
 
+
         // lista de keyframes
-        vector <Frame *> frameList;  // lista de todos los frames
+        vector <Frame *> keyFrameList;  // lista de todos los frames
+        Frame * currentFrame;
+        float scale;
+
 
 
    

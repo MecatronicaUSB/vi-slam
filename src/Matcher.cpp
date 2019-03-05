@@ -290,6 +290,14 @@ void Matcher::getMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched
     }
 }
 
+void Matcher::getIndexesMatches(Frame* _previousFrame, Frame *_currentFrame)
+{
+    for(unsigned i = 0; i < matches.size(); i++) {
+        _previousFrame->kp_next_idx(matches[i].queryIdx) = matches[i].trainIdx;
+        _currentFrame->kp_prev_idx(matches[i].trainIdx) = matches[i].queryIdx;
+    }
+}
+
 
 void Matcher::getGoodMatches(vector<KeyPoint> &_matched1, vector<KeyPoint> &_matched2)
 {

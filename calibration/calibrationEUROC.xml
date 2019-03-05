@@ -51,8 +51,8 @@
 <use_gt type_id="integer">1</use_gt>
 <use_ros type_id="integer">1</use_ros>
 
-<num_wcells type_id="integer"> 14</num_wcells>
-<num_hcells type_id="integer"> 8</num_hcells>
+<num_wcells type_id="integer"> 8</num_wcells>
+<num_hcells type_id="integer"> 6</num_hcells>
 <length_patch type_id="integer"> 3</length_patch>
 
 <detector type_id="integer">0</detector>

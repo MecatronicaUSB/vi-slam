@@ -114,13 +114,19 @@ namespace vi
         // Colocar medidas iniciales de IMU
         Point3d _iniVelocity = Point3d(0.0, 0.0, 0.0); // Asumir velocidad inicial cero
         imuCore.initializate(iniYaw, _imuAngularVelocity, _imuAcceleration); // Poner yaw inicial del gt
-             
-        camera.Update(currentImage);
+        currentFrame = new Frame();
+        image.copyTo(currentFrame->grayImage); // Copiar imagen
+        
+        
+        
+        camera.setCurrentFrame(currentFrame);
         nPointsLastKeyframe = camera.detectAndComputeFeatures(); // asumir que la primera imagen es buena y es keyframe
         lastImageWasKeyframe = true;
+        saveFrame();
         
-        camera.saveFrame();
-        cout << "Camera Initialized con "<< camera.frameList.back()->keypoints.size() << " features"<<endl;
+        cout << "Camera Initialized con "<< currentFrame->keypoints.size() << " features"<<endl;
+        
+
 
         // Calcular posiciones
         velocityImu = Point3d(0.0, 0.0, 0.0);
@@ -202,9 +208,10 @@ namespace vi
     {
         
        
-        
+        currentFrame = new Frame();
         prevImage = currentImage;
         currentImage = _currentImage.clone();
+        currentImage.copyTo(currentFrame->grayImage); // Copiar imagen
        
         
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // Medidas tomadas
@@ -217,7 +224,8 @@ namespace vi
 
 
         // Analizar imagen nueva
-        camera.Update(_currentImage);
+        camera.setPreviousFrame(keyFrameList.back());
+        camera.setCurrentFrame(currentFrame);
         nPointsCurrentImage = camera.detectAndComputeFeatures();
         
         
@@ -227,8 +235,10 @@ namespace vi
 
         if (nPointsCurrentImage > int(nPointsLastKeyframe*0.35)) // se considera que es hay suficientes puntos para el match
         {
+            clock_t begin = clock();
             camera.computeFastMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
-           
+            clock_t computeMatches = clock(); 
+        
             if (lastImageWasKeyframe){
                 
                 init_rotationMatrix = RPY2rotationMatrix(imuCore.rpyAnglesWorld[0]);
@@ -245,22 +255,23 @@ namespace vi
             RotationResCam =  imu2camRotation.t()*RotationResImu*imu2camRotation;
 
             Point3d rpyResidual = rotationMatrix2RPY(RotationResCam);
-             float disparityThreshold = 22;
-             double disparityAngThreshold = 5.0;
+             float disparityThreshold = 50;
+             double disparityAngThreshold = 10.0;
 
             double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
-            float disparity = Disparity(camera.frameList.back()->nextGoodMatches, camera.currentFrame->prevGoodMatches);
-
+            float disparity = Disparity(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
+            clock_t disparidad = clock();
             cout << "Disparity Trans = " << disparity <<endl;
             cout << "Disparity Ang = " << disparityAng <<endl;
+            cout << " Points detected = " << nPointsCurrentImage<<endl;
             
             if (disparity > disparityThreshold) currentImageIsKeyframe = true;   
             if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
             
             if (currentImageIsKeyframe)
             {
-                camera.saveFrame(); // Guardar frame como keyframe
-                num_keyframes = camera.frameList.size();
+                saveFrame();
+                num_keyframes = keyFrameList.size();
 
                 if (num_keyframes > num_max_keyframes)
                 {
@@ -269,12 +280,113 @@ namespace vi
                 
                 // Estimar traslacion entre keyframes
                 
-                EstimatePoseFeaturesDebug(camera.frameList[camera.frameList.size()-2], camera.frameList[camera.frameList.size()-1]);
-                //Triangulate(camera.frameList[camera.frameList.size()-2]->nextGoodMatches, camera.frameList[camera.frameList.size()-1]->prevGoodMatches);
+                EstimatePoseFeaturesDebug(keyFrameList[keyFrameList.size()-2], keyFrameList.back());
+                clock_t ransac = clock();
+                vector<bool> mask;
+                vector<KeyPoint> filter1, filter2;
+                vector <Point3f> points3D;
+                FilterKeypoints(800, mask, filter1, filter2); // outlier Rejection
+                clock_t outlierRejection = clock();
+
+                        
+                Matx44d local_poseCam = PAndR2T(RotationResCam , translationResEst ); // residual
+                Matx44d curr_poseCam = final_poseCam*local_poseCam;
+
+                Matx33f prevR, currR; // Rotaciones
+                Point3f prevt, currt; // posiciones
+
+                prevR = transformationMatrix2rotationMatrix(final_poseCam);
+                currR = transformationMatrix2rotationMatrix(curr_poseCam);
+
+
+                prevt.x = final_poseCam(0, 3);
+                prevt.y = final_poseCam(1, 3);
+                prevt.z = final_poseCam(2, 3);
+
+
+                currt.x = curr_poseCam(0, 3);
+                currt.y = curr_poseCam(1, 3);
+                currt.z = curr_poseCam(2, 3);
+
+                
+                
+                
+                // Triangular inliers excepto por el factor de escala de la ultima estimacion de traslacion
+
+                Triangulate(filter1, filter2, prevR, prevt, currR, currt, points3D ); 
+
+                
+                clock_t triangulate = clock();
+
+
+                double elapsed_matches = double(computeMatches- begin) / CLOCKS_PER_SEC;  
+                double elapsed_disparidad = double(disparidad- computeMatches) / CLOCKS_PER_SEC;  
+                double elapsed_ransac = double(ransac- disparidad) / CLOCKS_PER_SEC;  
+                double elapsed_outlier = double(outlierRejection-ransac) / CLOCKS_PER_SEC;  
+                double elapsed_triangulate = double(triangulate-outlierRejection) / CLOCKS_PER_SEC;  
+
+        
+                if (keyFrameList.size() == 2 ) // segundo keyframe
+                {
+                    
+                    
+                    addNewLandmarks(points3D, mask);
+                    scale = norm(TranslationResidualGT); // escala inicial
+                    cout << landmarks.size()<<endl;
+                    cout << points3D.size()<<endl;
+                    cout << landmarks.back().pt<<endl;
+                    cout <<points3D.back()<<endl;
+
+                    
+                    
+
+                }
+                else
+                {
+                    scale = computeScale(points3D, mask); // Y landmarks previamente calculadops
+
+                    Matx44d local_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
+                    Matx44d curr_poseCam = final_poseCam*local_poseCam;
+
+                    Matx33f prevR, currR; // Rotaciones
+                    Point3f prevt, currt; // posiciones
+
+                    prevR = transformationMatrix2rotationMatrix(final_poseCam);
+                    currR = transformationMatrix2rotationMatrix(curr_poseCam);
+
+
+                    prevt.x = final_poseCam(0, 3);
+                    prevt.y = final_poseCam(1, 3);
+                    prevt.z = final_poseCam(2, 3);
+
+
+                    currt.x = curr_poseCam(0, 3);
+                    currt.y = curr_poseCam(1, 3);
+                    currt.z = curr_poseCam(2, 3);
+
+                    Triangulate(filter1, filter2, prevR, prevt, currR, currt, points3D ); 
+
+                    addNewLandmarks(points3D, mask);
+
+
+
+                }
+
+                cout<<"\nESTADISTICAS"
+                <<"\nTiempo de matches: " << fixed<< setprecision(3) << elapsed_matches*1000<<" ms"
+                <<"\tTiempo de disparidad: " << fixed<< setprecision(3) << elapsed_disparidad*1000<<" ms"
+                <<"\nTiempo de RANSAC: " << fixed<< setprecision(3) << elapsed_ransac*1000<<" ms"
+                <<"\tTiempo de outlierRej: " << fixed<< setprecision(3) << elapsed_outlier*1000<<" ms"
+                <<"\nTiempo de triangulate: " << fixed<< setprecision(3) << elapsed_triangulate*1000<<" ms"
+                << " Escala = " << scale 
+                <<endl;
+                ;
+
 
                 // Obtener la nueva posicion de la cámarael
                 
                 Track();
+                
                 
 
                 imshow("currentDebugImage1", currentImageDebugToShow);
@@ -348,9 +460,17 @@ namespace vi
 
     void VISystem::FreeLastFrame()
     {
-        camera.frameList[0]->~Frame();
-        camera.frameList.erase(camera.frameList.begin());
+        keyFrameList[0]->~Frame();
+        keyFrameList.erase(keyFrameList.begin());
     }
+
+    void VISystem::saveFrame()
+{
+    currentFrame->isKeyFrame = true;
+    keyFrameList.push_back(currentFrame);
+
+}
+
     
     // Lujano Algorithm
     void VISystem::setGtTras(Point3d TranslationResGT )
@@ -359,6 +479,143 @@ namespace vi
  
     }
 
+  void VISystem::addNewLandmarks( vector <Point3f> points3D, vector <bool> mask)
+  {
+      
+
+        // Debug string con degeneracion
+        auto & prevKey = keyFrameList[keyFrameList.size()-2];
+        auto & currKey = keyFrameList.back();
+        int indexInlier = 0;
+
+        int numkeypoints =  prevKey->keypoints.size();
+        
+
+       
+        
+        for (int i = 0; i< numkeypoints; i++)
+        {
+            if(mask[i]) // si el keypoint es inlier
+            {
+               
+            
+                size_t match_idx = prevKey->kp_next_idx(i);
+                if (prevKey->kp_3d_exist(i)) { // si existe el landmark
+                    // Found a match with an existing landmark
+                    
+                    currKey->kp_3d_idx(match_idx) = prevKey->kp_3d_idx(i); // como hay match, el landmark se hereda
+                    
+
+                    // sumar nuevo punto a la medida del landmark
+                    landmarks[prevKey->kp_3d_idx(i)].pt += points3D[indexInlier]; // suma de landmarks
+                    landmarks[prevKey->kp_3d_idx(i)].seen++;
+                } 
+                else  // No existe el landmark observado
+                {
+                    // Add new 3d point
+                    Landmark landmark;
+
+                    landmark.pt = points3D[indexInlier];
+                    landmark.seen = 2;
+
+                    landmarks.push_back(landmark);
+
+                    prevKey->kp_3d_idx(i) = landmarks.size() - 1; // guardar el indice del vector de landmark
+                    currKey->kp_3d_idx(match_idx) = landmarks.size() - 1;// guardar el indice
+                }
+
+                indexInlier++;
+
+            }
+            
+
+        }
+
+
+
+
+  }
+
+  float VISystem::computeScale(vector<Point3f> points3D, vector <bool> mask)
+  {
+        
+
+        // Debug string con degeneracion
+        auto & prevKey = keyFrameList[keyFrameList.size()-2];
+        auto & currKey = keyFrameList.back();
+        float scaleSum = 0.0;
+
+        int numkeypoints =  prevKey->keypoints.size();
+       
+      
+        vector <Point3f> existing_landmarks;
+        vector <Point3f> new_landmarks;
+        int indexInlier = 0;
+        int num_common_landmarks = 0;
+        
+        for (int i = 0; i< numkeypoints; i++)
+        {
+            if(mask[i]) // si el keypoint es inlier y tiene match
+            {
+                // Hallar los puntos comunes entre la triangulacion actual y los landmarks
+                if(prevKey->kp_3d_exist(i)  ) // Si el keypoint tiene match con alguno del keyframe siguiente
+                {
+                    size_t idx = prevKey->kp_3d_idx(i); // landmark del keypoint
+                    //cout << "i = " << i <<endl;
+                    
+                    //cout <<"pt " << SFM.landmark[idx].pt <<endl;
+                    //cout <<" seen" <<SFM.landmark[idx].seen <<endl;
+                    Point3f avg_landmark = landmarks[idx].pt / (landmarks[idx].seen - 1); // landmark promedio
+
+                    // Landmarks actuales  (puntos triangulados actualmente)
+                    new_landmarks.push_back(points3D[indexInlier]);
+                    // Landmarks del sistema 
+                    existing_landmarks.push_back(avg_landmark); // puntos existentes (3D)
+
+                    // Estos landmarks son los vistos por el mismo keypoint
+                    num_common_landmarks++;
+                }
+                indexInlier++; // numero de point3d
+
+
+            }
+
+           
+
+        }
+
+        // Tomar indices aleatorios entre los keypoints para tomar el promedio de la escala 
+        int ii, jj;
+       
+        int count = 0;
+        cout <<"num_common_landmarks  " << num_common_landmarks<<endl;
+        int maxIter = 1000;
+
+        for (int i = 0; i< maxIter ; i++)
+        {
+            ii = rand()%(num_common_landmarks  -1); // Tomar un feature aleatorio
+            jj = rand()%(num_common_landmarks  -1); // Tomar un feature aleatorio
+
+            if( norm(new_landmarks[ii] - new_landmarks[jj])!= 0.0)
+            { 
+                float s = norm(existing_landmarks[ii] - existing_landmarks[jj]) / norm(new_landmarks[ii] - new_landmarks[jj]);
+                //cout << "s " << s <<endl;
+
+                scaleSum += s; // suma de escala de puntos tomados
+                count++;
+            
+            }
+            
+
+
+        }
+        
+        return scaleSum/count; // retornar el promedio de la escala entre landmarks
+
+         
+        
+
+  }
 
   float VISystem::Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints )
   {
@@ -412,11 +669,6 @@ namespace vi
         Point3f  translationGt = Point3f(TranslationResidualGT);
 
         
-        Point3d rotationEst = rotationMatrix2RPY(RotationResCam)*180/M_PI;
-
-        
-
-        
         
 
         
@@ -445,16 +697,13 @@ namespace vi
 
       
 
-        clock_t begin= clock(); 
-        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, RotationResCam, 370.0);
+
+        translationResEst = F2FRansac(_previous_frame->nextGoodMatches, _current_frame->prevGoodMatches, RotationResCam, 800.0);
         if(translationResEst.dot(translationGt)<0)
         {
             translationResEst = -translationResEst;
         }
-        clock_t detect1 = clock(); 
-        double elapsed_detect = double(detect1- begin) / CLOCKS_PER_SEC;  
 
-        cout << "elapsed = " << elapsed_detect*1000<< " ms" <<endl; 
         cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
         cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
        // cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
@@ -465,21 +714,19 @@ namespace vi
         
     }
 
-    void VISystem::FilterKeypoints(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2, double threshold)
+    void VISystem::FilterKeypoints(double threshold, vector <bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2)
     {
-
-
-        Point3d vector1; //Feature Vector en frame 1 
+        Point3d vector1; //Feature Vector en frame 1
         Point3d vector2; // Feature Vector en frame2
         Point3d normal;  // vector del plano 1 y 2 de cada pareja de features
 
 
-        int numkeypoints = inPoints1.size();
-        Point3f pont;
+       
+        
         
 
         float u1, v1, u2, v2;
-        float u1k, v1k, u2k, v2k; // key
+
 
         // Vector unitario de traslacion
         Point3d tVec = TranslationResidualGT;
@@ -488,43 +735,71 @@ namespace vi
         tVec = tVec/sqrt(tVec.x*tVec.x +tVec.y*tVec.y+tVec.z*tVec.z);
 
         // Debug string con degeneracion
+        auto & prevKey = keyFrameList[keyFrameList.size()-2];
+        auto & currKey = keyFrameList.back();
+
+         int numkeypoints =  prevKey ->keypoints.size();
        
 
         int count  = 0;
+        int count_matches  = 0;
+        Point3f dVector = translationResEst;
         // Crear vectores normales al plano de correspondecias (epipolar)
+        
         for (int i = 0; i< numkeypoints; i++)
         {
-            u1 = inPoints1[i].pt.x;
-            v1 = inPoints1[i].pt.y;
-            u2 = inPoints2[i].pt.x;
-            v2 = inPoints2[i].pt.y;
-
-             // Creacion de vectores
-            vector1.x = (u1-cx)/fx;
-            vector1.y = (v1-cy)/fy;
-            vector1.z = 1.0;
-
-            vector2.x = (u2-cx)/fx;
-            vector2.y = (v2-cy)/fy;
-            vector2.z = 1.0;
-
-            vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
-            vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
-
-            normal = vector1.cross(Matx33d(RotationResCam)*vector2); // Vector normal al plano epipolar
-            
-            double error = -1000.0/std::log10(abs(tVec.dot(normal)));
-
-             if(error<threshold)
+            if(prevKey->kp_next_exist(i)) // Si el keypoint tiene match con alguno del keyframe siguiente
             {
-                outPoints1.push_back(inPoints1[i]);
-                outPoints2.push_back(inPoints2[i]);
-                count++;
+                count_matches++;
+                u1 = prevKey->keypoints[i].pt.x;
+                v1 = prevKey->keypoints[i].pt.y;
+
+                u2 = currKey->keypoints[prevKey->kp_next_idx(i)].pt.x;
+                v2 = currKey->keypoints[prevKey->kp_next_idx(i)].pt.y;
+
+                // Creacion de vectores
+                vector1.x = (u1-cx)/fx;
+                vector1.y = (v1-cy)/fy;
+                vector1.z = 1.0;
+
+                vector2.x = (u2-cx)/fx;
+                vector2.y = (v2-cy)/fy;
+                vector2.z = 1.0;
+
+                vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
+                vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
+
+                normal = vector1.cross(Matx33d(RotationResCam)*vector2); // Vector normal al plano epipolar
+                normal = normal/sqrt(normal.x*normal.x +normal.y*normal.y+normal.z*normal.z); // normalizacion
+                dVector = dVector/sqrt(dVector.x*dVector.x +dVector.y*dVector.y+dVector.z*dVector.z);
+                
+                double error = -1000.0/std::log10(abs(dVector.dot(normal)));
+
+                if(error<threshold) 
+                {
+                    mask.push_back(true); 
+                    count++;
+                    outPoints1.push_back(prevKey->keypoints[i]);
+                    outPoints2.push_back(currKey->keypoints[prevKey->kp_next_idx(i)]);
+                    
+                }
+                else 
+                {
+                    mask.push_back(false);
+                }
+                
+                
             }
+            else
+            {
+                mask.push_back(false);
+            }
+          
 
         }
 
-        cout << "count filter " <<  count << endl;
+        cout << count << " inliers of " << count_matches << " matches, of " << numkeypoints << " keypoints" <<endl;
+        
 
 
     }
@@ -543,7 +818,7 @@ namespace vi
         Point3f d, dnorm; // vector de dezplazamiento y normalizado
 
         int numkeypoints = inPoints1.size();
-        Point3f pont;
+  
         
 
         float u1, v1, u2, v2;
@@ -552,10 +827,6 @@ namespace vi
         vector <Point3f> normalVectors;
         Mat degenerate = Mat::zeros(1, numkeypoints, CV_32F) ; // vector la degeneracion de los vectores
 
-        float sx = TranslationResidualGT.x;
-        float sy = TranslationResidualGT.y;
-        float sz = TranslationResidualGT.z;
-        float scale = sqrt(sx*sx+sy*sy+sz*sz);
 
         // Debug string con degeneracion
        
@@ -582,6 +853,7 @@ namespace vi
             vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
 
             normal = vector1.cross(rotationMat*vector2); // Vector normal al plano epipolar
+            normal = normal/sqrt(normal.x*normal.x +normal.y*normal.y+normal.z*normal.z); // normalizacion
             normalVectors.push_back(normal); // 
             
             std::ostringstream strs;
@@ -634,18 +906,15 @@ namespace vi
             if (dVector.x != 0.0 || dVector.y != 0.0 ||  dVector.z!=0.0)
             {
                 dVector = dVector/sqrt(dVector.x*dVector.x +dVector.y*dVector.y+dVector.z*dVector.z);
-                float errorx = (sx-scale*dVector.x)/sx;
-                float errory = (sy-scale*dVector.y)/sy;
-                float errorz = (sz-scale*dVector.z)/sz;
 
-                //cout << "ex " << errorx*100 << " ey " << errory*100 << " ez " << errorz*100 <<endl;
+                
                 
                 count = 0;
                 for (int i = 0; i<sizeNewGroup ; i++)
                 {
                     
                     double error = -1000.0/std::log10(abs(dVector.dot(normalVectors[i])));
-                    //cout<<" e "  << error<<endl;
+                        // cout<<" e "  << error<<endl;
                     if(error<threshold)
                     {
                         count++;
@@ -669,7 +938,7 @@ namespace vi
             */
         }
 
-       cout << "countMax " << countMax << " points " <<  numkeypoints<<endl;
+       cout << "countMaxF2F " << countMax << " points " <<  numkeypoints<<endl;
 
 
         /*
@@ -681,7 +950,7 @@ namespace vi
         
 
 
-        return scale*optimalDistance ;
+        return optimalDistance ;
 
 
         
@@ -689,15 +958,19 @@ namespace vi
 
    
 
-    void VISystem::Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2) 
+    void VISystem::Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f prevR, Point3f prevt,  Matx33f currR, Point3f currt, vector <Point3f> &points3D)  
     {
 
-
-        Mat P1 = getProjectionMat(K, Mat::eye(3, 3, CV_32FC1), Mat::zeros(3, 1, CV_32FC1));
-        Mat P2 = getProjectionMat(K, Mat(RotationResCam.t()), Mat(-RotationResCam.t()*Point3f(TranslationResidualGT)) );
+        
+        Mat P1 = getProjectionMat(K, Mat(prevR.t()), Mat(-prevR.t()*prevt ));
+        Mat P2 = getProjectionMat(K, Mat(currR.t()), Mat(-currR.t()*currt ));
 
 
         array<vector<Point2f>,2> points;
+
+
+        // Crear vectores
+       
         KeyPoint::convert( inPoints1 , points[0], vector<int>());
         KeyPoint::convert( inPoints2 , points[1], vector<int>());
                 
@@ -707,43 +980,63 @@ namespace vi
         
         if(inPoints1.size()!= 0)
         {
-            triangulatePoints(P1, P2,  points[0], points[1],  mapPoints);
+            Mat points4D;
+            triangulatePoints(P1, P2,  points[0], points[1],  points4D);
+           
 
-            Mat pt_3d; convertPointsFromHomogeneous(Mat(mapPoints.t()).reshape(4, 1),pt_3d);
+            //Mat pt_3d; convertPointsFromHomogeneous(Mat(mapPoints.t()).reshape(4, 1),pt_3d);
 
-
+            /*
             Vec3d rvec(0,0,0); //Rodrigues(R ,rvec);
             Vec3d tvec(0,0,0); // = P.col(3);
             vector<Point2f> reprojected_pt_set1;
             projectPoints(pt_3d,rvec,tvec, K, Mat(),reprojected_pt_set1);
             cout << " nr Triangulated " << inPoints1.size()<<endl;
-        
-            for (int index = 0; index <inPoints1.size(); index++)
+            */
+            
+            for (int j = 0; j <inPoints1.size(); j++)
             {
 
         
                 //int index = i;
-                float u1 = inPoints1[index].pt.x;
-                float v1 = inPoints1[index].pt.y;
+                float u1 = inPoints1[j].pt.x;
+                float v1 = inPoints1[j].pt.y;
+
+                Point3f pt3d; // punto 3d
+
+                pt3d.x = points4D.at<float>(0, j) / points4D.at<float>(3, j);
+                pt3d.y = points4D.at<float>(1, j) / points4D.at<float>(3, j);
+                pt3d.z = points4D.at<float>(2, j) / points4D.at<float>(3, j);
+
+                points3D.push_back(pt3d);
+                /*
+
+                std::ostringstream strs;
+                
+                strs << fixed<< setprecision(2)<<pt3d.z;
+                std::string str = strs.str();
+
                 
                 
                 float x = pt_3d.at<float>(0,index);
                 float y = pt_3d.at<float>(1,index);
                 float z = pt_3d.at<float>(2,index);
                 float z2 = sqrt(x*x+y*y+z*z);
-                std::ostringstream strs;
-                
-                strs << fixed<< setprecision(2)<<z2;
-                std::string str = strs.str();
+             
                 float errorx = u1 - reprojected_pt_set1[index].x;
                 float errory = v1 - reprojected_pt_set1[index].y;
                 float errorf = sqrt( errorx*errorx+errory*errory );
+                
             
-                if (z>0.0) putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.37,Scalar(10,255,10),0.9, LINE_AA);
+                putText(currentImageDebugToShow, str , Point2d(u1,v1 ), FONT_HERSHEY_SIMPLEX, 0.37,Scalar(10,255,10),0.9, LINE_AA);
+
+                */
                 
                 
             }
         }
+
+        
 
     }
      
@@ -752,7 +1045,7 @@ namespace vi
     void VISystem::Track()
     {
         
-        current_poseCam = PAndR2T(RotationResCam , translationResEst ); // residual
+        current_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
         
 
         
@@ -760,7 +1053,7 @@ namespace vi
         final_poseCam = final_poseCam*current_poseCam;
         
         
-
+        
  
         positionCam.x = final_poseCam(0, 3);
         positionCam.y = final_poseCam(1, 3);

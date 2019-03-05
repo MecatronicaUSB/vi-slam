@@ -252,21 +252,21 @@ Matx33f RPY2rotationMatrix(Point3d rpy )
 	return rotationMatrix;
 }
 
-Mat transformationMatrix2rotationMatrix(Mat transformationMatrix )
+Matx33f transformationMatrix2rotationMatrix(Matx44d transformationMatrix )
 {
-	Mat rotationMatrix = Mat::zeros(3,3,CV_32FC1);
+	Matx33f rotationMatrix ;
 
-	rotationMatrix.at<float>(0,0) = transformationMatrix.at<float>(0,0);
-	rotationMatrix.at<float>(0,1) = transformationMatrix.at<float>(0,1);
-	rotationMatrix.at<float>(0,2) = transformationMatrix.at<float>(0,2);
+	rotationMatrix(0,0) = transformationMatrix(0,0);
+	rotationMatrix(0,1) = transformationMatrix(0,1);
+	rotationMatrix(0,2) = transformationMatrix(0,2);
 
-	rotationMatrix.at<float>(1,0) = transformationMatrix.at<float>(1,0);
-	rotationMatrix.at<float>(1,1) = transformationMatrix.at<float>(1,1);
-	rotationMatrix.at<float>(1,2) = transformationMatrix.at<float>(1,2);
+	rotationMatrix(1,0) = transformationMatrix(1,0);
+	rotationMatrix(1,1) = transformationMatrix(1,1);
+	rotationMatrix(1,2) = transformationMatrix(1,2);
 
-	rotationMatrix.at<float>(2,0) = transformationMatrix.at<float>(2,0);
-	rotationMatrix.at<float>(2,1) = transformationMatrix.at<float>(2,1);
-	rotationMatrix.at<float>(2,2) = transformationMatrix.at<float>(2,2);
+	rotationMatrix(2,0) = transformationMatrix(2,0);
+	rotationMatrix(2,1) = transformationMatrix(2,1);
+	rotationMatrix(2,2) = transformationMatrix(2,2);
 
 	return rotationMatrix;
 
