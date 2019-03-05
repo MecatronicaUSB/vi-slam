@@ -6,8 +6,13 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <image_transport/image_transport.h>
+#include <sensor_msgs/PointCloud.h>
 #include <cv_bridge/cv_bridge.h>
 #include <geometry_msgs/Vector3.h>
+#include <tf/transform_broadcaster.h>
+#include <std_msgs/Int32.h>
+#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Quaternion.h>
 
 
 // vi_slam librarie
@@ -23,7 +28,39 @@ using namespace cv;
     CUBE = 1u,
     SPHERE = 2u,
     CYLINDER = 3u};
-    
+
+class VisualizerPose
+{
+    public:
+        VisualizerPose(string fixedFrame, string name, double rate) ;
+        void createVisualizer(string fixedFrame, string name, double rate);
+        void UpdateMessages(Point3f position, Quaterniond qOrientation); // nube de puntos:
+
+       
+
+    private:
+        
+        tf::TransformBroadcaster broadcaster;
+        tf::StampedTransform stamped;
+};
+class VisualizerPointcloud
+{
+    public:
+        VisualizerPointcloud(string frameID, string name, double rate) ;
+        void createPointcloudMessage(string frameID, string name, double rate);
+        void UpdateMessages(vector<Point3f> landmarks); // nube de puntos:
+
+       
+
+    private:
+
+        string headerFrameID;
+        double rateHZ;
+        int seq;
+        ros::Publisher publisher; 
+        sensor_msgs::PointCloud pointcloud;
+
+}; 
 class VisualizerMarker
 {
     public:

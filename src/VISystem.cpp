@@ -98,7 +98,7 @@ namespace vi
         iniYaw = _iniYaw;
 
         cout << "** Posicion Inicial del sistema **"<<endl;
-        cout << "Yaw inicial = " <<_iniYaw<<endl;
+        cout << "Yaw inicial = " <<_iniYaw*180/M_PI<<endl;
         cout << "Pos = " <<positionImu<<endl; 
        
         
@@ -144,11 +144,12 @@ namespace vi
         qOrientationCam = toQuaternion(RPYOrientationCam.x, RPYOrientationCam.y, RPYOrientationCam.z);
 
 
-        
         final_poseCam =PAndR2T(RPY2rotationMatrix(RPYOrientationImu)*imu2camRotation, positionCam );
-        
+        cout << "Orientacion inicial = " <<RPYOrientationCam*180/M_PI<<endl;
+       // Matx44d eye (Matx44d::eye());
+        //final_poseCam = eye;//(Mat::eye(4, 4, CV_64F));
 
-       
+        //cout << "init T" << final_poseCam<<endl;
 
         
         
@@ -209,7 +210,7 @@ namespace vi
         
        
         currentFrame = new Frame();
-        prevImage = currentImage;
+        
         currentImage = _currentImage.clone();
         currentImage.copyTo(currentFrame->grayImage); // Copiar imagen
        
@@ -261,9 +262,9 @@ namespace vi
             double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
             float disparity = Disparity(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
             clock_t disparidad = clock();
-            cout << "Disparity Trans = " << disparity <<endl;
-            cout << "Disparity Ang = " << disparityAng <<endl;
-            cout << " Points detected = " << nPointsCurrentImage<<endl;
+            //cout << "Disparity Trans = " << disparity <<endl;
+            //cout << "Disparity Ang = " << disparityAng <<endl;
+            //cout << " Points detected = " << nPointsCurrentImage<<endl;
             
             if (disparity > disparityThreshold) currentImageIsKeyframe = true;   
             if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
@@ -281,11 +282,13 @@ namespace vi
                 // Estimar traslacion entre keyframes
                 
                 EstimatePoseFeaturesDebug(keyFrameList[keyFrameList.size()-2], keyFrameList.back());
+                
                 clock_t ransac = clock();
                 vector<bool> mask;
                 vector<KeyPoint> filter1, filter2;
                 vector <Point3f> points3D;
                 FilterKeypoints(800, mask, filter1, filter2); // outlier Rejection
+                translationResEst  = TranslationResidualGT;
                 clock_t outlierRejection = clock();
 
                         
@@ -303,16 +306,25 @@ namespace vi
                 prevt.y = final_poseCam(1, 3);
                 prevt.z = final_poseCam(2, 3);
 
+      
+
 
                 currt.x = curr_poseCam(0, 3);
                 currt.y = curr_poseCam(1, 3);
                 currt.z = curr_poseCam(2, 3);
+                /*
 
+                cout << "final pose cam " << final_poseCam <<endl;
+                cout << "prevR " << prevR <<endl;
+                cout << "prevt " << prevt <<endl;
+                cout << "curr pose cam " << curr_poseCam <<endl;
+                cout << "currR " << currR <<endl;
+                cout << "currt " << currt <<endl;
+                */
                 
                 
                 
                 // Triangular inliers excepto por el factor de escala de la ultima estimacion de traslacion
-
                 Triangulate(filter1, filter2, prevR, prevt, currR, currt, points3D ); 
 
                 
@@ -325,26 +337,28 @@ namespace vi
                 double elapsed_outlier = double(outlierRejection-ransac) / CLOCKS_PER_SEC;  
                 double elapsed_triangulate = double(triangulate-outlierRejection) / CLOCKS_PER_SEC;  
 
+
+
+
         
-                if (keyFrameList.size() == 2 ) // segundo keyframe
+                if (keyFrameList.size() != 1 ) // segundo keyframe
                 {
                     
                     
                     addNewLandmarks(points3D, mask);
-                    scale = norm(TranslationResidualGT); // escala inicial
-                    cout << landmarks.size()<<endl;
-                    cout << points3D.size()<<endl;
-                    cout << landmarks.back().pt<<endl;
-                    cout <<points3D.back()<<endl;
+                    //scale = norm(TranslationResidualGT); // escala inicial
+
+   
 
                     
                     
 
                 }
+                /*
                 else
                 {
-                    scale = computeScale(points3D, mask); // Y landmarks previamente calculadops
-
+                    //scale = computeScale(points3D, mask); // Y landmarks previamente calculadops
+                    scale = norm(TranslationResidualGT); // escala inicial
                     Matx44d local_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
                     Matx44d curr_poseCam = final_poseCam*local_poseCam;
 
@@ -371,6 +385,7 @@ namespace vi
 
 
                 }
+                */
 
                 cout<<"\nESTADISTICAS"
                 <<"\nTiempo de matches: " << fixed<< setprecision(3) << elapsed_matches*1000<<" ms"
@@ -381,6 +396,12 @@ namespace vi
                 << " Escala = " << scale 
                 <<endl;
                 ;
+                
+
+                drawKeypoints(keyFrameList[keyFrameList.size()-2]->grayImage, filter1, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+                //drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                //drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(keyFrameList[keyFrameList.size()-1]->grayImage, filter2, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
 
 
                 // Obtener la nueva posicion de la cámarael
@@ -391,15 +412,14 @@ namespace vi
 
                 imshow("currentDebugImage1", currentImageDebugToShow);
                 imshow("currentDebugImage2", currentImageToShow);
-                char c_input = (char) waitKey(1);
+
+                char c_input = (char) waitKey(30);
                 if( c_input == 'q' | c_input == ((char)27) )  {
                         exit(0);
                 }
-                if( c_input == 'k'  )  {
-                        currentImageIsKeyframe = true;
-                }
                 nPointsLastKeyframe = nPointsCurrentImage;
             }
+             
             /*
             vector <KeyPoint>  filter1, filter2;
             //filter1 = camera.frameList[camera.frameList.size()-1]->nextGoodMatches;
@@ -456,7 +476,13 @@ namespace vi
 
     }
     
- 
+    void VISystem::getLandmarks(vector<Point3f> &_landmarks)
+    {
+        for(int i = 0; i < landmarks.size(); i++)
+        {
+            _landmarks.push_back(landmarks[i].pt/(landmarks[i].seen-1)); //promedio del landmark
+        }
+    }
 
     void VISystem::FreeLastFrame()
     {
@@ -490,7 +516,7 @@ namespace vi
 
         int numkeypoints =  prevKey->keypoints.size();
         
-
+        landmarks.clear();
        
         
         for (int i = 0; i< numkeypoints; i++)
@@ -500,7 +526,7 @@ namespace vi
                
             
                 size_t match_idx = prevKey->kp_next_idx(i);
-                if (prevKey->kp_3d_exist(i)) { // si existe el landmark
+                if ( false/*prevKey->kp_3d_exist(i)*/) { // si existe el landmark
                     // Found a match with an existing landmark
                     
                     currKey->kp_3d_idx(match_idx) = prevKey->kp_3d_idx(i); // como hay match, el landmark se hereda
@@ -690,10 +716,7 @@ namespace vi
         */
         
         
-        drawKeypoints(_previous_frame->grayImage, _previous_frame->nextGoodMatches, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
-        //drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-        drawKeypoints(_current_frame->grayImage, _current_frame->prevGoodMatches, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+       
 
       
 
@@ -961,18 +984,24 @@ namespace vi
     void VISystem::Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f prevR, Point3f prevt,  Matx33f currR, Point3f currt, vector <Point3f> &points3D)  
     {
 
-        
         Mat P1 = getProjectionMat(K, Mat(prevR.t()), Mat(-prevR.t()*prevt ));
         Mat P2 = getProjectionMat(K, Mat(currR.t()), Mat(-currR.t()*currt ));
 
 
-        array<vector<Point2f>,2> points;
+        vector<Point2f> src, dst;
 
 
         // Crear vectores
        
-        KeyPoint::convert( inPoints1 , points[0], vector<int>());
-        KeyPoint::convert( inPoints2 , points[1], vector<int>());
+        //KeyPoint::convert( inPoints1 , points[0]);
+        //KeyPoint::convert( inPoints2 , points[1]);
+
+        for(int i = 0; i < inPoints1.size(); i++)
+        {
+            src.push_back(inPoints1[i].pt);
+            dst.push_back(inPoints2[i].pt);
+        }
+
                 
         // Compute depth of 3D points using triangulation
         Mat mapPoints;
@@ -981,7 +1010,7 @@ namespace vi
         if(inPoints1.size()!= 0)
         {
             Mat points4D;
-            triangulatePoints(P1, P2,  points[0], points[1],  points4D);
+            triangulatePoints(P1, P2, src, dst,  points4D);
            
 
             //Mat pt_3d; convertPointsFromHomogeneous(Mat(mapPoints.t()).reshape(4, 1),pt_3d);
@@ -1007,6 +1036,7 @@ namespace vi
                 pt3d.x = points4D.at<float>(0, j) / points4D.at<float>(3, j);
                 pt3d.y = points4D.at<float>(1, j) / points4D.at<float>(3, j);
                 pt3d.z = points4D.at<float>(2, j) / points4D.at<float>(3, j);
+                //cout << "z" <<pt3d.z <<endl;
 
                 points3D.push_back(pt3d);
                 /*
@@ -1045,7 +1075,8 @@ namespace vi
     void VISystem::Track()
     {
         
-        current_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
+        //current_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
+         current_poseCam = PAndR2T(RotationResCam , translationResEst  ); // residual
         
 
         

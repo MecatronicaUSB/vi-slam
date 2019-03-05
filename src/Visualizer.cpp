@@ -1,6 +1,104 @@
 #include "../include/Visualizer.hpp"
 
+// Visualizer Pose
 
+
+VisualizerPose::VisualizerPose(string fixedFrame, string name, double rate)
+{
+    createVisualizer(fixedFrame, name, rate);
+}
+
+void VisualizerPose::createVisualizer(string fixedFrame, string name, double rate)
+{
+    stamped.frame_id_ = fixedFrame.c_str();
+    stamped.child_frame_id_ = name.c_str();
+}
+
+void VisualizerPose::UpdateMessages(Point3f position, Quaterniond qOrientation)
+{
+
+        tf::Quaternion q;
+        q[0] = qOrientation.x;
+        q[1] = qOrientation.y;
+        q[2] = qOrientation.z;
+        q[3] = qOrientation.w;
+       
+        stamped.stamp_ = ros::Time::now();
+        stamped.setOrigin(tf::Vector3(position.x, position.y, position.z));
+        stamped.setRotation(q);
+        broadcaster.sendTransform(stamped);
+}
+
+
+
+// Visualizer Pointcloud
+
+
+VisualizerPointcloud::VisualizerPointcloud(string frameID, string name, double rate)
+{
+   
+    createPointcloudMessage(frameID, name, rate);
+}
+
+
+void VisualizerPointcloud::createPointcloudMessage(string frameID, string name, double rate)
+{
+    headerFrameID = frameID;
+    rateHZ = rate;
+
+    // Crear publisher
+    ros::NodeHandle n;
+    publisher = n.advertise<sensor_msgs::PointCloud>(name.c_str(), 1);
+    pointcloud.header.frame_id = headerFrameID.c_str();
+    seq = 0;
+
+}
+
+
+void VisualizerPointcloud::UpdateMessages(vector<Point3f> landmarks)
+{
+    ros::Rate r(rateHZ);
+    seq++;
+    pointcloud.header.seq = seq;
+    pointcloud.header.stamp = ros::Time::now();
+    pointcloud.points.clear();
+    pointcloud.channels.clear();
+
+    geometry_msgs::Point32 point;
+    sensor_msgs::ChannelFloat32 channel;
+    channel.name = "rgb";
+    channel.values.push_back(255);
+    //channel.values.push_back(0);
+    //channel.values.push_back(0);
+    for(int i = 0; i< landmarks.size(); i++)
+    {
+        point.x = landmarks[i].x;
+        point.y = landmarks[i].y;
+        point.z = landmarks[i].z;
+
+        pointcloud.points.push_back(point);
+        pointcloud.channels.push_back(channel);
+
+    }
+    cout << " size pointcloud " << pointcloud.points.size()<<endl;
+
+     while (publisher.getNumSubscribers() < 1)
+    {
+      if (!ros::ok())
+      {
+        exit(1);
+      }
+      ROS_WARN_ONCE("Please create a subscriber to the Pointcloud message");
+      sleep(1);
+    }
+    publisher.publish(pointcloud);
+
+
+
+
+
+    r.sleep();
+}
 // Visualizer Marker
 VisualizerMarker::VisualizerMarker(string markerN, string headerID, double rate, uint32_t shapeForm, int32_t ID, Point3f scale, Point3f color)
 {

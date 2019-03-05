@@ -90,6 +90,8 @@ class VISystem
         void saveFrame();
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
         void addNewLandmarks( vector <Point3f> points3D, vector <bool> mask);
+
+        void getLandmarks(vector<Point3f> &landmarks);
         
         float computeScale(vector<Point3f> points3D, vector <bool> mask);
         
@@ -142,8 +144,6 @@ class VISystem
         Mat currentImage;
         Mat currentImageToShow;
         Mat currentImageDebugToShow;
-        Mat prevImage;
-        Mat prevImageToShow;
         Mat K;
         Rect ROI;
         
