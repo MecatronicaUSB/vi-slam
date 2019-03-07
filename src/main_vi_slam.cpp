@@ -191,8 +191,7 @@ int main( int argc, char** argv ){
         
         */
     
-            positionCamGTprev =  positionCamGT;
-            RPYOrientationCamGTprev =RPYOrientationCamGT ;
+            
 
             // Actualizar mensajes
 
@@ -204,8 +203,18 @@ int main( int argc, char** argv ){
             vector <Point3f> landmarks;
             visystem.getLandmarks(landmarks);
             pointcloud.UpdateMessages(landmarks);
-            
-           
+                    
+
+            positionCamGTprev =  positionCamGT;
+            RPYOrientationCamGTprev =RPYOrientationCamGT ;
+              char c_input = (char) waitKey(-1);
+                if( c_input == 'q' | c_input == ((char)27) )  {
+                        exit(0);
+                }
+                if( c_input == 'k'  )  {
+                  
+                   
+                }
             
             
 

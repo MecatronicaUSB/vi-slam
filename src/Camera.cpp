@@ -146,6 +146,7 @@ void Camera::computeFastMatches()
     matcher.computeBestMatches(); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
     matcher.getIndexesMatches(previousFrame, currentFrame);
     matcher.getGoodMatches(previousFrame->nextGoodMatches, currentFrame->prevGoodMatches);
+    matcher.getMatches(previousFrame->nextMatches, currentFrame->prevMatches);
     currentFrame->obtainedGoodMatches = true;
 
 

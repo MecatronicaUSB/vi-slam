@@ -42,6 +42,8 @@ class Frame
         vector<KeyPoint> keypoints;        //!< keypoints dectados en la imagen
         vector<KeyPoint>  prevGoodMatches; //!< matches con la imagen anterior
         vector<KeyPoint>  nextGoodMatches; //!< matches con la imagen siguiente
+        vector<KeyPoint>  prevMatches; //!< matches con la imagen anterior
+        vector<KeyPoint>  nextMatches; //!< matches con la imagen siguiente
         Mat descriptors;                   //!< keypoints de la imagen
         
 

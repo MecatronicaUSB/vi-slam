@@ -32,7 +32,6 @@ namespace vi
         */
     }
 
-
     /// Inicializacion
     void VISystem::setConfig(string _calPath)
     {   
@@ -100,8 +99,6 @@ namespace vi
         cout << "** Posicion Inicial del sistema **"<<endl;
         cout << "Yaw inicial = " <<_iniYaw*180/M_PI<<endl;
         cout << "Pos = " <<positionImu<<endl; 
-       
-        
 
      
 
@@ -256,39 +253,105 @@ namespace vi
             RotationResCam =  imu2camRotation.t()*RotationResImu*imu2camRotation;
 
             Point3d rpyResidual = rotationMatrix2RPY(RotationResCam);
-             float disparityThreshold = 50;
+             float disparityThreshold = 30;
              double disparityAngThreshold = 10.0;
 
             double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
             float disparity = Disparity(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
             clock_t disparidad = clock();
-            //cout << "Disparity Trans = " << disparity <<endl;
-            //cout << "Disparity Ang = " << disparityAng <<endl;
-            //cout << " Points detected = " << nPointsCurrentImage<<endl;
-            
-            if (disparity > disparityThreshold) currentImageIsKeyframe = true;   
+            if (disparity > disparityThreshold) {
+                currentImageIsKeyframe = true;
+            }
             if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
+          
+            //cout << " Points detected = " << nPointsCurrentImage<<endl;
+            /*
+            if (disparity < 15) {
+                disparityAngThreshold = 5.0;
+            }
+            if (disparity>=15 && disparity < 25) {
+                disparityAngThreshold = 2.0;
+            }
+             if (disparity >= 25 && disparity<37) {
+                disparityAngThreshold = 1.2;
+            }
+            if (disparity >= 37 && disparity<47) {
+                disparityAngThreshold = 0.7;
+            }
+            if (disparity >47) {
+                disparityAngThreshold = 0.3;
+            }
             
+            
+            */
             if (currentImageIsKeyframe)
             {
-                saveFrame();
-                num_keyframes = keyFrameList.size();
-
-                if (num_keyframes > num_max_keyframes)
-                {
-                    FreeLastFrame();
-                }
+           
                 
-                // Estimar traslacion entre keyframes
-                
-                EstimatePoseFeaturesDebug(keyFrameList[keyFrameList.size()-2], keyFrameList.back());
+                scale = norm(TranslationResidualGT); // escala inicial
+                EstimatePoseFeaturesDebug(keyFrameList.back(), currentFrame);
                 
                 clock_t ransac = clock();
                 vector<bool> mask;
-                vector<KeyPoint> filter1, filter2;
+                vector<KeyPoint> filter1, filter2, outlier1, outlier2, ess1, ess2;
                 vector <Point3f> points3D;
-                FilterKeypoints(800, mask, filter1, filter2); // outlier Rejection
-                translationResEst  = TranslationResidualGT;
+                float thresholdGroup = computeErrorGroup(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
+                cout<< "ERRORGROUP = " << thresholdGroup<<endl; 
+                if(1000.0< thresholdGroup*0.7)
+                {
+                    thresholdGroup = thresholdGroup*0.5;
+                }
+                cout<< "ERRORGROUPCORREGIDO = " << thresholdGroup*0.85<<endl; 
+                FilterKeypoints(thresholdGroup*0.85, mask, filter1, filter2, outlier1, outlier2); // outlier Rejection
+
+                //
+                Mat E;
+                std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+                vector<int> point_indexs;
+
+                //cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
+                //cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
+                cv::KeyPoint::convert(keyFrameList.back()->nextMatches, points1_OK,point_indexs);
+                cv::KeyPoint::convert(currentFrame->prevMatches, points2_OK,point_indexs);
+                clock_t essential = clock();
+                Mat maskE;
+                E = findEssentialMat(points1_OK, points2_OK,  K, RANSAC, 0.999, 1.0, maskE);
+                int countE = 0;
+                for (size_t i = 0; i< points1_OK.size();i++)
+                {
+                    if(maskE.at<uchar>(i))
+                    {
+                        countE++;
+                        ess1.push_back(keyFrameList.back()->nextMatches[i]);
+                        ess2.push_back(currentFrame->prevMatches[i]);
+                    }
+
+                }
+                
+                clock_t essentialfinal = clock();
+                /*
+                 Mat R_out, t_out;
+
+                //recoverPose(E, points1_OK, points1_OK, cameraMatrix, R_out, t_out, noArray());
+                 int p;
+                p = recoverPose(E, points1_OK, points2_OK,K,  R_out, t_out, maskE );
+                clock_t recover = clock();
+                R_out.convertTo(R_out, CV_32FC1);
+                t_out.convertTo(t_out, CV_32FC1);
+
+                cout << "matches" << currentFrame->prevMatches.size() <<endl;
+                cout << "Eout " << countE<<endl;
+                cout << "toutRecover "<< t_out*scale<<endl;
+                
+                */
+                
+
+
+                
+                //translationResEst  = TranslationResidualGT;
+
+                
+                
                 clock_t outlierRejection = clock();
 
                         
@@ -325,12 +388,13 @@ namespace vi
                 
                 
                 // Triangular inliers excepto por el factor de escala de la ultima estimacion de traslacion
-                Triangulate(filter1, filter2, prevR, prevt, currR, currt, points3D ); 
+                Triangulate(ess1, ess2, prevR, prevt, currR, currt, points3D ); 
 
                 
                 clock_t triangulate = clock();
 
-
+                double elapsed_essential = double(essentialfinal-essential ) / CLOCKS_PER_SEC;
+                //double elapsed_recover = double(recover -essentialfinal ) / CLOCKS_PER_SEC;
                 double elapsed_matches = double(computeMatches- begin) / CLOCKS_PER_SEC;  
                 double elapsed_disparidad = double(disparidad- computeMatches) / CLOCKS_PER_SEC;  
                 double elapsed_ransac = double(ransac- disparidad) / CLOCKS_PER_SEC;  
@@ -341,12 +405,23 @@ namespace vi
 
 
         
-                if (keyFrameList.size() != 1 ) // segundo keyframe
+                if (keyFrameList.size() != 0 ) // segundo keyframe
                 {
+                    landmarks.clear();
+                    for (int i = 0; i< ess1.size(); i++)
+                    {
+                        Landmark landmark;
+
+                        landmark.pt = points3D[i];
+                        landmark.seen = 2;
+
+                        landmarks.push_back(landmark);
+
+                    }
+                    // Add new 3d point
+                  
+                    //addNewLandmarks(points3D, mask);
                     
-                    
-                    addNewLandmarks(points3D, mask);
-                    //scale = norm(TranslationResidualGT); // escala inicial
 
    
 
@@ -386,7 +461,7 @@ namespace vi
 
                 }
                 */
-
+                /*
                 cout<<"\nESTADISTICAS"
                 <<"\nTiempo de matches: " << fixed<< setprecision(3) << elapsed_matches*1000<<" ms"
                 <<"\tTiempo de disparidad: " << fixed<< setprecision(3) << elapsed_disparidad*1000<<" ms"
@@ -396,29 +471,67 @@ namespace vi
                 << " Escala = " << scale 
                 <<endl;
                 ;
+                */
                 
-
-                drawKeypoints(keyFrameList[keyFrameList.size()-2]->grayImage, filter1, currentImageDebugToShow, Scalar(255,0, 0), DrawMatchesFlags::DEFAULT);
+                Mat celdas1, celdas2, essential1, essential2;
+                drawKeypoints(keyFrameList.back()->grayImage, filter1, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(keyFrameList.back()->grayImage, keyFrameList.back()->nextMatches, celdas1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(keyFrameList.back()->grayImage, ess1, essential1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 //drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 //drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(keyFrameList[keyFrameList.size()-1]->grayImage, filter2, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentFrame->grayImage, filter2, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentFrame->grayImage, currentFrame->prevMatches, celdas2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentFrame->grayImage, ess2, essential2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
 
 
                 // Obtener la nueva posicion de la cámarael
+                 Mat img_inlier1, img_inlier2;
+                resize(currentImageDebugToShow, img_inlier1, Size( 640,300));//resize image
+                resize(currentImageToShow, img_inlier2, Size(640, 300));//resize image
+                resize(celdas1, celdas1, Size( 640,300));//resize image
+                resize(celdas2, celdas2, Size(640, 300));//resize image
+                resize(essential1, essential1, Size(640, 300));//resize image
+                resize(essential2, essential2, Size(640, 300));//resize image
+                 Mat img_inliers;
+                 Mat img_celdas;
+                 Mat img_essential;
+                vconcat(img_inlier1, img_inlier2, img_inliers);
+                vconcat(celdas1, celdas2, img_celdas);
+                vconcat(essential1, essential2, img_essential);
                 
-                Track();
-                
-                
+        
+                imshow("inliers", img_inliers);
+                imshow("celdas", img_celdas);
+                imshow("essential", img_essential);
+                saveFrame();
+                num_keyframes = keyFrameList.size();
 
-                imshow("currentDebugImage1", currentImageDebugToShow);
-                imshow("currentDebugImage2", currentImageToShow);
+                    // Estimar traslacion entre keyframes
+                cout<<"\nTiempo de essential: " << fixed<< setprecision(3) << elapsed_essential*1000<<" ms"<<endl;
+                //cout<<"\nTiempo de recover: " << fixed<< setprecision(3) << elapsed_recover*1000<<" ms"<<endl;
+                cout << "*** DISPARIDAD ***" <<endl;
+                cout << "Disparity Trans = " << disparity <<endl;
+                cout << "Disparity Ang = " << disparityAng <<endl;
 
-                char c_input = (char) waitKey(30);
-                if( c_input == 'q' | c_input == ((char)27) )  {
-                        exit(0);
+                if (num_keyframes > num_max_keyframes)
+                {
+                    FreeLastFrame();
                 }
+                currentImageIsKeyframe = true;
                 nPointsLastKeyframe = nPointsCurrentImage;
+                Track();
+            
+            
+                
+                
+                
+        
+
+              
             }
+
+            
+                
              
             /*
             vector <KeyPoint>  filter1, filter2;
@@ -510,8 +623,8 @@ namespace vi
       
 
         // Debug string con degeneracion
-        auto & prevKey = keyFrameList[keyFrameList.size()-2];
-        auto & currKey = keyFrameList.back();
+        auto & prevKey = keyFrameList.back();
+        auto & currKey = currentFrame;
         int indexInlier = 0;
 
         int numkeypoints =  prevKey->keypoints.size();
@@ -567,8 +680,8 @@ namespace vi
         
 
         // Debug string con degeneracion
-        auto & prevKey = keyFrameList[keyFrameList.size()-2];
-        auto & currKey = keyFrameList.back();
+        auto & prevKey = keyFrameList.back();
+        auto & currKey = currentFrame;
         float scaleSum = 0.0;
 
         int numkeypoints =  prevKey->keypoints.size();
@@ -726,6 +839,7 @@ namespace vi
         {
             translationResEst = -translationResEst;
         }
+        translationResEst = translationResEst*scale;
 
         cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
         cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
@@ -737,16 +851,11 @@ namespace vi
         
     }
 
-    void VISystem::FilterKeypoints(double threshold, vector <bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2)
+    void VISystem::FilterKeypoints(double threshold, vector <bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2,vector <KeyPoint> &outlier1, vector <KeyPoint> &outlier2)
     {
         Point3d vector1; //Feature Vector en frame 1
         Point3d vector2; // Feature Vector en frame2
-        Point3d normal;  // vector del plano 1 y 2 de cada pareja de features
-
-
-       
-        
-        
+        Point3d normal;  // vector del plano 1 y 2 de cada pareja de features        
 
         float u1, v1, u2, v2;
 
@@ -755,11 +864,11 @@ namespace vi
         Point3d tVec = TranslationResidualGT;
 
  
-        tVec = tVec/sqrt(tVec.x*tVec.x +tVec.y*tVec.y+tVec.z*tVec.z);
+        tVec = tVec/norm(tVec);
 
         // Debug string con degeneracion
-        auto & prevKey = keyFrameList[keyFrameList.size()-2];
-        auto & currKey = keyFrameList.back();
+        auto & prevKey = keyFrameList.back();
+        auto & currKey = currentFrame;
 
          int numkeypoints =  prevKey ->keypoints.size();
        
@@ -809,6 +918,8 @@ namespace vi
                 else 
                 {
                     mask.push_back(false);
+                    outlier1.push_back(prevKey->keypoints[i]);
+                    outlier2.push_back(currKey->keypoints[prevKey->kp_next_idx(i)]);
                 }
                 
                 
@@ -822,12 +933,13 @@ namespace vi
         }
 
         cout << count << " inliers of " << count_matches << " matches, of " << numkeypoints << " keypoints" <<endl;
+
         
 
 
     }
 
-    Point3f VISystem::F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, double threshold)
+    Point3f VISystem::F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, float threshold)
     {
 
         
@@ -918,6 +1030,7 @@ namespace vi
         float errorSum = 0.0;
         float count = 0;
         float countMax = 0;
+        float errorGroup= 0;
 
         int RANSAC_iter = 1000;
         for (int i = 0; i<RANSAC_iter; i++)
@@ -937,6 +1050,7 @@ namespace vi
                 {
                     
                     double error = -1000.0/std::log10(abs(dVector.dot(normalVectors[i])));
+                    errorSum +=error;
                         // cout<<" e "  << error<<endl;
                     if(error<threshold)
                     {
@@ -948,6 +1062,7 @@ namespace vi
 
                 {
                     countMax =count;
+                    errorGroup = errorSum/sizeNewGroup;
                     optimalDistance = dVector;
                 }
 
@@ -962,7 +1077,7 @@ namespace vi
         }
 
        cout << "countMaxF2F " << countMax << " points " <<  numkeypoints<<endl;
-
+      
 
         /*
         cout << "optimal Distance = " <<scale*optimalDistance << endl;
@@ -977,6 +1092,72 @@ namespace vi
 
 
         
+    }
+
+
+    float VISystem::computeErrorGroup(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2)
+    {
+        Point3d vector1; //Feature Vector en frame 1
+        Point3d vector2; // Feature Vector en frame2
+        Point3d normal;  // vector del plano 1 y 2 de cada pareja de features        
+
+        float u1, v1, u2, v2;
+
+
+        // Vector unitario de traslacion
+        Point3d tVec = TranslationResidualGT;
+
+ 
+        tVec = tVec/norm(tVec);
+
+
+         int numkeypoints =  inPoints1.size();
+       
+
+        int count  = 0;
+        int count_matches  = 0;
+        Point3f dVector = translationResEst;
+        float errorSum;
+        // Crear vectores normales al plano de correspondecias (epipolar)ç
+        dVector = dVector/norm(dVector);
+        
+        for (int i = 0; i< numkeypoints; i++)
+        {
+
+            count_matches++;
+            u1 = inPoints1[i].pt.x;
+            v1 = inPoints1[i].pt.y;
+
+            u2 = inPoints2[i].pt.x;
+            v2 = inPoints2[i].pt.y;
+
+            // Creacion de vectores
+            vector1.x = (u1-cx)/fx;
+            vector1.y = (v1-cy)/fy;
+            vector1.z = 1.0;
+
+            vector2.x = (u2-cx)/fx;
+            vector2.y = (v2-cy)/fy;
+            vector2.z = 1.0;
+
+            vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
+            vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
+
+            normal = vector1.cross(Matx33d(RotationResCam)*vector2); // Vector normal al plano epipolar
+            normal = normal/norm(normal); // normalizacion
+            
+            
+            float error = -1000.0/std::log10(abs(dVector.dot(normal)));
+
+            errorSum += error;
+
+          
+
+        }
+
+        return errorSum/numkeypoints;
+        
+
     }
 
    
@@ -1005,6 +1186,7 @@ namespace vi
                 
         // Compute depth of 3D points using triangulation
         Mat mapPoints;
+        
         
         
         if(inPoints1.size()!= 0)
