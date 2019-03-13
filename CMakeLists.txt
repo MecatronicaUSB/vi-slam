@@ -76,6 +76,7 @@ set(vi_slam_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/Plus.cpp  
     ${PROJECT_SOURCE_DIR}/src/CameraModel.cpp  
     ${PROJECT_SOURCE_DIR}/src/VISystem.cpp  
+    ${PROJECT_SOURCE_DIR}/src/Pmvs.cpp  
 )
 
 #INCLUDE(/usr/local/cuda-8.0/targets/x86_64-linux/include)

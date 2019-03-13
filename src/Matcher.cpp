@@ -88,14 +88,18 @@ void Matcher::setMatcher(int _matcher)
 
 void Matcher::computeMatches()
 { 
+    
     matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
     matcher->knnMatch(descriptors_2, descriptors_1, aux_matches2, 2);  
 }
 
 void Matcher::computeFastMatches()
 { 
-
+   
     matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
+
+
+    
 
 
     // Descartar con distancia euclidiana (revisar los filtros de distancia)

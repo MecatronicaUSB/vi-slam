@@ -27,7 +27,7 @@ def main():
 
     plot_est = [1, 0, 0, 1] # estimacion: pos, velocidad, aceleracion, orientacion
     plot_res = [0,0,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
-    plot_error = [0, 0, 0, 0]  #errores: pos, velocidad, aceleracion, orientacion
+    plot_error = [0, 0, 0, 1]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
     time = np.array([])

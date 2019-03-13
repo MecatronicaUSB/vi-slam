@@ -369,9 +369,6 @@ void Imu::estimate()
 
     residualVelocity =  velocity;
 
-    n_total = n_total+n; // numero de medidas procesadas
-    
-
 }
 
 

@@ -39,6 +39,7 @@ class Camera
         void initializate(int _detector, int _matcher, int _w_size, int _h_size, int _num_wcells, int _num_hcells);
         void setCurrentFrame (Frame *_currentFrame); // Ingresa una nueva imagen al sistema
         void setPreviousFrame (Frame *_previousFrame); // Ingresa una nueva imagen al sistema
+        void setCameraMatrix(Mat _K);
 
         void setDetector(int _detector); //
         int detectFeatures(); // Retorna el numero de features detectados
@@ -47,6 +48,7 @@ class Camera
         void setMatcher (int _matcher);
         void computeDescriptors();
         void computeGoodMatches(); // Retorna las correspondencias filtradas entre dos imagenes
+        void extractMatches();
 
         void computeFastMatches(); // Calcular matches sin filtrado
        
@@ -70,6 +72,7 @@ class Camera
         // tamaño de la imagen 
         int w_size ;
         int h_size ;
+        Mat K; // camera matrix
 
 
     

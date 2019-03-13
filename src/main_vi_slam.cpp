@@ -7,7 +7,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/calib3d.hpp"
 #include <ctime>
-
+#include <string>     // std::string, std::to_string
 #include <ros/ros.h>
 #include <ros/console.h>
 
@@ -24,7 +24,10 @@ int main( int argc, char** argv ){
         "{imagesPath   |       | data image directory} "
         "{imuFile   |       | data imu directory} "
         "{calibrationFile   |       | settings} "
-        "{outputFile   |       | outputFile} ";
+        "{outputDirectory   |       | output directory} "
+        "{pmvsBinary   |       | pmvs pmvsBinary} "
+        "{startIndex   |       | index of images} "
+        "{finalIndex   |       | index of images} ";
 
     cv::CommandLineParser parser(argc, argv, keys);
         if (parser.has("help"))
@@ -36,21 +39,27 @@ int main( int argc, char** argv ){
     string imagesPath = parser.get<string>("imagesPath");
     string imuFile = parser.get<string>("imuFile");
     string calibrationFile = parser.get<string>("calibrationFile");
-    string outputFile = parser.get<string>("outputFile");
+    string outputDirectory = parser.get<string>("outputDirectory");
+    string pmvsBinary = parser.get<string>("pmvsBinary");
+    string startIndex = parser.get<string>("startIndex");
+    string finalIndex = parser.get<string>("finalIndex");
     char separator = ',';
 
     // Leer Dataset
     cout << "Gt file "<< imuFile<<endl;
     DataReader Data(imagesPath, imuFile, gtFile, separator);
 
-       
-    int j = 101;
-    int i = 100;
+    int i = stoi(startIndex);   
+    int j = i+1;
+    
     Data.UpdateDataReader(i, j);
 
     VISystem visystem(argc, argv);
     visystem.setConfig(calibrationFile);
-    visystem.setInitPose(Data.gtPosition.back(), Data.gtRPY.back().z);
+    visystem.setPmvsBinary(pmvsBinary);
+    visystem.setOutputDirectory(outputDirectory);
+    //visystem.setInitPose(Data.gtPosition.back(), Data.gtRPY.back().z);
+    visystem.setInitPose(Data.gtPosition.back(), Data.gtQuaternion.back());
    
     visystem.setInitData( Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
 
@@ -87,11 +96,15 @@ int main( int argc, char** argv ){
     
     positionCamGTprev = Data.gtPosition.back()+visystem.imu2camTranslation;
     RPYOrientationCamGTprev = rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
+    cout << "RPY orientation cam " << RPYOrientationCamGTprev*180/M_PI <<endl;
     
-    outputFilecsv.open("/home/lujano/Documents/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
+    outputFilecsv.open(outputDirectory+"/outputVISlam.csv", std::ofstream::out | std::ofstream::trunc);
 
     clock_t begin1= clock(); 
-    while(j < Data.indexLastData-100) // j <data.lastindex
+
+    int finalImageIndex = Data.indexLastData;
+    if (finalImageIndex>stod(finalIndex)) finalImageIndex = stoi(finalIndex);
+    while(j < finalImageIndex) // j <data.lastindex
     {  // Cambiar por constant
         
         Data.UpdateDataReader(j, j+1);
@@ -102,7 +115,9 @@ int main( int argc, char** argv ){
         velocityCamGT  = Data.gtLinearVelocity.back();
         RPYOrientationCamGT =rotationMatrix2RPY(RPY2rotationMatrix(toRPY(Data.gtQuaternion.back()) )*visystem.imu2camRotation);
         Matx44d transformationResidual = RPYAndPosition2transformationMatrix(RPYOrientationCamGTprev, positionCamGTprev).inv()*RPYAndPosition2transformationMatrix(RPYOrientationCamGT, positionCamGT);
-        
+
+
+        Matx33f rotationResidualGt = transformationMatrix2rotationMatrix(transformationResidual);
         
         qOrientationCamGT = toQuaternion(RPYOrientationCamGT.x, RPYOrientationCamGT.y, RPYOrientationCamGT.z);
         
@@ -115,13 +130,14 @@ int main( int argc, char** argv ){
  
         
         visystem.setGtTras(residualTrans);
+        visystem.setGtRot(rotationResidualGt);
         bool disparityFound =  visystem.AddFrame(Data.image2, Data.imuAngularVelocity, Data.imuAcceleration);
 
        
 
 
          
-         cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
+        cout<< " Current time = "<< Data.currentTimeMs <<" ms " <<endl;
    
 
         
@@ -209,7 +225,8 @@ int main( int argc, char** argv ){
             RPYOrientationCamGTprev =RPYOrientationCamGT ;
               char c_input = (char) waitKey(-1);
                 if( c_input == 'q' | c_input == ((char)27) )  {
-                        exit(0);
+                        
+                        visystem.shutdown();
                 }
                 if( c_input == 'k'  )  {
                   

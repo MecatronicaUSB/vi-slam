@@ -146,10 +146,36 @@ void Camera::computeFastMatches()
     matcher.computeBestMatches(); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
     matcher.getIndexesMatches(previousFrame, currentFrame);
     matcher.getGoodMatches(previousFrame->nextGoodMatches, currentFrame->prevGoodMatches);
-    matcher.getMatches(previousFrame->nextMatches, currentFrame->prevMatches);
+    extractMatches();
+    cout << "numMtches" << matcher.matches.size() <<endl;
+    //matcher.getMatches(previousFrame->nextMatches, currentFrame->prevMatches);
     currentFrame->obtainedGoodMatches = true;
 
 
+}
+
+void Camera::extractMatches()
+{
+
+    previousFrame->nextMatches.clear();
+    currentFrame->prevMatches.clear();
+    int numkeypoints = previousFrame->keypoints.size();
+    for (int i = 0; i< numkeypoints; i++)
+    {
+        if(previousFrame->kp_next_exist(i)) // si existe match
+        {
+            KeyPoint key1 = previousFrame->keypoints[i];
+            KeyPoint key2 = currentFrame->keypoints[previousFrame->kp_next_idx(i)];
+            previousFrame->nextMatches.push_back(key1);
+            currentFrame->prevMatches.push_back(key2);
+        }
+         
+    }
+}
+
+void Camera::setCameraMatrix(Mat _K)
+{
+    K = _K.clone();
 }
 
 void Camera::setMatcher(int _matcher)

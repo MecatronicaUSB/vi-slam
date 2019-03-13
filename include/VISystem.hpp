@@ -5,6 +5,7 @@
 #include "Imu.hpp"
 #include "Plus.hpp"
 #include "CameraModel.hpp"
+#include "Pmvs.hpp"
 #include "opencv2/core.hpp"
 //#include "opencv2/sfm.hpp"
 #include "opencv2/highgui.hpp"
@@ -53,8 +54,11 @@ class VISystem
         // Leer archivo de configuracion del sistema
         void setConfig(string _calPath); 
         void readConfig(string _calibration_path);
+        void setPmvsBinary(string _pmvsBinary);
+        void setOutputDirectory(string _outDirectory);
         // colocar la posicion inicial del sistema
         void setInitPose( Point3d _iniPosition, double _iniYaw);
+        void setInitPose( Point3d _iniPosition, Quaterniond _imuQuaternion);
         // colocar data inicial
         void setInitData(Mat image,  vector <Point3d> _imuAngularVelocity, vector <Point3d> _imuAcceleration);
         // colocar parametros de configuracion a la cámara
@@ -74,10 +78,12 @@ class VISystem
         void CalculateROI(Mat image);
         
         
+        
         void FreeLastFrame();
         
        
         Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, float threshold = 350);
+        Point3f BestRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat);
         float computeErrorGroup(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2);
         void FilterKeypoints(double threshold, vector<bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2,vector <KeyPoint> &outlier1, vector <KeyPoint> &outlier2);
         void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
@@ -88,6 +94,7 @@ class VISystem
         
 
         void setGtTras(Point3d TranslationResGT );
+        void setGtRot(Matx33f R_out );
         void saveFrame();
         Mat getProjectionMat(Mat cameraMat, Mat rotationMat, Mat translationMat);
         void addNewLandmarks( vector <Point3f> points3D, vector <bool> mask);
@@ -95,6 +102,8 @@ class VISystem
         void getLandmarks(vector<Point3f> &landmarks);
         
         float computeScale(vector<Point3f> points3D, vector <bool> mask);
+
+        void shutdown();
         
         
         int  num_keyframes;
@@ -132,10 +141,13 @@ class VISystem
         Matx44d final_poseImu;
         Matx44d current_poseCam;
         Matx44d current_poseImu;
+        Matx33f rotation_Cam; // Matrix de rotacion de la cámara
+        Matx34d projectionMatrix;
    
 
 
         CameraModel* camera_model;
+        Pmvs pmvs;
         
         Camera camera;
         Imu imuCore;
@@ -152,10 +164,12 @@ class VISystem
         
         
         Point3d TranslationResidualGT;
+        Matx33f RotationResGT;
         
         Matx33f RotationResCam; // residual de rotacion de camara
         Matx33f RotationResImu; // residual de rotacion de la imu
         Matx33f init_rotationMatrix, final_rotationMatrix;
+    
         Point3f translationResEst;
         int nPointsLastKeyframe;
         int nPointsCurrentImage;
@@ -175,7 +189,7 @@ class VISystem
         // lista de keyframes
         vector <Frame *> keyFrameList;  // lista de todos los frames
         Frame * currentFrame;
-        float scale;
+        float scale, scaleGt;
 
 
 
