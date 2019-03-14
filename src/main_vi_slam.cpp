@@ -226,7 +226,7 @@ int main( int argc, char** argv ){
               char c_input = (char) waitKey(-1);
                 if( c_input == 'q' | c_input == ((char)27) )  {
                         
-                        visystem.shutdown();
+                        break;
                 }
                 if( c_input == 'k'  )  {
                   
@@ -246,6 +246,7 @@ int main( int argc, char** argv ){
             
            
     }
+    visystem.shutdown();
 
 
        

@@ -5,6 +5,8 @@
 #include "opencv2/core.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/features2d.hpp"
+#include "opencv2/calib3d.hpp"
+
 #include <map>
 
 using namespace cv;
@@ -88,7 +90,8 @@ class Matcher
         void computeMatches();
         void computeFastMatches();
         void computeSymMatches();
-        int bestMatchesFilter ();// Dsitrubuye los features uniformemente y selecciona  las mejores parejas
+        void computeEssentialMatches(Mat _K);
+        int CellFilter ();// Dsitrubuye los features uniformemente y selecciona  las mejores parejas
         int nnFilter(vector<vector<DMatch> > &matches, double nn_ratio); // filtro de vecinos mas cercanos
         void resetVectorMatches(vector<DMatch> &matches);
         void pushBackVectorMatches(vector<DMatch> &matches);

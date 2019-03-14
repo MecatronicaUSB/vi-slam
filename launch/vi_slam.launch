@@ -9,7 +9,7 @@
               -outputDirectory=/home/lujano/Documents
               -pmvsBinary=/home/lujano/RunSFM/cmvs/program/main/pmvs2
               -startIndex=1
-              -finalIndex=1000"
+              -finalIndex=2500"
 
         clear_params="true" 
         output="screen"/>

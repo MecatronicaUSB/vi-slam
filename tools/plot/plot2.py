@@ -25,8 +25,8 @@ lastindex = int(50)
 
 def main():
 
-    plot_est = [1, 0, 0, 1] # estimacion: pos, velocidad, aceleracion, orientacion
-    plot_res = [0,0,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
+    plot_est = [1, 0, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
+    plot_res = [0,1,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
     plot_error = [0, 0, 0, 1]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
@@ -616,7 +616,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.figure()
 
     plt.subplot2grid( (3, 4), (0, 3))
-    plt.hist(Data1[0:lastindex], 30, density=True, orientation="horizontal")
+    plt.hist(Data1, 30, density=True, orientation="horizontal")
     plt.xlabel("Frecuencia")
     plt.ylabel(label1[1])
     plt.minorticks_on()
@@ -625,7 +625,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
 
     plt.subplot2grid( (3, 4), (1, 3))
-    plt.hist( Data2[0:lastindex],  bins =30, density=True, orientation="horizontal" )
+    plt.hist( Data2,  bins =30, density=True, orientation="horizontal" )
     plt.xlabel("Frecuencia")
     plt.ylabel(label2[1])
     plt.minorticks_on()
@@ -634,7 +634,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
 
     
     plt.subplot2grid( (3, 4), (2, 3))
-    plt.hist(Data3[0:lastindex], bins=30, density=True, orientation="horizontal")
+    plt.hist(Data3, bins=30, density=True, orientation="horizontal")
     plt.xlabel("Frecuencia")
     plt.ylabel(label3[1])
     plt.minorticks_on()
@@ -649,10 +649,6 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label1[1])
     plt.xlabel("t(s)")
     plt.legend()
-    plt.xlim([0, maxTime])
-    ymax = np.max(Data1[0:lastindex])
-    ymin = np.min(Data1[0:lastindex])
-    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
     plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
@@ -663,10 +659,7 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label2[1])
     plt.xlabel("t(s)")
     plt.legend()
-    ymax = np.max(Data2[0:lastindex])
-    ymin = np.min(Data2[0:lastindex])
-    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
-    plt.xlim([0, maxTime])
+
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
     plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')
@@ -677,10 +670,6 @@ def plotAndHist(Data1, Data2, Data3, time, label1, label2, label3, maxTime):
     plt.ylabel(label3[1])
     plt.xlabel("t(s)")
     plt.legend()
-    ymax = np.max(Data3[0:lastindex])
-    ymin = np.min(Data3[0:lastindex])
-    plt.ylim([ymin*(1+0.1), ymax*(1+0.1)])
-    plt.xlim([0, maxTime])
     plt.minorticks_on()
     plt.grid(b=True, which='major', color=[0.3, 0.3, 0.3], linestyle='-')
     plt.grid(b=True, which='minor', color=[0.2, 0.2, 0.3], linestyle='--')

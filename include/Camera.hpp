@@ -51,6 +51,7 @@ class Camera
         void extractMatches();
 
         void computeFastMatches(); // Calcular matches sin filtrado
+        void computeEssentialMatches(); // Calcular matches con filtrado RANSAC de matriz essential
        
         
         vector<DMatch> goodMatches; // correspondencias finales entre dos frames

@@ -90,6 +90,7 @@ class VISystem
         
         
         float Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
+        float Euclidean(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
         void Triangulate(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f prevR, Point3f prevt,  Matx33f currR, Point3f currt, vector <Point3f> &points3D);
         
 
@@ -129,6 +130,8 @@ class VISystem
         Point3d accCam;
         Quaterniond qOrientationCam;
         Point3d RPYOrientationCam;
+
+        int numSteadyImages;
        
         
 

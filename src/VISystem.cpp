@@ -62,6 +62,7 @@ namespace vi
 
         // Configurar objeto cámara
         camera.initializate(camera_model->detector, camera_model->matcher, w_input, h_input, camera_model->num_wcells, camera_model->num_hcells);
+        camera.setCameraMatrix(K);
 
         
         
@@ -263,10 +264,11 @@ namespace vi
 
         currentImageIsKeyframe = false;
 
-        if (nPointsCurrentImage > int(nPointsLastKeyframe*0.35)) // se considera que es hay suficientes puntos para el match
+        if (nPointsCurrentImage > 20) // se considera que es hay suficientes puntos para el match
         {
             clock_t begin = clock();
-            camera.computeFastMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
+        
+            camera.computeEssentialMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
 
             clock_t computeMatches = clock(); 
         
@@ -288,161 +290,64 @@ namespace vi
             Point3d rpyResidual = rotationMatrix2RPY(RotationResCam);
 
 
-
-            //Filtrado essential
-             Mat E;
-            std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
-            vector<int> point_indexs;
-
-            vector<bool> mask;
-            vector<KeyPoint> filter1, filter2, outlier1, outlier2, ess1, ess2;
             vector <Point3f> points3D;
 
 
-            //cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
-            //cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
-            cv::KeyPoint::convert(keyFrameList.back()->nextMatches, points1_OK,point_indexs);
-            cv::KeyPoint::convert(currentFrame->prevMatches, points2_OK,point_indexs);
-            clock_t essential = clock();
-            Mat maskE;
-            E = findEssentialMat(points1_OK, points2_OK,  K, RANSAC, 0.999, 1.0, maskE);
-            int countE = 0;
-            int numkeypoints = keyFrameList.back()->keypoints.size();
-            for (size_t i = 0; i< numkeypoints;i++)
-            {
-                if(keyFrameList.back()->kp_next_exist(i))
-                {
-                    
-                    if(maskE.at<uchar>(countE))
-                    {
-                        mask.push_back(true);
-                        ess1.push_back(keyFrameList.back()->nextMatches[countE]);
-                        ess2.push_back(currentFrame->prevMatches[countE]);
-                    }
-                    else
-                    {
-                        mask.push_back(false);
-                    }
 
-                    countE++;
-                }
-                else
-                {
-                    mask.push_back(false);
-                }
-                
 
-            }
-             float disparityThreshold = 25;
-             double disparityAngThreshold = 5.0;
+            float disparityThreshold = 15;
+            double disparityAngThreshold = 5.0;
 
             double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
-            float disparity = Disparity(ess1, ess2);
+            float disparity = Disparity(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
+            float euclidean = Euclidean(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
+
+            if(euclidean <1.0)
+            {
+                numSteadyImages;
+            }
+            else
+            {
+                numSteadyImages = 0;
+            }
+
+            if(numSteadyImages > 4)
+            {
+                imuCore.calibrateAng(3);
+            }
+
+            cout << "EUCLIDEAN " << euclidean <<endl;
             clock_t disparidad = clock();
             if (disparity > disparityThreshold) {
                 currentImageIsKeyframe = true;
             }
             if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
           
-            //cout << " Points detected = " << nPointsCurrentImage<<endl;
-            /*
-            if (disparity < 15) {
-                disparityAngThreshold = 5.0;
-            }
-            if (disparity>=15 && disparity < 25) {
-                disparityAngThreshold = 2.0;
-            }
-             if (disparity >= 25 && disparity<37) {
-                disparityAngThreshold = 1.2;
-            }
-            if (disparity >= 37 && disparity<47) {
-                disparityAngThreshold = 0.7;
-            }
-            if (disparity >47) {
-                disparityAngThreshold = 0.3;
-            }
-            
-            
-            */
             if (currentImageIsKeyframe)
             {
            
                 
                 
                 scaleGt = norm(TranslationResidualGT); // escala inicial
-                //EstimatePoseFeaturesDebug(keyFrameList.back(), currentFrame);
-                
-                clock_t ransac = clock();
-            
-
-                          
-             
-                /*
-                if(1000.0< thresholdGroup*0.7)
-                {
-                    thresholdGroup = thresholdGroup*0.5;
-                }
-                cout<< "ERRORGROUPCORREGIDO = " << thresholdGroup*0.85<<endl; 
-                
-                */
-                
-                
-               
-                cout << "ess1 "<< ess1.size() <<endl;
-                cout << "numKey" << numkeypoints <<endl;
-                cout << "matches " << points1_OK.size() <<endl;
-                
-                clock_t essentialfinal = clock();
-                /*
-                 Mat R_out, t_out;
-
-                //recoverPose(E, points1_OK, points1_OK, cameraMatrix, R_out, t_out, noArray());
-                 int p;
-                p = recoverPose(E, points1_OK, points2_OK,K,  R_out, t_out, maskE );
-                clock_t recover = clock();
-                R_out.convertTo(R_out, CV_32FC1);
-                t_out.convertTo(t_out, CV_32FC1);
-
-                cout << "matches" << currentFrame->prevMatches.size() <<endl;
-                cout << "Eout " << countE<<endl;
-                cout << "toutRecover "<< t_out*scale<<endl;
-                
-                */
-                
-
-
-                
-
-
-
-
+       
 
         
-                if (keyFrameList.size() == 1 ) // segundo keyframe
+                if (keyFrameList.size() != 0 ) // segundo keyframe
                 {
                    
                     
                     
                     // Add new 3d point
 
-                                    //translationResEst  = TranslationResidualGT;
-                    translationResEst = BestRansac(ess1, ess2, RotationResCam);
+
+                    translationResEst = BestRansac(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches, RotationResCam);
                     if(translationResEst.dot(TranslationResidualGT)<0)
                     {
                     translationResEst = -translationResEst;
                     }
 
                     scale = scaleGt;
-                    
-                    
-                    float thresholdGroup = computeErrorGroup(ess1, ess2);
-                    vector <bool> maskF;
-                    FilterKeypoints(600, maskF , filter1, filter2, outlier1, outlier2); // outlier Rejection
 
-        
-                    //cout<< "ERRORGROUP = " << thresholdGroup<<endl; 
-                    
-                    clock_t outlierRejection = clock();
 
                             
                     //Matx44d local_poseCam = PAndR2T(RotationResCam , TranslationResidualGT ); // residual
@@ -480,16 +385,18 @@ namespace vi
                     
                     
                     // Triangular inliers excepto por el factor de escala de la ultima estimacion de traslacion
-                    Triangulate(ess1, ess2, prevR, prevt, currR, currt, points3D ); 
+     
+                    Triangulate(keyFrameList.back()->nextMatches, currentFrame->prevMatches, prevR, prevt, currR, currt, points3D ); 
+      
 
                     
                     clock_t triangulate = clock();
 
                     
 
-                    /*
+                    
                     landmarks.clear();
-                    for (int i = 0; i< ess1.size(); i++)
+                    for (int i = 0; i< keyFrameList.back()->nextMatches.size(); i++)
                     {
                         Landmark landmark;
 
@@ -500,8 +407,22 @@ namespace vi
 
                     
                     }
-                    */
-                   addNewLandmarks(points3D, mask);
+                    
+
+                   vector <bool> mask;
+
+                   for(int i= 0; i< keyFrameList.back()->keypoints.size(); i++)
+                   {
+                       if (keyFrameList.back()->kp_next_exist(i)) // si tiene pareja
+                       {
+                           mask.push_back(true);
+                       }
+                       else
+                       {
+                           mask.push_back(false);
+                       }
+                   }
+                   //addNewLandmarks(points3D, mask);
                     
                     
 
@@ -516,7 +437,7 @@ namespace vi
                 else
                     {
                                         //translationResEst  = TranslationResidualGT;
-                    translationResEst =BestRansac(ess1, ess2, RotationResCam);
+                     translationResEst = BestRansac(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches, RotationResCam);
                     if(translationResEst.dot(TranslationResidualGT)<0)
                     {
                     translationResEst = -translationResEst;
@@ -524,18 +445,8 @@ namespace vi
                     translationResEst = translationResEst;
                 
                     
-                    
-                    float thresholdGroup = computeErrorGroup(ess1, ess2);
-                    vector <bool> maskF;
-                    FilterKeypoints(600, maskF , filter1, filter2, outlier1, outlier2); // outlier Rejection
-
-        
-                    cout<< "ERRORGROUP = " << thresholdGroup<<endl; 
-                    
-                    clock_t outlierRejection = clock();
-
-                            
-                    Matx44d local_poseCam = PAndR2T(RotationResCam , translationResEst ); // residual
+                    scale = scaleGt;  
+                    Matx44d local_poseCam = PAndR2T(RotationResCam , translationResEst*scale ); // residual
                     Matx44d curr_poseCam = final_poseCam*local_poseCam;
 
                     Matx33f prevR, currR; // Rotaciones
@@ -555,7 +466,8 @@ namespace vi
                     currt.x = curr_poseCam(0, 3);
                     currt.y = curr_poseCam(1, 3);
                     currt.z = curr_poseCam(2, 3);
-                  
+
+                    /*
 
                     cout << "final pose cam " << final_poseCam <<endl;
                     cout << "prevR " << prevR <<endl;
@@ -564,19 +476,36 @@ namespace vi
                     cout << "currR " << currR <<endl;
                     cout << "currt " << currt <<endl;
                     
+                    */
+                    
                     
                     
                    
 
                     // Triangular inliers excepto por el factor de escala de la ultima estimacion de traslacion
-                    Triangulate(ess1, ess2, prevR, prevt, currR, currt, points3D ); 
+                    Triangulate(keyFrameList.back()->nextMatches, currentFrame->prevMatches, prevR, prevt, currR, currt, points3D ); 
 
                     
                     clock_t triangulate = clock();
 
+
+                   vector <bool> mask;
+
+                   for(int i= 0; i< keyFrameList.back()->keypoints.size(); i++)
+                   {
+                       if (keyFrameList.back()->kp_next_exist(i)) // si tiene pareja
+                       {
+                           mask.push_back(true);
+                       }
+                       else
+                       {
+                           mask.push_back(false);
+                       }
+                   }
+
                     scale = computeScale(points3D, mask); // Y landmarks previamente calculadops
                     scaleGt = norm(TranslationResidualGT); // escala inicial
-                    local_poseCam = PAndR2T(RotationResCam , scaleGt*translationResEst ); // residual
+                    local_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
                     curr_poseCam = final_poseCam*local_poseCam;
 
                     prevR, currR; // Rotaciones
@@ -595,9 +524,9 @@ namespace vi
                     currt.y = curr_poseCam(1, 3);
                     currt.z = curr_poseCam(2, 3);
 
-                    Triangulate(filter1, filter2, prevR, prevt, currR, currt, points3D ); 
+                    Triangulate(keyFrameList.back()->nextMatches, keyFrameList.back()->prevMatches, prevR, prevt, currR, currt, points3D ); 
 
-                        addNewLandmarks(points3D, mask);
+                    addNewLandmarks(points3D, mask);
 
 
 
@@ -628,20 +557,21 @@ namespace vi
                 
 
                 Mat celdas1, celdas2, essential1, essential2;
-                drawKeypoints(keyFrameList.back()->grayImage, filter1, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(keyFrameList.back()->grayImage, keyFrameList.back()->nextMatches, celdas1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(keyFrameList.back()->grayImage, ess1, essential1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                //drawKeypoints(keyFrameList.back()->grayImage, filter1, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(keyFrameList.back()->grayImage, keyFrameList.back()->nextGoodMatches, celdas1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(celdas1, currentFrame->prevGoodMatches, celdas1, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(keyFrameList.back()->grayImage, keyFrameList.back()->nextMatches, essential1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 //drawKeypoints(currentImageDebugToShow, warpedDebugKeyPoints, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 //drawKeypoints(currentImageDebugToShow, _current_frame->prevGoodMatches, currentImageDebugToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(currentFrame->grayImage, filter2, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(currentFrame->grayImage, currentFrame->prevMatches, celdas2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
-                drawKeypoints(currentFrame->grayImage, ess2, essential2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                //drawKeypoints(currentFrame->grayImage, filter2, currentImageToShow, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentFrame->grayImage, currentFrame->prevGoodMatches, celdas2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
+                drawKeypoints(currentFrame->grayImage, currentFrame->prevMatches, essential2, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
 
 
                 // Obtener la nueva posicion de la cámarael
                  Mat img_inlier1, img_inlier2;
-                resize(currentImageDebugToShow, img_inlier1, Size( 640,300));//resize image
-                resize(currentImageToShow, img_inlier2, Size(640, 300));//resize image
+                //resize(currentImageDebugToShow, img_inlier1, Size( 640,300));//resize image
+                //resize(currentImageToShow, img_inlier2, Size(640, 300));//resize image
                 resize(celdas1, celdas1, Size( 640,300));//resize image
                 resize(celdas2, celdas2, Size(640, 300));//resize image
                 resize(essential1, essential1, Size(640, 300));//resize image
@@ -654,7 +584,7 @@ namespace vi
                 vconcat(essential1, essential2, img_essential);
                 
                 
-                imshow("inliers", img_inliers);
+                //imshow("inliers", img_inliers);
                 imshow("celdas", img_celdas);
                 imshow("essential", img_essential);
                 saveFrame();
@@ -805,7 +735,7 @@ namespace vi
                     
 
                     // sumar nuevo punto a la medida del landmark
-                    cout << "prevLand"<<landmarks[prevKey->kp_3d_idx(i)].pt<<" point3D "<<points3D[indexInlier]<<endl;
+                    //cout << "prevLand"<<landmarks[prevKey->kp_3d_idx(i)].pt<<" point3D "<<points3D[indexInlier]<<endl;
                     landmarks[prevKey->kp_3d_idx(i)].pt += points3D[indexInlier]; // suma de landmarks
                     landmarks[prevKey->kp_3d_idx(i)].seen++;
                 } 
@@ -887,7 +817,7 @@ namespace vi
         int ii, jj;
        
         int count = 0;
-        cout <<"num_common_landmarks  " << num_common_landmarks<<endl;
+        //cout <<"num_common_landmarks  " << num_common_landmarks<<endl;
         int maxIter = 50;
 
         for (int i = 0; i< maxIter ; i++)
@@ -898,7 +828,7 @@ namespace vi
             if( norm(new_landmarks[ii] - new_landmarks[jj])!= 0.0)
             { 
                 float s = norm(existing_landmarks[ii] - existing_landmarks[jj]) / norm(new_landmarks[ii] - new_landmarks[jj]);
-                cout << "s " << s <<endl;
+                //cout << "s " << s <<endl;
 
                 scaleSum += s; // suma de escala de puntos tomados
                 count++;
@@ -952,6 +882,43 @@ namespace vi
             //cout << "err" << uk1 << " vk1 "<< vk1 << endl;
             
             disparitySum = disparitySum+ sqrt((uk1-u1)*(uk1-u1) +(vk1-v1)*(vk1-v1) );
+            
+            
+
+        }
+
+        disparity = disparitySum/numkeypoints; // Disparidad promedio
+
+        return disparity;
+  }
+
+
+
+  float VISystem::Euclidean(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2 )
+  {
+        
+        float disparitySum = 0;
+        float disparity = 0;
+
+        int numkeypoints = inPoints1.size();
+
+        float u1, v1, u2, v2, a, b; // u1, v1 es la reproyeccion de u2,v2 considerando solo rotacion
+        float uk1, vk1; // posicion en pixeles del punto del keyframe
+        Point3f inPoint3dHomo ; 
+        Point3f outPoint3dHomo; 
+
+        for (int index = 0; index< numkeypoints ; index++)
+        {
+            u1 = inPoints1[index].pt.x;
+            v1 = inPoints1[index].pt.y;
+
+            u2 = inPoints2[index].pt.x;
+            v2 = inPoints2[index].pt.y;
+
+        
+            //cout << "err" << uk1 << " vk1 "<< vk1 << endl;
+            
+            disparitySum = disparitySum+ sqrt((u1-u2)*(u1-u2) +(v1-v2)*(v1-v2) );
             
             
 
@@ -1553,7 +1520,8 @@ namespace vi
         //current_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
         //translationResEst = translationResEst*scaleGt;
         translationResEst = TranslationResidualGT;
-         current_poseCam = PAndR2T(RotationResGT , translationResEst  ); // residual
+        //translationResEst = scaleGt*translationResEst;
+         current_poseCam = PAndR2T(RotationResCam , translationResEst  ); // residual
         cout << "TransGT" << " tx "<< TranslationResidualGT.x<< " ty " <<  TranslationResidualGT.y<< " tz " << TranslationResidualGT.z <<endl;
         cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
 

@@ -126,13 +126,83 @@ void Matcher::computeFastMatches()
             
         }
     }
+    
+}
 
-
-
-
+void Matcher::computeEssentialMatches(Mat _K)
+{
+    matcher->knnMatch(descriptors_1, descriptors_2, aux_matches1, 2);
 
 
     
+
+
+    // Descartar con distancia euclidiana (revisar los filtros de distancia)
+    double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
+    
+    int removed1;
+    
+   
+    removed1 = nnFilter(aux_matches1, nn_match_ratio);
+
+    std::vector<std::vector<cv::DMatch> >::iterator matchIterator1; // iterator for matches
+
+
+    vector<DMatch> matchesAux; // correspondencias filtradas
+    for (matchIterator1= aux_matches1.begin();matchIterator1!= aux_matches1.end(); ++matchIterator1) 
+    {
+        
+        if (matchIterator1->size() >= 2) // dos  o mas vecinos
+        {
+                        
+            matchesAux.push_back(DMatch((*matchIterator1)[0].queryIdx,
+                        (*matchIterator1)[0].trainIdx,
+                        (*matchIterator1)[0].distance));
+
+                    
+            
+            
+        }
+    }
+
+
+    vector <KeyPoint> key1, key2;
+    for(unsigned i = 0; i < matchesAux.size(); i++) {
+        key1.push_back(keypoints_1[matchesAux[i].queryIdx]);
+        key2.push_back(keypoints_2[matchesAux[i].trainIdx]);
+    }
+
+    // Compute computeEssentialMatches
+      //Filtrado essential
+        Mat E;
+        std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+        vector<int> point_indexs;
+
+        //cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
+        //cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
+        cv::KeyPoint::convert(key1, points1_OK,point_indexs);
+        cv::KeyPoint::convert(key2, points2_OK,point_indexs);
+        Mat maskE;
+        E = findEssentialMat(points1_OK, points2_OK,  _K, RANSAC, 0.999, 1.0, maskE);
+
+
+        for(unsigned i = 0; i < matchesAux.size(); i++) 
+        {
+
+            if(maskE.at<uchar>(i))
+            {
+                matches.push_back(matchesAux[i]);
+            }
+        
+        }
+
+        
+
+
+
+
+
+
 }
 
 void Matcher::computeSymMatches()  // Calcula las parejas y realiza prueba de simetria
@@ -210,7 +280,10 @@ int Matcher::nnFilter(vector<vector<DMatch> > &matches, double nn_ratio)
     return removed;
 }
 
-int Matcher::bestMatchesFilter(){
+
+
+
+int Matcher::CellFilter(){
     float winWSize;
     float winHSize;
 
@@ -365,9 +438,9 @@ void Matcher::computeBestMatches()
 {
    
 
-        sortMatches();
+    sortMatches();
    
-        int matches_found = bestMatchesFilter();
+    int matches_found = CellFilter();
 
 }
 

@@ -122,7 +122,7 @@ void Camera::computeDescriptors()
     detector->compute(currentFrame->grayImage, currentFrame->keypoints, currentFrame->descriptors);
 }
 
-void Camera::computeGoodMatches()
+void Camera::computeGoodMatches() // Revisar modificaciones de esta funcion
 {
     matcher.clear();
     matcher.setKeypoints(previousFrame->keypoints, currentFrame->keypoints);
@@ -147,12 +147,28 @@ void Camera::computeFastMatches()
     matcher.getIndexesMatches(previousFrame, currentFrame);
     matcher.getGoodMatches(previousFrame->nextGoodMatches, currentFrame->prevGoodMatches);
     extractMatches();
-    cout << "numMtches" << matcher.matches.size() <<endl;
     //matcher.getMatches(previousFrame->nextMatches, currentFrame->prevMatches);
     currentFrame->obtainedGoodMatches = true;
 
 
 }
+
+void Camera::computeEssentialMatches()
+{
+    matcher.clear();
+    matcher.setKeypoints(previousFrame->keypoints, currentFrame->keypoints);
+    matcher.setDescriptors(previousFrame->descriptors, currentFrame->descriptors );
+    matcher.computeEssentialMatches(K); // Computa las primeras parejas
+    matcher.computeBestMatches(); // Aplicar nnFilter, prueba de simetría, filtrado de celdas
+    matcher.getIndexesMatches(previousFrame, currentFrame);
+    matcher.getGoodMatches(previousFrame->nextGoodMatches, currentFrame->prevGoodMatches);
+    extractMatches();
+    //matcher.getMatches(previousFrame->nextMatches, currentFrame->prevMatches);
+    currentFrame->obtainedGoodMatches = true;
+
+}
+
+
 
 void Camera::extractMatches()
 {
