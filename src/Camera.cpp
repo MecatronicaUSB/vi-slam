@@ -103,7 +103,7 @@ void Camera::setDetector(int _detector)
         }
         case USE_ORB:
         {
-            detector = ORB::create(200);
+            detector = ORB::create(500);
             cout << "Using ORB detector"<<endl;
             break;
         }

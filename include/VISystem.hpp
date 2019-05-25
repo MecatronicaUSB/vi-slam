@@ -83,6 +83,12 @@ class VISystem
         
        
         Point3f F2FRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, float threshold = 350);
+        Point3f F2FRansacEssential(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, float threshold = 350);
+
+        int OutlierRejectionEssential(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Mat E,  Mat &mask, float threshold = 1.0); // Distancia en pixeles a la linea epipolar
+        void computeError( InputArray _m1, InputArray _m2, InputArray _model, OutputArray _err ) ;
+        int  findInliers( const Mat& m1, const Mat& m2, const Mat& model, Mat& err, Mat& mask, double thresh );
+
         Point3f BestRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat);
         float computeErrorGroup(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2);
         void FilterKeypoints(double threshold, vector<bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2,vector <KeyPoint> &outlier1, vector <KeyPoint> &outlier2);
@@ -132,6 +138,8 @@ class VISystem
         Point3d RPYOrientationCam;
 
         int numSteadyImages;
+
+
        
         
 
@@ -194,6 +202,10 @@ class VISystem
         Frame * currentFrame;
         float scale, scaleGt;
 
+
+        // Tiempo
+        
+        
 
 
    

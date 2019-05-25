@@ -210,7 +210,7 @@ int main( int argc, char** argv ){
             
 
             // Actualizar mensajes
-
+           
             poseCamGt.UpdateMessages(positionCamGT, qOrientationCamGT);
             poseCamEst.UpdateMessages(visystem.positionCam, visystem.qOrientationCam);
 
@@ -223,7 +223,7 @@ int main( int argc, char** argv ){
 
             positionCamGTprev =  positionCamGT;
             RPYOrientationCamGTprev =RPYOrientationCamGT ;
-              char c_input = (char) waitKey(-1);
+              char c_input = (char) waitKey(1);
                 if( c_input == 'q' | c_input == ((char)27) )  {
                         
                         break;

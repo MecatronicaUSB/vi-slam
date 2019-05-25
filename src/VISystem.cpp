@@ -126,7 +126,7 @@ namespace vi
         iniYaw = RPYOrientationImu .z;
 
 
-
+        
 
 
 
@@ -257,19 +257,19 @@ namespace vi
         // Analizar imagen nueva
         camera.setPreviousFrame(keyFrameList.back());
         camera.setCurrentFrame(currentFrame);
+        ros::Time timeDetect = ros::Time::now();
         nPointsCurrentImage = camera.detectAndComputeFeatures();
+        cout << "elapsedDetect =" << (ros::Time::now()-timeDetect)*1000 <<endl;
         
-        
-    
 
         currentImageIsKeyframe = false;
 
-        if (nPointsCurrentImage > 20) // se considera que es hay suficientes puntos para el match
+        if (nPointsCurrentImage > 5) // se considera que es hay suficientes puntos para el match
         {
             clock_t begin = clock();
-        
+            ros::Time timeEssential = ros::Time::now();
             camera.computeEssentialMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
-
+            cout << "elapsed_essential =" << (ros::Time::now()-timeEssential)*1000 <<endl;
             clock_t computeMatches = clock(); 
         
             if (lastImageWasKeyframe){
@@ -292,7 +292,7 @@ namespace vi
 
             vector <Point3f> points3D;
 
-
+            
 
 
             float disparityThreshold = 15;
@@ -302,6 +302,33 @@ namespace vi
             float disparity = Disparity(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
             float euclidean = Euclidean(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
 
+
+            // Seccion de prueba de Matriz essential
+            // Compute computeEssentialMatches
+            //Filtrado essential
+                Mat E;
+                std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+                vector<int> point_indexs;
+
+                //cout<< _previous_frame->nextGoodMatches[0].pt.x<<endl;
+                //cout<< _current_frame->prevGoodMatches[0].pt.x<<endl;
+                cv::KeyPoint::convert(keyFrameList.back()->nextMatches, points1_OK,point_indexs);
+                cv::KeyPoint::convert(currentFrame->prevMatches, points2_OK,point_indexs);
+                Mat maskE;
+                E = findEssentialMat(points1_OK, points2_OK,  K, RANSAC, 0.999, 1.0, maskE);
+
+                int goodCount = 0;
+                for(unsigned i = 0; i < points1_OK.size(); i++) 
+                {
+
+                    if(maskE.at<uchar>(i))
+                    {
+                        goodCount++;
+                    }
+                
+                }
+                
+              
             if(euclidean <1.0)
             {
                 numSteadyImages;
@@ -316,13 +343,15 @@ namespace vi
                 imuCore.calibrateAng(3);
             }
 
-            cout << "EUCLIDEAN " << euclidean <<endl;
+            //cout << "EUCLIDEAN " << euclidean <<endl;
             clock_t disparidad = clock();
             if (disparity > disparityThreshold) {
                 currentImageIsKeyframe = true;
             }
             if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
           
+
+
             if (currentImageIsKeyframe)
             {
            
@@ -338,14 +367,63 @@ namespace vi
                     
                     
                     // Add new 3d point
+                    ros::Time time1 = ros::Time::now();
+                    
+                    //translationResEst = F2FRansacEssential(keyFrameList.back()->nextMatches, currentFrame->prevMatches, RotationResCam, 750.0);
+                    
 
-
-                    translationResEst = BestRansac(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches, RotationResCam);
+                  
                     if(translationResEst.dot(TranslationResidualGT)<0)
                     {
                     translationResEst = -translationResEst;
                     }
 
+                    // Matriz Tx, traslation
+                    Mat Tx = Mat::zeros(cv::Size(3, 3), CV_64F);
+                    Point3f vectorT = translationResEst;
+                    Tx.at<double>(0, 1) = -vectorT.z;
+                    Tx.at<double>(0, 2) = vectorT.y;
+                    Tx.at<double>(1, 0) = vectorT.z;
+                    Tx.at<double>(1, 2) = -vectorT.x;
+                    Tx.at<double>(2, 0) = -vectorT.y;
+                    Tx.at<double>(2, 1) = vectorT.x;
+                    // Convertir resdiual de rotacion al formato Mat CV_64F
+                    
+                    Mat R = Mat(RotationResCam);
+                    R.convertTo(R, CV_64F);
+
+
+                    Mat E2 = R*Tx;
+
+                    Mat t = R.t()*E;
+                    Point3f tEssential;
+                    tEssential.x = (t.at<double>(2,1) -t.at<double>(1,2))/2.0;
+                    tEssential.y = (t.at<double>(0,2)-t.at<double>(2,0))/2.0;
+                    tEssential.z = (t.at<double>(1,0) -t.at<double>(0,1))/2.0 ;
+
+                    tEssential = tEssential/norm(tEssential);
+
+                    if(tEssential.dot(TranslationResidualGT)<0)
+                    {
+                        tEssential = -tEssential;
+                    }
+                    translationResEst = tEssential;
+
+
+
+
+
+                    
+                     Mat mask2;
+                    int goodCount2 = OutlierRejectionEssential(keyFrameList.back()->nextMatches, currentFrame->prevMatches, E*0.002, mask2, 1.0 );
+
+                        //
+                    cout << "numDetect = " << nPointsCurrentImage<<"numkeypoints " << currentFrame->prevGoodMatches.size() <<endl ;
+                    cout << "Marches = " << currentFrame->prevMatches.size() << " numGoodCount = " << goodCount << " good2 = " << goodCount2 <<endl;
+                    cout << "TimeElapsed " << (ros::Time::now()-time1)*1000<<endl;
+                    cout << "disparidadAng= " << disparityAng << " disparidad= " << disparity <<endl;
+                    cout << t <<endl;
+                    
                     scale = scaleGt;
 
 
@@ -394,7 +472,7 @@ namespace vi
 
                     
 
-                    
+                    /*
                     landmarks.clear();
                     for (int i = 0; i< keyFrameList.back()->nextMatches.size(); i++)
                     {
@@ -407,6 +485,7 @@ namespace vi
 
                     
                     }
+                    */
                     
 
                    vector <bool> mask;
@@ -593,12 +672,13 @@ namespace vi
                     // Estimar traslacion entre keyframes
                 //cout<<"\nTiempo de essential: " << fixed<< setprecision(3) << elapsed_essential*1000<<" ms"<<endl;
                 //cout<<"\nTiempo de recover: " << fixed<< setprecision(3) << elapsed_recover*1000<<" ms"<<endl;
+                /*
                 cout << "*** DISPARIDAD ***" <<endl;
                 cout << "Disparity Trans = " << disparity <<endl;
                 cout << "Disparity Ang = " << disparityAng <<endl;
                 cout << "escala est" << scale << endl;
                 cout << "escala gt" << scaleGt << endl;
-
+                */
 
                 if (num_keyframes > num_max_keyframes)
                 {
@@ -668,7 +748,11 @@ namespace vi
             
 
         }
-     
+        else
+        {
+            cout << "error NumMatches = " << nPointsCurrentImage<<endl;
+            exit(-1);
+        }
         
 
         lastImageWasKeyframe = currentImageIsKeyframe;
@@ -861,7 +945,7 @@ namespace vi
 
         for (int index = 0; index< numkeypoints ; index++)
         {
-            u2 = inPoints[index].pt.x;
+            u2 = inPoints[index].pt.x; // Cambiar por keypoints
             v2 = inPoints[index].pt.y;
 
             uk1 = keyPoints[index].pt.x;
@@ -968,8 +1052,8 @@ namespace vi
         }
         translationResEst = translationResEst*scale;
 
-        cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
-        cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
+        //cout << "TransGT" << " tx "<< translationGt.x<< " ty " << translationGt.y<< " tz " << translationGt.z <<endl;
+        //cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
        // cout << "RotaGt" << " rx "<< rotationGt.x<< " ry " << rotationGt.y<< " rz " << rotationGt.z <<endl;
         //cout << "RotaEst" << " rx "<< rotationEst.x<< " ry " << rotationEst.y<< " rz " << rotationEst.z <<endl;
 
@@ -1159,7 +1243,14 @@ namespace vi
         float countMax = 0;
         float errorGroup= 0;
 
-        int RANSAC_iter = 1000;
+        // Parametros de ransac
+
+        float P = 0.999 ;
+        float p = 0.5;
+        int n = 2;
+
+
+        int RANSAC_iter = int(log10(1-P)/(log10(1-pow(p, n)))) ;
         for (int i = 0; i<RANSAC_iter; i++)
         {
             index1 = rand()%(sizeNewGroup -1); // Tomar un feature aleatorio
@@ -1221,6 +1312,257 @@ namespace vi
         
     }
 
+
+    Point3f VISystem::F2FRansacEssential(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat, float threshold)
+    {
+
+    
+    
+
+        Point3f vector1, vector1k; //Feature Vector en frame 1
+        Point3f vector2, vector2k; // Feature Vector en frame2
+        Point3f normal, n1, n2;  // vector del plano 1 y 2 de cada pareja de features
+        Point3f d, dnorm; // vector de dezplazamiento y normalizado
+
+        int numkeypoints = inPoints1.size();
+  
+        
+
+        float u1, v1, u2, v2;
+        float u1k, v1k, u2k, v2k; // key
+
+        vector <Point3f> normalVectors;
+        Mat degenerate = Mat::zeros(1, numkeypoints, CV_32F) ; // vector la degeneracion de los vectores
+
+
+        // Debug string con degeneracion
+       
+
+
+        // Crear vectores normales al plano de correspondecias (epipolar)
+        for (int i = 0; i< numkeypoints; i++)
+        {
+            u1 = inPoints1[i].pt.x;
+            v1 = inPoints1[i].pt.y;
+            u2 = inPoints2[i].pt.x;
+            v2 = inPoints2[i].pt.y;
+
+             // Creacion de vectores
+            vector1.x = (u1-cx)/fx;
+            vector1.y = (v1-cy)/fy;
+            vector1.z = 1.0;
+
+            vector2.x = (u2-cx)/fx;
+            vector2.y = (v2-cy)/fy;
+            vector2.z = 1.0;
+
+            vector1 = vector1/sqrt(vector1.x*vector1.x +vector1.y*vector1.y+vector1.z*vector1.z);
+            vector2 = vector2/sqrt(vector2.x*vector2.x +vector2.y*vector2.y+vector2.z*vector2.z);
+
+            normal = vector1.cross(rotationMat*vector2); // Vector normal al plano epipolar
+            normal = normal/sqrt(normal.x*normal.x +normal.y*normal.y+normal.z*normal.z); // normalizacion
+            normalVectors.push_back(normal); // 
+            
+            std::ostringstream strs;
+
+        }
+
+        
+        // Obtener vector de traslacion RANSAC del grupo filtrado
+        int index1, index2;
+        Point3f dVector;
+        float errorMin= 10000000;
+        Point3f optimalDistance;
+        float errorSum = 0.0;
+        float count = 0;
+        float countMax = 0;
+        float errorGroup= 0;
+
+        // Parametros de ransac
+
+        float P = 0.999 ;
+        float p = 0.5;
+        int n = 2;
+
+             
+        Mat R = Mat(RotationResCam);
+        R.convertTo(R, CV_64F);
+        int RANSAC_iter =  int(log10(1-P)/(log10(1-pow(p, n)))) ;
+        for (int i = 0; i<RANSAC_iter; i++)
+        {
+            index1 = rand()%(numkeypoints -1); // Tomar un feature aleatorio
+            index2 = rand()%(numkeypoints -1); // Tomar un feature aleatorio
+            errorSum = 0.0;
+            dVector = normalVectors[index1].cross(normalVectors[index2]);
+            if (dVector.x != 0.0 || dVector.y != 0.0 ||  dVector.z!=0.0)
+            {
+                dVector = dVector/sqrt(dVector.x*dVector.x +dVector.y*dVector.y+dVector.z*dVector.z);
+
+                
+                if(dVector.dot(TranslationResidualGT)<0)
+                {
+                    dVector = -dVector;
+                }
+
+                // Matriz Tx, traslation
+                Mat Tx = Mat::zeros(cv::Size(3, 3), CV_64F);
+                Point3f vectorT = dVector;
+                Tx.at<double>(0, 1) = -vectorT.z;
+                Tx.at<double>(0, 2) = vectorT.y;
+                Tx.at<double>(1, 0) = vectorT.z;
+                Tx.at<double>(1, 2) = -vectorT.x;
+                Tx.at<double>(2, 0) = -vectorT.y;
+                Tx.at<double>(2, 1) = vectorT.x;
+                // Convertir resdiual de rotacion al formato Mat CV_64F
+               
+
+
+                Mat E2 = R*Tx;
+
+
+
+
+
+                    
+                Mat mask2;
+                count = OutlierRejectionEssential(inPoints1, inPoints2, E2, mask2, 3.0 );
+    
+                  
+               
+                if (count>countMax)
+
+                {
+                    countMax =count;
+                    errorGroup = errorSum/numkeypoints;
+                    optimalDistance = dVector;
+                }
+
+
+            }
+            /*
+            if ( (vector1-rotationMat*vector2).dot(dVector)>0)
+            {
+                dVector = -dVector;
+            }
+            */
+        }
+
+       cout << "countMaxF2F " << countMax << " points " <<  numkeypoints<<endl;
+      
+
+        /*
+        cout << "optimal Distance = " <<scale*optimalDistance << endl;
+        cout << "error min = "<< errorMin << endl;
+        cout << "gt distance" << TranslationResidual <<endl;
+        */
+
+        
+
+
+        return optimalDistance ;
+
+
+        
+    }
+
+
+
+    int VISystem::OutlierRejectionEssential(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2,Mat E,  Mat &mask, float threshold)
+    {
+        
+        std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
+        vector<int> point_indexs;
+
+        cv::KeyPoint::convert(inPoints1, points1_OK,point_indexs);
+        cv::KeyPoint::convert(inPoints2, points2_OK,point_indexs);
+
+
+        Mat points1 = Mat(points1_OK), points2  = Mat(points2_OK);
+        points1.convertTo(points1, CV_64F);
+        points2.convertTo(points2, CV_64F);
+
+        int npoints = points1.checkVector(2);
+        
+        CV_Assert( npoints >= 0 && points2.checkVector(2) == npoints &&
+                              points1.type() == points2.type());
+
+
+        if (points1.channels() > 1)
+        {
+            points1 = points1.reshape(1, npoints);
+            points2 = points2.reshape(1, npoints);
+        }
+
+        points1.col(0) = (points1.col(0) - cx) / fx;
+        points2.col(0) = (points2.col(0) - cx) / fx;
+        points1.col(1) = (points1.col(1) - cy) / fy;
+        points2.col(1) = (points2.col(1) - cy) / fy;
+
+        // Reshape data to fit opencv ransac function
+        points1 = points1.reshape(2, npoints);
+        points2 = points2.reshape(2, npoints);
+
+        threshold /= (fx+fy)/2;
+
+        Mat err ;
+        int goodCount = findInliers( points1, points2, E, err, mask, threshold );
+
+
+        
+        
+
+        return goodCount;
+        //E = findEssentialMat(points1_OK, points2_OK,  focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
+    }
+
+    int VISystem::findInliers( const Mat& m1, const Mat& m2, const Mat& model, Mat& err, Mat& mask, double thresh ) 
+    {
+        computeError( m1, m2, model, err );
+        mask.create(err.size(), CV_8U);
+
+        CV_Assert( err.isContinuous() && err.type() == CV_32F && mask.isContinuous() && mask.type() == CV_8U);
+        const float* errptr = err.ptr<float>();
+        uchar* maskptr = mask.ptr<uchar>();
+        float t = (float)(thresh*thresh);
+        int i, n = (int)err.total(), nz = 0;
+        for( i = 0; i < n; i++ )
+        {
+            int f = errptr[i] <= t;
+            maskptr[i] = (uchar)f;
+            nz += f;
+        }
+        return nz;
+    }
+
+        
+    void VISystem::computeError( InputArray _m1, InputArray _m2, InputArray _model, OutputArray _err ) 
+    {
+        Mat X1 = _m1.getMat(), X2 = _m2.getMat(), model = _model.getMat();
+        const Point2d* x1ptr = X1.ptr<Point2d>();
+        const Point2d* x2ptr = X2.ptr<Point2d>();
+        int n = X1.checkVector(2);
+        Matx33d E(model.ptr<double>());
+
+        _err.create(n, 1, CV_32F);
+        Mat err = _err.getMat();
+
+        for (int i = 0; i < n; i++)
+        {
+            Vec3d x1(x1ptr[i].x, x1ptr[i].y, 1.);
+            Vec3d x2(x2ptr[i].x, x2ptr[i].y, 1.);
+            Vec3d Ex1 = E * x1;
+            Vec3d Etx2 = E.t() * x2;
+            double x2tEx1 = x2.dot(Ex1);
+
+            double a = Ex1[0] * Ex1[0];
+            double b = Ex1[1] * Ex1[1];
+            double c = Etx2[0] * Etx2[0];
+            double d = Etx2[1] * Etx2[1];
+
+            err.at<float>(i) = (float)(x2tEx1 * x2tEx1 / (a + b + c + d));
+        }
+    }
+    
 
     Point3f VISystem::BestRansac(vector <KeyPoint> inPoints1, vector <KeyPoint> inPoints2, Matx33f rotationMat)
     {
@@ -1297,7 +1639,16 @@ namespace vi
         float countMax = 0;
         float errorGroup= 0;
 
-        int RANSAC_iter = 1000;
+
+        // Parametros de ransac
+
+        float P = 0.999 ;
+        float p = 0.5;
+        int n = 2;
+
+
+        int RANSAC_iter = int(log10(1-P)/(log10(1-pow(p, n)))) ;
+        
         for (int i = 0; i<RANSAC_iter; i++)
         {
             index1 = rand()%(sizeNewGroup -1); // Tomar un feature aleatorio
@@ -1337,7 +1688,7 @@ namespace vi
             */
         }
 
-       cout << "countMaxF2F " << countMax << " points " <<  numkeypoints<<  "eg " << errorMin<<endl ;
+       std::cout << "RANSAC_iter = " << RANSAC_iter<< " Keypoints = " <<  numkeypoints<<  " eg = " << errorMin<<endl ;
       
 
         /*
@@ -1371,7 +1722,8 @@ namespace vi
         tVec = tVec/norm(tVec);
 
 
-         int numkeypoints =  inPoints1.size();
+        int numkeypoints =  inPoints1.size();
+        
        
 
         int count  = 0;
@@ -1519,8 +1871,8 @@ namespace vi
         
         //current_poseCam = PAndR2T(RotationResCam , scale*translationResEst ); // residual
         //translationResEst = translationResEst*scaleGt;
-        translationResEst = TranslationResidualGT;
-        //translationResEst = scaleGt*translationResEst;
+        //translationResEst = TranslationResidualGT;
+        translationResEst = scaleGt*translationResEst;
          current_poseCam = PAndR2T(RotationResCam , translationResEst  ); // residual
         cout << "TransGT" << " tx "<< TranslationResidualGT.x<< " ty " <<  TranslationResidualGT.y<< " tz " << TranslationResidualGT.z <<endl;
         cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
@@ -1584,7 +1936,7 @@ namespace vi
         double focal = fx;
         E = findEssentialMat(points1_OK, points2_OK,  focal, Point2d(cx, cy), RANSAC, 0.999, 1.0, noArray());
 
-   
+        
 
         float sx = TranslationResidualGT.x;
         float sy = TranslationResidualGT.y;
@@ -1593,7 +1945,7 @@ namespace vi
         //Rotation_ResCam.convertTo(Rotation_ResCam, CV_64FC1);
         //Mat trans_skew =  E*Rotation_ResCam.t();
 
-
+        
         
 
         
@@ -1730,6 +2082,7 @@ namespace vi
         exit(0);
        
     }
+
 
 
 

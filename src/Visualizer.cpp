@@ -80,7 +80,7 @@ void VisualizerPointcloud::UpdateMessages(vector<Point3f> landmarks)
         pointcloud.channels.push_back(channel);
 
     }
-    cout << " size pointcloud " << pointcloud.points.size()<<endl;
+    //cout << " size pointcloud " << pointcloud.points.size()<<endl;
 
      while (publisher.getNumSubscribers() < 1)
     {
