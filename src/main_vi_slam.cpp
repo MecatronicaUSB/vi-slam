@@ -104,6 +104,10 @@ int main( int argc, char** argv ){
 
     int finalImageIndex = Data.indexLastData;
     if (finalImageIndex>stod(finalIndex)) finalImageIndex = stoi(finalIndex);
+
+    double TimeElapsed = Data.currentTimeMs;
+
+
     while(j < finalImageIndex) // j <data.lastindex
     {  // Cambiar por constant
         
@@ -246,6 +250,14 @@ int main( int argc, char** argv ){
             
            
     }
+
+        
+    
+
+    clock_t detect1 = clock(); 
+    double elapsed_detect = double(detect1- begin1) / CLOCKS_PER_SEC;  
+
+    cout << "elapsed Final = " << Data.currentTimeMs-TimeElapsed<< " ms" <<endl; 
     visystem.shutdown();
 
 
@@ -255,13 +267,7 @@ int main( int argc, char** argv ){
         
 
 
-    
-    
 
-    clock_t detect1 = clock(); 
-    double elapsed_detect = double(detect1- begin1) / CLOCKS_PER_SEC;  
-
-    cout << "elapsed Final = " << elapsed_detect*1000<< " ms" <<endl; 
 
 
     return 0;

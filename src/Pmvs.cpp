@@ -40,8 +40,8 @@ void Pmvs::setOutPath(string _outPath)
 void Pmvs::AddFrame(Mat image, Matx34d ProjectionMatrix)
 {
    
-    imwrite(outPath+"/root/visualize/"+int2string(numImages)+".jpg", image);
-    ofstream outTxt(outPath+"/root/txt/"+int2string(numImages)+".txt");
+    imwrite(outPath+"/salida/visualize/"+int2string(numImages)+".jpg", image);
+    ofstream outTxt(outPath+"/salida/txt/"+int2string(numImages)+".txt");
 
     outTxt << "CONTOUR" << endl;
 
@@ -59,7 +59,7 @@ void Pmvs::AddFrame(Mat image, Matx34d ProjectionMatrix)
     
 void Pmvs::createOptions()
 {
-    ofstream option(outPath+"/root/options.txt",std::ofstream::out | std::ofstream::trunc);
+    ofstream option(outPath+"/salida/options.txt",std::ofstream::out | std::ofstream::trunc);
 
     option << "timages  -1 " << 0 << " " << numImages-1<< endl;;
     option << "oimages 0" << endl;
@@ -70,12 +70,12 @@ void Pmvs::createOptions()
 
 void Pmvs::createOutputDirectories()
 {
-    string deleteOutputDirectory = "rm -r "+outPath+ "/root";
+    string deleteOutputDirectory = "rm -r "+outPath+ "/salida";
 
 
-    string createVisualize = "mkdir -p "+outPath+ "/root/visualize";
-    string createTxt = "mkdir -p "+outPath+ "/root/txt";
-    string createModels = "mkdir -p "+outPath+ "/root/models";
+    string createVisualize = "mkdir -p "+outPath+ "/salida/visualize";
+    string createTxt = "mkdir -p "+outPath+ "/salida/txt";
+    string createModels = "mkdir -p "+outPath+ "/salida/models";
 
 
 
@@ -92,7 +92,7 @@ void Pmvs::createOutputDirectories()
 
 void Pmvs::RunPMVS()
 {
-    string runCommand = binary+ " " +outPath +"/root/" +" options.txt";
+    string runCommand = binary+ " " +outPath +"/salida/" +" options.txt";
     cout << "runCommand " << runCommand <<endl;
     system(runCommand.c_str());
 

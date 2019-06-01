@@ -26,7 +26,7 @@ lastindex = int(50)
 def main():
 
     plot_est = [1, 0, 0, 0] # estimacion: pos, velocidad, aceleracion, orientacion
-    plot_res = [0,0,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
+    plot_res = [0,1,0, 0] # residuales: pos, velocidad, aceleracion, orientacion
     plot_error = [0, 0, 0, 1]  #errores: pos, velocidad, aceleracion, orientacion
     plot_debug = [0, 0]      #debug residual de posicion proveniente de la velocidad
 
@@ -48,7 +48,7 @@ def main():
     #debug
     estAngVelocity= np.zeros([0, 3])
 
-    maxTime = 142.0
+ 
 
     #time = np.arange(0, Ts*(estPosition[:, 0].size), Ts )
     found = False
@@ -90,9 +90,7 @@ def main():
     gtAccx= fd(gtVelocity[:, 0], Ts)
     gtAccy = fd(gtVelocity[:, 1], Ts)
     gtAccz = fd(gtVelocity[:, 2], Ts)
-
-    
-    
+    maxTime = time[time.size-1]
             
   
 

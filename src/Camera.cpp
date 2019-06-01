@@ -76,7 +76,7 @@ void Camera::setDetector(int _detector)
     {
         case USE_KAZE:
         {
-            detector = KAZE::create( false, false, 0.005f); // Normaliza distancia
+            detector = KAZE::create( false, false, 0.001f); // Normaliza distancia
             //detector.setThreshold(200.0);
             cout << "Using Kaze detector"<<endl;
             break;
@@ -85,25 +85,25 @@ void Camera::setDetector(int _detector)
         {
             detector = AKAZE::create(AKAZE::DESCRIPTOR_MLDB,
                                       0,  3,
-                                      0.002f);
+                                      0.003f);
             cout << "Using Akaze detector"<<endl;
             break;
         }
         case USE_SIFT:
         {
-            detector = SIFT::create(600); //Numero de feaures
+            detector = SIFT::create(250); //Numero de feaures
             cout << "Using SIFT detector"<<endl;
             break;
         }
         case USE_SURF:
         {
-            detector = SURF::create(1000); // setThreshold
+            detector = SURF::create(1100); // setThreshold
             cout << "Using SURF detector"<<endl;
             break;
         }
         case USE_ORB:
         {
-            detector = ORB::create(500);
+            detector = ORB::create(250);
             cout << "Using ORB detector"<<endl;
             break;
         }

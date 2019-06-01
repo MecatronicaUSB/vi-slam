@@ -125,6 +125,13 @@ public:
 	int num_wcells, num_hcells;
 	Mat imu2cam0Transformation;
 
+
+	double disparity_threshold;
+	double disparityAng_threshold;
+	double static_threshold;
+	int static_numImages_threshold;
+	int usePMVS;
+
 private:
     Mat output_intrinsic_camera_;
     Mat original_intrinsic_camera_ = Mat(3, 3, CV_32FC1, Scalar(0));

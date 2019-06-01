@@ -40,6 +40,14 @@ void CameraModel::GetCameraModel(string _calibration_path) {
         opencv_file["num_hcells"]>> num_hcells;
         opencv_file["detector"]>> detector;
         opencv_file["matcher"]>> matcher;
+        opencv_file["disparity_threshold"]>> disparity_threshold;
+        opencv_file["disparityAng_threshold"]>> disparityAng_threshold;
+        opencv_file["static_threshold"]>> static_threshold;
+        opencv_file["static_numImages_threshold"]>> static_numImages_threshold;
+        opencv_file["usePMVS"]>> usePMVS;
+
+
+
         
         
         opencv_file.release();

@@ -7,6 +7,18 @@ namespace vi
     VISystem::VISystem()
     {
         num_keyframes = 0;
+        numKeyframes = 0;
+        numImages = 0;
+        numFeatures = 0;
+        numMatches = 0;
+        numGoodMatches = 0;
+        numInliers = 0;
+        timeFilter = 0.0;
+        timeDetectAndCompute = 0.0;
+        timeMatches = 0.0;
+        timeRANSAC = 0.0;
+        numSteadyImages = 0;
+        numNoKeyframes = 0;
     }
 
     VISystem::VISystem(int argc, char *argv[])
@@ -14,6 +26,20 @@ namespace vi
         ros::init(argc, argv, "vi_slam");  // Initialize ROS
 
         num_keyframes = 0;
+        numKeyframes = 0;
+        numImages = 0;
+        numFeatures = 0;
+        numMatches = 0;
+        numGoodMatches = 0;
+        numInliers = 0;
+        timeFilter = 0.0;
+        timeDetectAndCompute = 0.0;
+        timeMatches = 0.0;
+        timeRANSAC = 0.0;
+        timeDisparity = 0.0;
+        timeEuclidean = 0.0;
+        numSteadyImages = 0;
+        numNoKeyframes = 0;
     }
 
     VISystem::~VISystem() 
@@ -55,6 +81,15 @@ namespace vi
         min_features = camera_model->min_features;
         start_index = camera_model->start_index;
 
+        // Parametros de movimiento de la camara
+        disparity_threshold = camera_model ->disparity_threshold;
+        disparityAng_threshold = camera_model ->disparityAng_threshold;
+        static_threshold = camera_model ->static_threshold;
+        static_numImages_threshold = camera_model -> static_numImages_threshold;
+
+        //-- Usar PMVS --
+        usePMVS = camera_model -> usePMVS;
+
         // Transformacion de acople entre la imu y la cámara (imu-> cámara)
         imu2camTransformation = (camera_model->imu2cam0Transformation);
         imu2camRotation = transformationMatrix2rotationMatrix(imu2camTransformation);
@@ -84,6 +119,7 @@ namespace vi
         camera_model ->GetCameraModel(_calibration_path);
         w = camera_model->GetOutputWidth();
         h = camera_model->GetOutputHeight();
+        
 
         if (w%2!=0 || h%2!=0) {
             cout << "Output image dimensions must be multiples of 32. Choose another output dimentions" << endl;
@@ -246,7 +282,12 @@ namespace vi
        
         
         imuCore.setImuData(_imuAngularVelocity, _imuAcceleration); // Medidas tomadas
+
+        // ------ Estimar orientación --------
+        stampBeforeFilter = ros::Time::now().toSec();
         imuCore.estimate();
+        stampAfterFilter = ros::Time::now().toSec();
+        timeFilter += stampAfterFilter-stampBeforeFilter ;
         velocityCam = velocityCam+imuCore.residualVelocity; // velocidad igual a la de la imu
         velocityImu = velocityCam;
         accCam = imuCore.accelerationWorld.back(); // acceleration igual a la de la imu
@@ -256,21 +297,31 @@ namespace vi
 
         // Analizar imagen nueva
         camera.setPreviousFrame(keyFrameList.back());
-        camera.setCurrentFrame(currentFrame);
-        ros::Time timeDetect = ros::Time::now();
+        camera.setCurrentFrame(currentFrame);  
+        numImages++;
+
+        // ------ Detectar features --------
+        stampBeforeDetectAndCompute = ros::Time::now().toSec() ;
         nPointsCurrentImage = camera.detectAndComputeFeatures();
-        cout << "elapsedDetect =" << (ros::Time::now()-timeDetect)*1000 <<endl;
+        stampAfterDetectAndCompute = ros::Time::now().toSec() ;
+        timeDetectAndCompute += stampAfterDetectAndCompute-stampBeforeDetectAndCompute ;
+
+        
+
+ 
         
 
         currentImageIsKeyframe = false;
 
-        if (nPointsCurrentImage > 5) // se considera que es hay suficientes puntos para el match
+        if (nPointsCurrentImage > 4) // se considera que es hay suficientes puntos para el match
         {
-            clock_t begin = clock();
-            ros::Time timeEssential = ros::Time::now();
-            camera.computeEssentialMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
-            cout << "elapsed_essential =" << (ros::Time::now()-timeEssential)*1000 <<endl;
-            clock_t computeMatches = clock(); 
+            // ------ Calcular correspondecias --------
+            stampBeforeMatches = ros::Time::now().toSec() ;
+            camera.computeFastMatches(); // se calcula el match entre la imagen actual y el ultimo keyframe
+            stampAfterMatches = ros::Time::now().toSec() ;
+            timeMatches += stampAfterMatches-stampBeforeMatches ;
+            
+            
         
             if (lastImageWasKeyframe){
                 
@@ -295,17 +346,25 @@ namespace vi
             
 
 
-            float disparityThreshold = 15;
-            double disparityAngThreshold = 5.0;
+         
 
             double disparityAng = 180/M_PI*sqrt(rpyResidual.x*rpyResidual.x+rpyResidual.y*rpyResidual.y+rpyResidual.z*rpyResidual.z);
+
+
+            
+        	
+    	    
+	        stampBeforeFilter = ros::Time::now().toSec();		
             float disparity = Disparity(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
-            float euclidean = Euclidean(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
+            stampAfterFilter = ros::Time::now().toSec();
+	        timeDisparity += stampAfterDisparity-stampBeforeDisparity ;
+	        
 
 
             // Seccion de prueba de Matriz essential
             // Compute computeEssentialMatches
             //Filtrado essential
+                /*
                 Mat E;
                 std::vector<Point2f> points1_OK, points2_OK; // Puntos finales bajos analisis
                 vector<int> point_indexs;
@@ -327,49 +386,101 @@ namespace vi
                     }
                 
                 }
+                */
                 
               
-            if(euclidean <1.0)
-            {
-                numSteadyImages;
-            }
-            else
-            {
-                numSteadyImages = 0;
-            }
-
-            if(numSteadyImages > 4)
-            {
-                imuCore.calibrateAng(3);
-            }
+           
 
             //cout << "EUCLIDEAN " << euclidean <<endl;
-            clock_t disparidad = clock();
-            if (disparity > disparityThreshold) {
+
+            if (disparity > disparity_threshold) {
                 currentImageIsKeyframe = true;
             }
-            if (disparityAng > disparityAngThreshold) currentImageIsKeyframe = true;
+            else if (disparityAng > disparityAng_threshold) currentImageIsKeyframe = true;
+            else{
+
+                // Si no es keyframe, calcular la distancia euclideanea
+                if(keyFrameList.size() <= 2 )
+                {
+
+                    numNoKeyframes++;
+
+                    stampBeforeEuclidean = ros::Time::now().toSec();
+                    float euclidean = Euclidean(keyFrameList.back()->nextGoodMatches, currentFrame->prevGoodMatches);
+                    stampAfterEuclidean = ros::Time::now().toSec();
+                    timeEuclidean += stampAfterEuclidean-stampBeforeEuclidean ;
+                    
+                    if(euclidean <static_threshold)
+                    {
+                        numSteadyImages++;
+                    }
+                    else
+                    {
+                        numSteadyImages = 0;
+                    }
+
+                    if(numSteadyImages > static_numImages_threshold)
+                    {
+                        imuCore.calibrateAng(3);
+                        cout << "here" <<endl;
+                        
+                    }
+
+                }
+            	
+
+                
           
+
+            	
+
+            }
+
+            
+
+
+
+            
 
 
             if (currentImageIsKeyframe)
             {
            
-                
+               
                 
                 scaleGt = norm(TranslationResidualGT); // escala inicial
-       
+                
+                
+    
 
-        
                 if (keyFrameList.size() != 0 ) // segundo keyframe
                 {
                    
+                     
+	                numFeatures += nPointsCurrentImage;
+	                numMatches +=  keyFrameList.back()->nextMatches.size();
+	                numGoodMatches +=  keyFrameList.back()->nextGoodMatches.size();
+	                
+	                	                
+	                numKeyframes ++;
                     
-                    
-                    // Add new 3d point
-                    ros::Time time1 = ros::Time::now();
-                    
-                    //translationResEst = F2FRansacEssential(keyFrameList.back()->nextMatches, currentFrame->prevMatches, RotationResCam, 750.0);
+                    // Estimar vector unitario
+                    stampBeforeRANSAC = ros::Time::now().toSec() ;
+                    translationResEst = F2FRansac(keyFrameList.back()->nextMatches, currentFrame->prevMatches, RotationResCam, 0.17782);
+                    timeRANSAC += ros::Time::now().toSec() -stampBeforeRANSAC;
+
+
+                    // Calcular inliers
+
+
+                    vector <KeyPoint>  filter1, filter2;
+                    //filter1 = camera.frameList[camera.frameList.size()-1]->nextGoodMatches;
+                    //filter2 = camera.currentFrame->prevGoodMatches;
+                    vector <bool> maskF;
+
+                    FilterKeypoints(750, maskF,  keyFrameList.back()->nextMatches, currentFrame->prevMatches, filter1, filter2);
+
+                    numInliers += filter1.size();
                     
 
                   
@@ -379,6 +490,7 @@ namespace vi
                     }
 
                     // Matriz Tx, traslation
+                    /*
                     Mat Tx = Mat::zeros(cv::Size(3, 3), CV_64F);
                     Point3f vectorT = translationResEst;
                     Tx.at<double>(0, 1) = -vectorT.z;
@@ -407,27 +519,20 @@ namespace vi
                     {
                         tEssential = -tEssential;
                     }
-                    translationResEst = tEssential;
+                    //translationResEst = tEssential;
 
-
+                    
 
 
 
                     
                      Mat mask2;
                     int goodCount2 = OutlierRejectionEssential(keyFrameList.back()->nextMatches, currentFrame->prevMatches, E*0.002, mask2, 1.0 );
-
-                        //
-                    cout << "numDetect = " << nPointsCurrentImage<<"numkeypoints " << currentFrame->prevGoodMatches.size() <<endl ;
-                    cout << "Marches = " << currentFrame->prevMatches.size() << " numGoodCount = " << goodCount << " good2 = " << goodCount2 <<endl;
-                    cout << "TimeElapsed " << (ros::Time::now()-time1)*1000<<endl;
-                    cout << "disparidadAng= " << disparityAng << " disparidad= " << disparity <<endl;
-                    cout << t <<endl;
-                    
+                    */
                     scale = scaleGt;
 
 
-                            
+                    /*     
                     //Matx44d local_poseCam = PAndR2T(RotationResCam , TranslationResidualGT ); // residual
                     Matx44d local_poseCam = PAndR2T(RotationResGT , TranslationResidualGT );
                     
@@ -450,6 +555,7 @@ namespace vi
                     currt.x = curr_poseCam(0, 3);
                     currt.y = curr_poseCam(1, 3);
                     currt.z = curr_poseCam(2, 3);
+                    */
                     /*
 
                     cout << "final pose cam " << final_poseCam <<endl;
@@ -464,11 +570,7 @@ namespace vi
                     
                     // Triangular inliers excepto por el factor de escala de la ultima estimacion de traslacion
      
-                    Triangulate(keyFrameList.back()->nextMatches, currentFrame->prevMatches, prevR, prevt, currR, currt, points3D ); 
-      
-
-                    
-                    clock_t triangulate = clock();
+                    //Triangulate(keyFrameList.back()->nextMatches, currentFrame->prevMatches, prevR, prevt, currR, currt, points3D ); 
 
                     
 
@@ -488,6 +590,8 @@ namespace vi
                     */
                     
 
+                    /*
+
                    vector <bool> mask;
 
                    for(int i= 0; i< keyFrameList.back()->keypoints.size(); i++)
@@ -501,6 +605,7 @@ namespace vi
                            mask.push_back(false);
                        }
                    }
+                   */
                    //addNewLandmarks(points3D, mask);
                     
                     
@@ -565,7 +670,7 @@ namespace vi
                     Triangulate(keyFrameList.back()->nextMatches, currentFrame->prevMatches, prevR, prevt, currR, currt, points3D ); 
 
                     
-                    clock_t triangulate = clock();
+             
 
 
                    vector <bool> mask;
@@ -634,8 +739,8 @@ namespace vi
 
             
                 
-
-                Mat celdas1, celdas2, essential1, essential2;
+                  Mat celdas1, celdas2, essential1, essential2;
+                  /*
                 //drawKeypoints(keyFrameList.back()->grayImage, filter1, currentImageDebugToShow, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 drawKeypoints(keyFrameList.back()->grayImage, keyFrameList.back()->nextGoodMatches, celdas1, Scalar(0,255, 0), DrawMatchesFlags::DEFAULT);
                 drawKeypoints(celdas1, currentFrame->prevGoodMatches, celdas1, Scalar(0,0, 255), DrawMatchesFlags::DEFAULT);
@@ -648,16 +753,16 @@ namespace vi
 
 
                 // Obtener la nueva posicion de la cámarael
-                 Mat img_inlier1, img_inlier2;
+                    Mat img_inlier1, img_inlier2;
                 //resize(currentImageDebugToShow, img_inlier1, Size( 640,300));//resize image
                 //resize(currentImageToShow, img_inlier2, Size(640, 300));//resize image
                 resize(celdas1, celdas1, Size( 640,300));//resize image
                 resize(celdas2, celdas2, Size(640, 300));//resize image
                 resize(essential1, essential1, Size(640, 300));//resize image
                 resize(essential2, essential2, Size(640, 300));//resize image
-                 Mat img_inliers;
-                 Mat img_celdas;
-                 Mat img_essential;
+                    Mat img_inliers;
+                    Mat img_celdas;
+                    Mat img_essential;
                 vconcat(img_inlier1, img_inlier2, img_inliers);
                 vconcat(celdas1, celdas2, img_celdas);
                 vconcat(essential1, essential2, img_essential);
@@ -666,6 +771,8 @@ namespace vi
                 //imshow("inliers", img_inliers);
                 imshow("celdas", img_celdas);
                 imshow("essential", img_essential);
+                */
+              
                 saveFrame();
                 num_keyframes = keyFrameList.size();
 
@@ -689,6 +796,7 @@ namespace vi
                 Track(); // actualizar posicion 
                 // añadir informacion a pmvs
                 pmvs.AddFrame(currentImage, projectionMatrix);
+                printStatistics();
             
             
                 
@@ -741,11 +849,6 @@ namespace vi
             }
             */
           
-        
-
-          
-            
-            
 
         }
         else
@@ -753,15 +856,38 @@ namespace vi
             cout << "error NumMatches = " << nPointsCurrentImage<<endl;
             exit(-1);
         }
-        
+      
 
+        imshow("Imag",currentFrame->grayImage );
+        //waitKey(-1);
         lastImageWasKeyframe = currentImageIsKeyframe;
 
         return lastImageWasKeyframe;
         
 
     }
-    
+    void VISystem::printStatistics()
+    {
+        cout<<"------- ESTADISTICAS -------- "
+        <<"\nnumFeatures = " << numFeatures/numKeyframes 
+        <<" numMatches = " << numMatches/numKeyframes
+        <<" numGoodMatches = " << numGoodMatches/numKeyframes
+        <<"\nnumInliers = " << numInliers/numKeyframes
+        <<" numImages = " << numImages
+        <<" numKeyframes = " << numKeyframes
+        <<"\nTFilter =" << fixed<< setprecision(1) << timeFilter/(numImages*0.001)<<" ms"
+        <<" Tdetect =" << fixed<< setprecision(1) << timeDetectAndCompute/(numImages*0.001) <<" ms"
+        <<" Tmatch =" << fixed<< setprecision(1) << timeMatches/(numImages*0.001)<<" ms"
+        <<" TRANSAC =" << fixed<< setprecision(1) << timeRANSAC*1000/(numKeyframes)<<" ms"
+        //<<"\nTDisparity=" << fixed<< setprecision(1) <<timeDisparity/(numImages)<<" ns"
+        //<<" TEuclidean=" << fixed<< setprecision(1) <<timeEuclidean/(numNoKeyframes)<<" ns"
+        <<" Tproccess =" << fixed<< setprecision(1) << (timeRANSAC+timeFilter+timeEuclidean)<<" s"
+        <<" TTotal =" << fixed<< setprecision(1) << (timeRANSAC+timeMatches+timeDetectAndCompute+timeFilter+timeDisparity+timeEuclidean)<<" s"
+        <<"-------                  -------- "
+        <<endl;
+        
+
+    }
     void VISystem::getLandmarks(vector<Point3f> &_landmarks)
     {
         for(int i = 0; i < landmarks.size(); i++)
@@ -1267,7 +1393,8 @@ namespace vi
                 for (int i = 0; i<sizeNewGroup ; i++)
                 {
                     
-                    double error = -1000.0/std::log10(abs(dVector.dot(normalVectors[i])));
+                    //double error = -1000.0/std::log10(abs(dVector.dot(normalVectors[i])));
+                    double error = abs(dVector.dot(normalVectors[i]));
                     errorSum +=error;
                         // cout<<" e "  << error<<endl;
                     if(error<threshold)
@@ -1294,7 +1421,7 @@ namespace vi
             */
         }
 
-       cout << "countMaxF2F " << countMax << " points " <<  numkeypoints<<endl;
+       //cout << "countMaxF2F " << countMax << " points " <<  numkeypoints<<endl;
       
 
         /*
@@ -1874,8 +2001,8 @@ namespace vi
         //translationResEst = TranslationResidualGT;
         translationResEst = scaleGt*translationResEst;
          current_poseCam = PAndR2T(RotationResCam , translationResEst  ); // residual
-        cout << "TransGT" << " tx "<< TranslationResidualGT.x<< " ty " <<  TranslationResidualGT.y<< " tz " << TranslationResidualGT.z <<endl;
-        cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
+        //cout << "TransGT" << " tx "<< TranslationResidualGT.x<< " ty " <<  TranslationResidualGT.y<< " tz " << TranslationResidualGT.z <<endl;
+        //cout << "TransEst" << " tx "<< translationResEst.x<< " ty " <<translationResEst.y<< " tz " << translationResEst.z <<endl;
 
         
         //qOrientationImu = imuCore.quaternionWorld.back();
@@ -2070,6 +2197,7 @@ namespace vi
 
         if (keyFrameList.size()>2)
         {
+            /*
             string answer;
             cout << endl<<"Run PMVS? Y/N " << endl;
             cin >> answer;
@@ -2078,6 +2206,8 @@ namespace vi
                 cout <<endl<<"*** Running PMVS ***" <<endl;
                 pmvs.RunPMVS();
             }
+            */
+           if(usePMVS) pmvs.RunPMVS();
         }
         exit(0);
        

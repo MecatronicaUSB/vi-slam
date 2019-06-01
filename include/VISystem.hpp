@@ -94,6 +94,9 @@ class VISystem
         void FilterKeypoints(double threshold, vector<bool> &mask, vector <KeyPoint> &outPoints1, vector <KeyPoint> &outPoints2,vector <KeyPoint> &outlier1, vector <KeyPoint> &outlier2);
         void WarpFunctionRT(vector <KeyPoint> inPoints, Mat rotationMat, Mat translationMat, vector <KeyPoint> &outPoints);
         
+
+
+        
         
         float Disparity(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
         float Euclidean(vector <KeyPoint> keyPoints, vector <KeyPoint> inPoints );
@@ -204,6 +207,49 @@ class VISystem
 
 
         // Tiempo
+
+        // Estadisticas
+        void printStatistics();
+
+        // Variables para calcular los tiempos
+        double stampBeforeFilter;
+        double stampAfterFilter;
+        double stampBeforeDetectAndCompute;
+        double stampAfterDetectAndCompute;
+        double stampBeforeMatches;
+        double stampAfterMatches;
+        double stampBeforeRANSAC;
+        double stampAfterDisparity;
+        double stampBeforeDisparity;
+         double stampAfterEuclidean;
+        double stampBeforeEuclidean;
+
+        // Tiempos acumulados
+        double timeFilter;
+        double timeDetectAndCompute;
+        double timeMatches;
+        double timeRANSAC;
+        double timeDisparity;
+        double timeEuclidean;
+
+        int numKeyframes;
+        int numNoKeyframes;
+        int numImages;
+        int numFeatures;
+        int numMatches;     // Parejas a priori
+        int numGoodMatches; // Parejas del filtro de celdas
+        int numInliers;     // Inliers del ransac
+
+
+        double disparity_threshold;
+        double disparityAng_threshold;
+        double static_threshold;
+        int static_numImages_threshold;
+        int usePMVS;
+
+
+
+
         
         
 

@@ -127,7 +127,7 @@ void Matcher::computeFastMatches()
         }
     }
 
-    std::cout << "nmatches" << matches.size()<<endl;
+    //std::cout << "nmatches" << matches.size()<<endl;
     
 }
 
@@ -137,7 +137,7 @@ void Matcher::computeEssentialMatches(Mat _K)
 
 
     
-    std::cout << "nmatches" << aux_matches1.size()<<endl;
+    //std::cout << "nmatches" << aux_matches1.size()<<endl;
 
     // Descartar con distancia euclidiana (revisar los filtros de distancia)
     double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
@@ -443,7 +443,7 @@ void Matcher::computeBestMatches()
     sortMatches();
    
     int matches_found = CellFilter();
-    cout << "CellFilter" << matches_found <<endl;
+    //cout << "CellFilter" << matches_found <<endl;
 
 }
 

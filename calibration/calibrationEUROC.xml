@@ -71,16 +71,16 @@
     USE_BRUTE_FORCE_GPU_HAMMING, 4 -->
 
 <!-- Desplazamiento en pixeles-->
-<disparity_threshold type_id="float">25.0</disparity_threshold>
+<disparity_threshold type_id="float">15.0</disparity_threshold>
 <!-- Cambio angular en grados-->
 <disparityAng_threshold type_id="float">5.0</disparityAng_threshold> 
 
 <!-- Configuracion de deteccion de pose estatica-->
-<steady_threshold type_id="float">1.0</steady_threshold>
-<steady_numImages type_id="integer">4</steady_numImages>
+<static_threshold type_id="float">1.0</static_threshold>
+<static_numImages_threshold type_id="integer">4</static_numImages_threshold>
 
 <!-- Utilizar pmvs para reconstruccion(1 o 0)-->
-<run_pmvs type_id="integer">1</run_pmvs>
+<run_pmvs type_id="integer">0</run_pmvs>
 
 
 </opencv_storage>
