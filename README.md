@@ -27,7 +27,7 @@ Refer to [OpenCV](https://github.com/MecatronicaUSB/uwimageproc/blob/master/INST
 
 Refer to [ROS Kinetic installation instructions](http://wiki.ros.org/kinetic/Installation).
 
-## Building UW-SLAM
+## Building VI-SLAM
 
 Clone VI-SLAM repository in the `/src` folder of your catkin workspace:
 
@@ -81,7 +81,7 @@ Modify the `vi_slam.launch` file in `/launch` folder to specify the directory of
         k1  k2  k3  k4 </data></rectification>
 ```
 
-Run UW-SLAM for general datasets:
+Run VI-SLAM for general datasets:
 ```bash
 roslaunch uw_slam uw_slam.launch
 ```
@@ -98,7 +98,7 @@ For [EUROC MAV](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualiner
     -s <number of starting frame>                   (Default: 0)
     --EUROC <directory of ground-truth poses file>  (<EUROC directory>/mav0/vic0/data.csv)
 ```
-Run UW-SLAM for EUROC datasets:
+Run VI-SLAM for EUROC datasets:
 ```bash
 roslaunch uw_slam uw_slamEUROC.launch
 ```
@@ -113,7 +113,7 @@ roslaunch uw_slam uw_slamEUROC.launch
 
 #### /src
 
-Core .cpp files of UW-SLAM.
+Core .cpp files of VI-SLAM.
 
 #### /include
 
