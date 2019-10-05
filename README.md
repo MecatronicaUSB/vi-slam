@@ -33,7 +33,7 @@ Clone VI-SLAM repository in the `/src` folder of your catkin workspace:
 
 ```bash
 cd <catkin_ws_directory>/src
-git clone https://github.com/MecatronicaUSB/uw-slam.git
+git clone https://github.com/MecatronicaUSB/vi-slam.git
 cd ..
 catkin_make
 ```
@@ -48,7 +48,7 @@ Modify the `calibration.xml` file in `/calibration` folder to specify the instri
 
 ```bash
     -d <directory of images files>                  
-    -c <directory of calibration.xml file>          (<uw-slam directory>/calibration/calibration.xml)
+    -c <directory of calibration.xml file>          (<vi-slam directory>/calibration/calibration.xml)
     -s <number of starting frame>                   (Default: 0)
 ```
 
@@ -83,7 +83,7 @@ Modify the `vi_slam.launch` file in `/launch` folder to specify the directory of
 
 Run VI-SLAM for general datasets:
 ```bash
-roslaunch uw_slam uw_slam.launch
+roslaunch vi_slam vi_slam.launch
 ```
 ### EUROC dataset
 
@@ -91,16 +91,16 @@ Currently, VI-SLAM supports ground-truth visualization along with VI-SLAM result
 
 #### EUROC
 
-For [EUROC MAV](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) datasets, modify the arguments of the `uw_slamEUROC.launch` file in `/launch` folder to add the directory of the files.
+For [EUROC MAV](https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets) datasets, modify the arguments of the `vi_slamEUROC.launch` file in `/launch` folder to add the directory of the files.
 ```bash
     -d <directory of images files>                  (<EUROC directory>/mav0/cam0/data/)
-    -c <directory of calibrationEUROC.xml file>     (<uw-slam directory>/calibration/calibrationEUROC.xml)
+    -c <directory of calibrationEUROC.xml file>     (<vi-slam directory>/calibration/calibrationEUROC.xml)
     -s <number of starting frame>                   (Default: 0)
     --EUROC <directory of ground-truth poses file>  (<EUROC directory>/mav0/vic0/data.csv)
 ```
 Run VI-SLAM for EUROC datasets:
 ```bash
-roslaunch uw_slam uw_slamEUROC.launch
+roslaunch vi_slamvi_slamEUROC.launch
 ```
 
 
