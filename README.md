@@ -27,14 +27,6 @@ Refer to [OpenCV](https://github.com/MecatronicaUSB/uwimageproc/blob/master/INST
 
 Refer to [ROS Kinetic installation instructions](http://wiki.ros.org/kinetic/Installation).
 
-#### Eigen 3
-
-```bash
-sudo apt-get install libsuitesparse-dev libeigen3-dev libboost-all-dev
-```
-
-
-
 ## Building UW-SLAM
 
 Clone VI-SLAM repository in the `/src` folder of your catkin workspace:
