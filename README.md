@@ -129,6 +129,6 @@ Calibration files. Includes calibration for EUROC  datasets. It can be modified 
 
 ## License
 
-Copyright (c) 2019 Fabio Morales (<lugaluchinchilla@gmail.com>).
+Copyright (c) 2019 Luis Lujano (<lugaluchinchilla@gmail.com>).
 
 Release under the [GPL-3.0 License](LICENSE). 
